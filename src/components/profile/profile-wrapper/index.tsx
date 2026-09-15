@@ -66,6 +66,8 @@ export function ProfileWrapper() {
     handleDeleteAddress,
     handleEditAddress,
     editingAddressId,
+    addressCoords,
+    applyCoords,
     // CEP
     isLoadingCep,
   } = useProfileManagement();
@@ -191,12 +193,14 @@ export function ProfileWrapper() {
           handleDeleteAddress={handleDeleteAddress}
           handleAddAddress={handleAddAddress}
           handleEditAddress={handleEditAddress}
+          applyCoords={applyCoords}
           editingAddressId={editingAddressId}
           addingAddressState={addingAddressState}
           isLoadingAddresses={isLoadingAddresses}
           isSavingAddress={isSavingAddress}
           isLoadingCep={isLoadingCep}
           addressForm={addressForm}
+          addressCoords={addressCoords}
           addresses={addresses}
         />
 

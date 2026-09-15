@@ -31,18 +31,26 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 
-import { CheckoutMap } from "@/components/checkout/checkout-map";
+import { AddressMap } from "@/components/address-map";
+import {
+  parseBrasilApiCoords,
+  type CoordinateSource,
+  type SourcedCoords,
+} from "@/lib/address-coordinates";
 import { Address } from "@/services/api";
 import { Restaurant } from "@/stores/cart-store";
+import { Coords } from "@/types/restaurant";
 
 type Props = {
   handleInputChange: (field: string, value: string | number) => void;
+  applyCoords: (coords: Coords | null, source: CoordinateSource) => void;
   setSelectedAddressId: Dispatch<SetStateAction<string | null>>;
   setAddressMode: Dispatch<SetStateAction<"select" | "new">>;
   handleAddressSelect: (addressId: string) => void;
   setSaveAddress: Dispatch<SetStateAction<boolean>>;
   addressMode: "select" | "new";
   deliveryInfo: DeliveryInfo;
+  addressCoords: SourcedCoords | null;
   loadingAddresses: boolean;
   saveAddress: boolean;
   userAddresses: Address[];
@@ -80,12 +88,14 @@ function Field({ htmlFor, label, optional, className, children }: FieldProps) {
 
 export function DeliveryForm({
   handleInputChange,
+  applyCoords,
   setSelectedAddressId,
   setAddressMode,
   handleAddressSelect,
   setSaveAddress,
   addressMode,
   deliveryInfo,
+  addressCoords,
   loadingAddresses,
   userAddresses,
   saveAddress,
@@ -116,6 +126,12 @@ export function DeliveryForm({
       handleInputChange("neighborhood", data.neighborhood || "");
       handleInputChange("city", data.city || "");
       handleInputChange("state", data.state || "");
+
+      // A BrasilAPI já devolve a coordenada do logradouro - usa como ponto de
+      // partida e centra o mapa nela. É a fonte de menor prioridade: some
+      // assim que a geocodificação do endereço completo ou um clique no mapa
+      // aparecerem.
+      applyCoords(parseBrasilApiCoords(data), "cep");
 
       toast.success("CEP encontrado. Campos preenchidos.");
     } catch (error) {
@@ -149,11 +165,19 @@ export function DeliveryForm({
       return;
     }
 
+    // Só aqui, no toque do cliente. O GPS diz onde ele está agora, que nem
+    // sempre é o endereço que ele está cadastrando - por isso nunca roda
+    // sozinho, e quando roda vale como gesto explícito (prioridade máxima).
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        handleInputChange("latitude", position.coords.latitude);
-        handleInputChange("longitude", position.coords.longitude);
-        toast.success("Localização  capturada.");
+        applyCoords(
+          {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          },
+          "manual",
+        );
+        toast.success("Localização capturada.");
       },
       () => {
         toast.error("Nao foi possivel capturar sua localização .");
@@ -463,12 +487,15 @@ export function DeliveryForm({
                     Localização no mapa
                   </span>
                   <span className="text-[11px] font-semibold text-muted-foreground">
-                    Clique no mapa para ajustar
+                    {addressCoords
+                      ? "Clique no mapa para ajustar"
+                      : "Preencha o CEP ou clique no mapa"}
                   </span>
                 </div>
-                <CheckoutMap
+                <AddressMap
                   mapHeight={220}
-                  updateCoords={(key, value) => handleInputChange(key, value)}
+                  value={addressCoords?.coords ?? null}
+                  onSelect={(coords) => applyCoords(coords, "manual")}
                 />
               </div>
 
