@@ -1140,6 +1140,16 @@ export interface Delivery {
   pickupTime?: string;
   deliveryTime?: string;
   cancellationReason?: string;
+  /**
+   * Ganho do entregador pela corrida - diferente de `order.totalValue`, que é
+   * o que o cliente pagou pelo pedido.
+   *
+   * O backend ainda NÃO envia este campo e o nome definitivo precisa ser
+   * confirmado com a API antes de valer como contrato. Até lá
+   * `getCourierEarnings` devolve null e o bloco de ganho fica oculto no card
+   * do entregador, em vez de exibir R$ 0,00 como se fosse real.
+   */
+  courierEarnings?: number;
   deliveryAddress: Address;
   estimatedTime: string;
   observations?: string;

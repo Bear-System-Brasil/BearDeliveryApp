@@ -14,6 +14,7 @@ import { useEffect, useState, type ComponentType } from "react";
 import { useAuth } from "@/contexts/auth-provider";
 import { useCartActions } from "@/hooks";
 import { useAuthStore } from "@/stores";
+import { isBottomBarHidden } from "@/constants/bottom-bar-routes";
 import { getWorkspaceLink } from "@/constants/workspace-links";
 import { getProfileRoute, isCompanyStaffRole } from "@/utils/role-helpers";
 
@@ -45,18 +46,6 @@ const managementRoutes = [
   "/menu-management",
   "/category-management",
   "/order-management",
-  "/financial-management",
-];
-
-// Fluxos focados que ja possuem barra de ação fixa no rodapé (checkout) ou
-// cabeçalho próprio com as acoes do papel (entregador), e as telas
-// operacionais com menu lateral próprio - cozinha e area financeira -, que
-// nao tem espaço vertical de sobra. A nav do cliente (carrinho, pedidos de
-// cliente etc.) não faz sentido sobreposta ali.
-const hiddenRoutes = [
-  "/checkout",
-  "/delivery-dashboard",
-  "/kitchen",
   "/financial-management",
 ];
 
@@ -101,7 +90,8 @@ export function BottomBar({ activeTab }: BottomBarProps) {
     return null;
   }
 
-  if (hiddenRoutes.some((route) => pathname.startsWith(route))) {
+  // Mesma fonte de verdade do padding reservado pelo AppFrame.
+  if (isBottomBarHidden(pathname)) {
     return null;
   }
 
