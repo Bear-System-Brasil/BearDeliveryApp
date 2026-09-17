@@ -7,17 +7,8 @@ import {
   HeaderIconButton,
   ScreenHeader,
 } from "@/components/delivery-dashboard/screen-header";
-import ProtectedRoute from "@/components/protected-route";
 import { Button } from "@/components/ui/button";
 import { useDeliveryHistory } from "@/hooks/use-delivery-driver";
-
-export default function DeliveryHistoryPage() {
-  return (
-    <ProtectedRoute allowedRoles={["delivery"]}>
-      <DeliveryHistoryContent />
-    </ProtectedRoute>
-  );
-}
 
 /**
  * Histórico do entregador: concluídas e canceladas.
@@ -27,7 +18,7 @@ export default function DeliveryHistoryPage() {
  * entregas em qualquer status, então navegar pra cá não custa request. E, por
  * ser tela de leitura, não monta o socket de rastreamento nem o alerta.
  */
-function DeliveryHistoryContent() {
+export default function DeliveryHistoryPage() {
   const { isLoading, isError, refetch, historyDeliveries } =
     useDeliveryHistory();
 
@@ -38,11 +29,10 @@ function DeliveryHistoryContent() {
       }`;
 
   return (
-    <div className="min-h-screen bg-muted">
+    <>
       <ScreenHeader
         title="Histórico"
         subtitle={subtitle}
-        backHref="/delivery-dashboard"
         actions={
           <HeaderIconButton label="Atualizar" onClick={() => refetch()}>
             <RefreshCw className="h-5 w-5" />
@@ -50,7 +40,7 @@ function DeliveryHistoryContent() {
         }
       />
 
-      <main className="mx-auto max-w-md px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-4">
+      <main className="mx-auto max-w-md px-4 pt-4">
         {isLoading ? (
           <div className="space-y-2">
             <div className="h-16 animate-pulse rounded-2xl bg-card" />
@@ -87,6 +77,6 @@ function DeliveryHistoryContent() {
           </div>
         )}
       </main>
-    </div>
+    </>
   );
 }

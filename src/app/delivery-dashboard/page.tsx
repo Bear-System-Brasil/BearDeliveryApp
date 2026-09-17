@@ -1,29 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, BellOff, History, LogOut, Package, RefreshCw } from "lucide-react";
+import { Bell, BellOff, Package, RefreshCw } from "lucide-react";
 
+import { AcceptConfirmDialog } from "@/components/delivery-dashboard/accept-confirm-dialog";
 import { CancelDialog } from "@/components/delivery-dashboard/cancel-dialog";
 import { DeliveryCard } from "@/components/delivery-dashboard/delivery-card";
 import {
   HeaderIconButton,
-  HeaderIconLink,
   ScreenHeader,
 } from "@/components/delivery-dashboard/screen-header";
-import ProtectedRoute from "@/components/protected-route";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/auth-provider";
+import { useAcceptConfirmation } from "@/hooks/use-accept-confirmation";
 import { useDeliveryDriver } from "@/hooks/use-delivery-driver";
 import { getNextStatus, pluralizeAvailable } from "@/lib/delivery";
 import type { Delivery } from "@/services/api";
-
-export default function DeliveryDashboardPage() {
-  return (
-    <ProtectedRoute allowedRoles={["delivery"]}>
-      <DeliveryDashboardContent />
-    </ProtectedRoute>
-  );
-}
 
 function Group({
   title,
@@ -66,8 +57,7 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-function DeliveryDashboardContent() {
-  const { logout } = useAuth();
+export default function DeliveryDashboardPage() {
   const {
     isLoading,
     isError,
@@ -87,7 +77,35 @@ function DeliveryDashboardContent() {
     counts,
   } = useDeliveryDriver();
 
+  const { shouldConfirm, setSkipConfirm } = useAcceptConfirmation();
+
+  const [acceptTarget, setAcceptTarget] = useState<Delivery | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Delivery | null>(null);
+
+  // Com a confirmação desligada, o toque em Aceitar vai direto pro request.
+  const handleAcceptRequest = (deliveryId: string) => {
+    const delivery = availableDeliveries.find(({ id }) => id === deliveryId);
+    if (!delivery) return;
+
+    if (!shouldConfirm) {
+      acceptDelivery(delivery.id);
+      return;
+    }
+
+    setAcceptTarget(delivery);
+  };
+
+  const handleConfirmAccept = (skipNext: boolean) => {
+    if (!acceptTarget) return;
+
+    if (skipNext) setSkipConfirm(true);
+
+    // Fecha quando a resposta chega (o toast diz se deu certo). Numa falha de
+    // conexão o diálogo fica aberto, pra tentar de novo sem refazer o caminho.
+    acceptDelivery(acceptTarget.id, {
+      onSuccess: () => setAcceptTarget(null),
+    });
+  };
 
   const handleAdvance = (delivery: Delivery) => {
     const next = getNextStatus(delivery);
@@ -109,7 +127,7 @@ function DeliveryDashboardContent() {
       : pluralizeAvailable(counts.available);
 
   return (
-    <div className="min-h-screen bg-muted">
+    <>
       <ScreenHeader
         title="Minhas entregas"
         subtitle={subtitle}
@@ -128,17 +146,11 @@ function DeliveryDashboardContent() {
                 <BellOff className="h-5 w-5" />
               )}
             </HeaderIconButton>
-            <HeaderIconLink label="Histórico" href="/delivery-dashboard/historico">
-              <History className="h-5 w-5" />
-            </HeaderIconLink>
-            <HeaderIconButton label="Sair" onClick={logout} danger>
-              <LogOut className="h-5 w-5" />
-            </HeaderIconButton>
           </>
         }
       />
 
-      <main className="mx-auto max-w-md space-y-7 px-4 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-4">
+      <main className="mx-auto max-w-md space-y-7 px-4 pt-4">
         {isLoading ? (
           <div className="space-y-3">
             <div className="h-48 animate-pulse rounded-2xl bg-card" />
@@ -215,7 +227,7 @@ function DeliveryDashboardContent() {
                     <DeliveryCard
                       key={delivery.id}
                       delivery={delivery}
-                      onAccept={acceptDelivery}
+                      onAccept={handleAcceptRequest}
                       busy={acceptingId === delivery.id}
                     />
                   ))}
@@ -226,12 +238,19 @@ function DeliveryDashboardContent() {
         )}
       </main>
 
+      <AcceptConfirmDialog
+        delivery={acceptTarget}
+        isAccepting={acceptingId !== null && acceptingId === acceptTarget?.id}
+        onClose={() => setAcceptTarget(null)}
+        onConfirm={handleConfirmAccept}
+      />
+
       <CancelDialog
         delivery={cancelTarget}
         isCanceling={isCanceling}
         onClose={() => setCancelTarget(null)}
         onConfirm={handleConfirmCancel}
       />
-    </div>
+    </>
   );
 }
