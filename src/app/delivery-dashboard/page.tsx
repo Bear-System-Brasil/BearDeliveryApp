@@ -1,393 +1,256 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Bell,
-  BellOff,
-  Bike,
-  CheckCircle2,
-  LogOut,
-  MapPin,
-  Package,
-  Phone,
-  RefreshCw,
-} from "lucide-react";
+import { Bell, BellOff, Package, RefreshCw } from "lucide-react";
 
-import ProtectedRoute from "@/components/protected-route";
+import { AcceptConfirmDialog } from "@/components/delivery-dashboard/accept-confirm-dialog";
+import { CancelDialog } from "@/components/delivery-dashboard/cancel-dialog";
+import { DeliveryCard } from "@/components/delivery-dashboard/delivery-card";
+import {
+  HeaderIconButton,
+  ScreenHeader,
+} from "@/components/delivery-dashboard/screen-header";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/contexts/auth-provider";
+import { useAcceptConfirmation } from "@/hooks/use-accept-confirmation";
 import { useDeliveryDriver } from "@/hooks/use-delivery-driver";
-import type { Address, Delivery } from "@/services/api";
-import { formatCurrency } from "@/utils";
+import { getNextStatus, pluralizeAvailable } from "@/lib/delivery";
+import type { Delivery } from "@/services/api";
 
-function formatAddress(address?: Address) {
-  if (!address) return "Endereço não informado";
-  const line1 = [address.street, address.number].filter(Boolean).join(", ");
-  const line2 = [address.neighborhood, address.city].filter(Boolean).join(" - ");
-  return [line1, address.complement, line2].filter(Boolean).join(" · ");
-}
-
-// O include de order/customer não é garantido pelo contrato (delivery.md não
-// documenta esse aninhamento) - lê defensivamente, com fallback, em vez de
-// assumir a forma exata.
-function getRestaurantName(delivery: Delivery) {
-  return delivery.order?.company?.tradeName || "Restaurante";
-}
-
-function getCustomerInfo(delivery: Delivery) {
-  const customer = delivery.order?.customer;
-  return {
-    name: customer?.name || "Cliente",
-    phone: customer?.phone,
-  };
-}
-
-export default function DeliveryDashboardPage() {
+function Group({
+  title,
+  count,
+  hint,
+  children,
+}: {
+  title: string;
+  count: number;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <ProtectedRoute allowedRoles={["delivery"]}>
-      <DeliveryDashboardContent />
-    </ProtectedRoute>
+    <section className="space-y-2.5">
+      <div className="flex items-baseline justify-between gap-2 px-1">
+        <h2 className="text-[12px] font-extrabold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </h2>
+        <span className="text-[12px] font-bold text-muted-foreground">
+          {count}
+        </span>
+      </div>
+      {hint && (
+        <p className="px-1 text-[12px] font-medium text-muted-foreground">
+          {hint}
+        </p>
+      )}
+      {children}
+    </section>
   );
 }
 
-function DeliveryDashboardContent() {
-  const { logout } = useAuth();
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-6 text-center">
+      <p className="text-[13px] font-semibold text-muted-foreground">
+        {message}
+      </p>
+    </div>
+  );
+}
+
+export default function DeliveryDashboardPage() {
   const {
     isLoading,
     isError,
     refetch,
-    activeDelivery,
-    pendingDeliveries,
+    myDeliveries,
+    recentlyDelivered,
+    availableDeliveries,
     soundEnabled,
     toggleSound,
     acceptDelivery,
-    isAccepting,
-    pickupDelivery,
-    isPickingUp,
-    deliverDelivery,
-    isDelivering,
+    acceptingId,
+    advanceDelivery,
+    advancingId,
     cancelDelivery,
+    cancelingId,
     isCanceling,
+    counts,
   } = useDeliveryDriver();
 
-  const [cancelOpen, setCancelOpen] = useState(false);
-  const [cancelReason, setCancelReason] = useState("");
+  const { shouldConfirm, setSkipConfirm } = useAcceptConfirmation();
 
-  const handleConfirmCancel = () => {
-    if (!activeDelivery || !cancelReason.trim()) return;
+  const [acceptTarget, setAcceptTarget] = useState<Delivery | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Delivery | null>(null);
+
+  // Com a confirmação desligada, o toque em Aceitar vai direto pro request.
+  const handleAcceptRequest = (deliveryId: string) => {
+    const delivery = availableDeliveries.find(({ id }) => id === deliveryId);
+    if (!delivery) return;
+
+    if (!shouldConfirm) {
+      acceptDelivery(delivery.id);
+      return;
+    }
+
+    setAcceptTarget(delivery);
+  };
+
+  const handleConfirmAccept = (skipNext: boolean) => {
+    if (!acceptTarget) return;
+
+    if (skipNext) setSkipConfirm(true);
+
+    // Fecha quando a resposta chega (o toast diz se deu certo). Numa falha de
+    // conexão o diálogo fica aberto, pra tentar de novo sem refazer o caminho.
+    acceptDelivery(acceptTarget.id, {
+      onSuccess: () => setAcceptTarget(null),
+    });
+  };
+
+  const handleAdvance = (delivery: Delivery) => {
+    const next = getNextStatus(delivery);
+    if (!next) return;
+    advanceDelivery({ id: delivery.id, next });
+  };
+
+  const handleConfirmCancel = (reason: string) => {
+    if (!cancelTarget || !reason) return;
     cancelDelivery(
-      { id: activeDelivery.id, reason: cancelReason.trim() },
-      {
-        onSuccess: () => {
-          setCancelOpen(false);
-          setCancelReason("");
-        },
-      },
+      { id: cancelTarget.id, reason },
+      { onSuccess: () => setCancelTarget(null) },
     );
   };
 
-  return (
-    <div className="min-h-screen bg-muted pb-10">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-4 py-3">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
-            <Bike className="h-[18px] w-[18px]" />
-          </span>
-          <div>
-            <p className="text-[13.5px] font-extrabold text-foreground">
-              Minhas entregas
-            </p>
-            <p className="text-[11px] font-semibold text-muted-foreground">
-              {activeDelivery
-                ? "Corrida em andamento"
-                : `${pendingDeliveries.length} disponível${pendingDeliveries.length === 1 ? "" : "eis"}`}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-foreground transition hover:bg-muted"
-            aria-label="Atualizar"
-            title="Atualizar"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={toggleSound}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-foreground transition hover:bg-muted"
-            aria-label={soundEnabled ? "Silenciar alertas" : "Ativar alertas"}
-            title={soundEnabled ? "Silenciar alertas" : "Ativar alertas"}
-          >
-            {soundEnabled ? (
-              <Bell className="h-4 w-4" />
-            ) : (
-              <BellOff className="h-4 w-4" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={logout}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-foreground transition hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-500 dark:hover:text-red-400"
-            aria-label="Sair"
-            title="Sair"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
-      </header>
+  const subtitle =
+    counts.mine > 0
+      ? `${counts.mine} em andamento · ${pluralizeAvailable(counts.available)}`
+      : pluralizeAvailable(counts.available);
 
-      <main className="mx-auto max-w-md px-4 pt-4">
+  return (
+    <>
+      <ScreenHeader
+        title="Minhas entregas"
+        subtitle={subtitle}
+        actions={
+          <>
+            <HeaderIconButton label="Atualizar" onClick={() => refetch()}>
+              <RefreshCw className="h-5 w-5" />
+            </HeaderIconButton>
+            <HeaderIconButton
+              label={soundEnabled ? "Silenciar alertas" : "Ativar alertas"}
+              onClick={toggleSound}
+            >
+              {soundEnabled ? (
+                <Bell className="h-5 w-5" />
+              ) : (
+                <BellOff className="h-5 w-5" />
+              )}
+            </HeaderIconButton>
+          </>
+        }
+      />
+
+      <main className="mx-auto max-w-md space-y-7 px-4 pt-4">
         {isLoading ? (
-          <div className="h-64 animate-pulse rounded-2xl bg-card" />
+          <div className="space-y-3">
+            <div className="h-48 animate-pulse rounded-2xl bg-card" />
+            <div className="h-48 animate-pulse rounded-2xl bg-card" />
+          </div>
         ) : isError ? (
           <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center">
-            <p className="text-[13px] font-bold text-foreground">
+            <p className="text-[14px] font-bold text-foreground">
               Não foi possível carregar suas entregas
             </p>
             <Button
               type="button"
               onClick={() => refetch()}
-              className="mt-4 h-10 rounded-xl bg-orange-500 px-5 text-sm font-bold hover:bg-orange-600"
+              className="mt-4 h-12 rounded-xl bg-orange-500 px-6 text-[15px] font-bold hover:bg-orange-600"
             >
               Tentar novamente
             </Button>
           </div>
-        ) : activeDelivery ? (
-          <ActiveDeliveryCard
-            delivery={activeDelivery}
-            onPickup={() => pickupDelivery(activeDelivery.id)}
-            isPickingUp={isPickingUp}
-            onDeliver={() => deliverDelivery(activeDelivery.id)}
-            isDelivering={isDelivering}
-            onRequestCancel={() => setCancelOpen(true)}
-          />
-        ) : pendingDeliveries.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-14 text-center">
-            <Package className="mx-auto h-10 w-10 text-muted-foreground" />
-            <p className="mt-3 text-[13px] font-bold text-foreground">
-              Nenhuma entrega disponível
-            </p>
-            <p className="mt-1 text-[12px] font-medium text-muted-foreground">
-              Assim que surgir uma corrida por perto, avisamos por aqui.
-            </p>
-          </div>
         ) : (
-          <div className="flex flex-col gap-2.5">
-            {pendingDeliveries.map((delivery) => (
-              <PendingDeliveryCard
-                key={delivery.id}
-                delivery={delivery}
-                onAccept={() => acceptDelivery(delivery.id)}
-                isAccepting={isAccepting}
-              />
-            ))}
-          </div>
+          <>
+            <Group title="Minhas entregas" count={counts.mine}>
+              {myDeliveries.length === 0 ? (
+                <EmptyState message="Você não tem nenhuma entrega em andamento." />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {myDeliveries.map((delivery) => (
+                    <DeliveryCard
+                      key={delivery.id}
+                      delivery={delivery}
+                      onAdvance={handleAdvance}
+                      onCancel={setCancelTarget}
+                      busy={
+                        advancingId === delivery.id ||
+                        cancelingId === delivery.id
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </Group>
+
+            {recentlyDelivered.length > 0 && (
+              <Group
+                title="Entregues"
+                count={counts.recent}
+                hint="Fechadas na última hora. As anteriores estão no histórico."
+              >
+                <div className="flex flex-col gap-2">
+                  {recentlyDelivered.map((delivery) => (
+                    <DeliveryCard
+                      key={delivery.id}
+                      delivery={delivery}
+                      compact
+                    />
+                  ))}
+                </div>
+              </Group>
+            )}
+
+            <Group title="Disponíveis" count={counts.available}>
+              {availableDeliveries.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border bg-card px-5 py-10 text-center">
+                  <Package className="mx-auto h-9 w-9 text-muted-foreground" />
+                  <p className="mt-3 text-[14px] font-bold text-foreground">
+                    Nenhuma entrega disponível
+                  </p>
+                  <p className="mt-1 text-[13px] font-medium text-muted-foreground">
+                    Assim que surgir uma corrida por perto, avisamos por aqui.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {availableDeliveries.map((delivery) => (
+                    <DeliveryCard
+                      key={delivery.id}
+                      delivery={delivery}
+                      onAccept={handleAcceptRequest}
+                      busy={acceptingId === delivery.id}
+                    />
+                  ))}
+                </div>
+              )}
+            </Group>
+          </>
         )}
       </main>
 
-      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cancelar entrega</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              Motivo do cancelamento
-            </label>
-            <Textarea
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="Ex: endereço inacessível, cliente não atende..."
-              rows={3}
-              className="rounded-xl"
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setCancelOpen(false)}
-              className="rounded-xl"
-            >
-              Voltar
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirmCancel}
-              disabled={isCanceling || !cancelReason.trim()}
-              className="rounded-xl bg-red-500 text-white hover:bg-red-600"
-            >
-              {isCanceling ? "Cancelando..." : "Confirmar cancelamento"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
+      <AcceptConfirmDialog
+        delivery={acceptTarget}
+        isAccepting={acceptingId !== null && acceptingId === acceptTarget?.id}
+        onClose={() => setAcceptTarget(null)}
+        onConfirm={handleConfirmAccept}
+      />
 
-function StatusBadge({ status }: { status: Delivery["status"] }) {
-  const config =
-    status === "PICKED_UP"
-      ? { label: "A caminho", className: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400" }
-      : { label: "Aceita", className: "bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400" };
-
-  return (
-    <span
-      className={`rounded-md px-2 py-0.5 text-[10px] font-extrabold ${config.className}`}
-    >
-      {config.label}
-    </span>
-  );
-}
-
-function ActiveDeliveryCard({
-  delivery,
-  onPickup,
-  isPickingUp,
-  onDeliver,
-  isDelivering,
-  onRequestCancel,
-}: {
-  delivery: Delivery;
-  onPickup: () => void;
-  isPickingUp: boolean;
-  onDeliver: () => void;
-  isDelivering: boolean;
-  onRequestCancel: () => void;
-}) {
-  const customer = getCustomerInfo(delivery);
-  const isPickedUp = delivery.status === "PICKED_UP";
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <p className="truncate text-[13px] font-extrabold text-foreground">
-          {getRestaurantName(delivery)}
-        </p>
-        <StatusBadge status={delivery.status} />
-      </div>
-
-      <div className="space-y-3 px-4 py-4">
-        <div className="flex items-start gap-2.5">
-          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              {isPickedUp ? "Entregar em" : "Retirar em (restaurante)"}
-            </p>
-            <p className="mt-0.5 text-[13px] font-semibold text-foreground">
-              {isPickedUp
-                ? formatAddress(delivery.deliveryAddress)
-                : getRestaurantName(delivery)}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2.5">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Cliente
-            </p>
-            <p className="mt-0.5 text-[13px] font-semibold text-foreground">
-              {customer.name}
-            </p>
-          </div>
-          {customer.phone && (
-            <a
-              href={`tel:${customer.phone}`}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-card text-orange-500 shadow-sm"
-              aria-label="Ligar para o cliente"
-            >
-              <Phone className="h-4 w-4" />
-            </a>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between text-[12px] font-semibold text-muted-foreground">
-          <span>Pedido #{delivery.orderId.slice(0, 8)}</span>
-          <span className="text-foreground">
-            {formatCurrency(delivery.order?.totalValue || 0)}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2 border-t border-border px-4 py-3.5">
-        {!isPickedUp ? (
-          <Button
-            type="button"
-            onClick={onPickup}
-            disabled={isPickingUp}
-            className="h-11 w-full rounded-xl bg-zinc-900 text-[13.5px] font-extrabold text-white hover:bg-zinc-800"
-          >
-            {isPickingUp ? "Confirmando..." : "Marquei que coletei o pedido"}
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            onClick={onDeliver}
-            disabled={isDelivering}
-            className="h-11 w-full rounded-xl bg-[#1b7f4c] text-[13.5px] font-extrabold text-white hover:bg-[#166b40]"
-          >
-            <CheckCircle2 className="mr-2 h-4 w-4" />
-            {isDelivering ? "Confirmando..." : "Marcar como entregue"}
-          </Button>
-        )}
-
-        {!isPickedUp && (
-          <button
-            type="button"
-            onClick={onRequestCancel}
-            className="text-center text-[11.5px] font-bold text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-400"
-          >
-            Não consigo fazer essa entrega
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PendingDeliveryCard({
-  delivery,
-  onAccept,
-  isAccepting,
-}: {
-  delivery: Delivery;
-  onAccept: () => void;
-  isAccepting: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-sm">
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-500">
-        <Package className="h-5 w-5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-extrabold text-foreground">
-          {getRestaurantName(delivery)}
-        </p>
-        <p className="truncate text-[11.5px] font-medium text-muted-foreground">
-          {formatAddress(delivery.deliveryAddress)}
-        </p>
-      </div>
-      <Button
-        type="button"
-        onClick={onAccept}
-        disabled={isAccepting}
-        className="h-9 shrink-0 rounded-xl bg-orange-500 px-3.5 text-xs font-extrabold text-white hover:bg-orange-600"
-      >
-        Aceitar
-      </Button>
-    </div>
+      <CancelDialog
+        delivery={cancelTarget}
+        isCanceling={isCanceling}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleConfirmCancel}
+      />
+    </>
   );
 }

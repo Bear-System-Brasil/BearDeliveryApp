@@ -43,6 +43,9 @@ export const STORAGE_KEYS = {
   // User preferences
   PREFERENCES: 'user-preferences',
   FINANCIAL_PREFERENCES: 'financial-preferences',
+  // Entregador: pular o diálogo de confirmação ao aceitar uma entrega.
+  // Religável em /delivery-dashboard/ajustes - ver use-accept-confirmation.
+  DELIVERY_SKIP_ACCEPT_CONFIRM: 'delivery-skip-accept-confirm',
 
   // Notifications (gerenciado por Zustand)
   NOTIFICATIONS: 'like-delivery-notifications',

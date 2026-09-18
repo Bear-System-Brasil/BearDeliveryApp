@@ -1,9 +1,20 @@
 import { useSound } from "@/hooks/use-sound";
+import {
+  isActiveForDriver,
+  isAvailable,
+  isCanceled,
+  isFinished,
+  isRecentlyFinished,
+  sortActive,
+  sortNewestFinishedFirst,
+  sortOldestFirst,
+  type DeliveryStatus,
+} from "@/lib/delivery";
 import { socketAuthProvider } from "@/lib/socket-auth";
-import { apiService, type Delivery } from "@/services/api";
+import { apiService } from "@/services/api";
 import { useAuthStore } from "@/stores";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Socket, io } from "socket.io-client";
 import { toast } from "sonner";
 
@@ -14,23 +25,17 @@ const DELIVERY_TRACKING_URL = process.env.NEXT_PUBLIC_API_URL
   : "";
 
 /**
- * Painel do entregador: uma corrida por vez.
+ * A query em si. Compartilhada entre o painel e o histórico: mesma chave =
+ * mesmo cache, então navegar entre as duas telas não custa request.
  *
  * `GET /delivery/delivery-person/me` devolve tanto as entregas PENDING
- * (disponíveis pra aceitar) quanto as já atribuídas a este entregador -
- * o filtro entre "lista pra aceitar" e "corrida ativa" é feito aqui.
+ * (disponíveis pra aceitar) quanto as já atribuídas a este entregador, em
+ * qualquer status.
  */
-export const useDeliveryDriver = () => {
+function useMyDeliveriesQuery() {
   const { isAuthenticated } = useAuthStore();
-  const queryClient = useQueryClient();
-  const { play, loop, stopLoop, muted, toggleMuted } = useSound("courier");
-  const soundEnabled = !muted;
 
-  const prevPendingIdsRef = useRef<Set<string>>(new Set());
-  const initialLoadRef = useRef(true);
-  const socketRef = useRef<Socket | null>(null);
-
-  const { data, isLoading, isError, refetch } = useQuery({
+  return useQuery({
     queryKey: ["my-deliveries"],
     queryFn: async () => {
       const response = await apiService.deliveries.getMyDeliveries();
@@ -43,56 +48,99 @@ export const useDeliveryDriver = () => {
     enabled: !!isAuthenticated,
     staleTime: 10_000,
   });
+}
 
-  const deliveries = data ?? [];
+/**
+ * Painel do entregador: agrupa a resposta em "minhas", "entregues na última
+ * hora" e "disponíveis", e expõe as ações de cada card.
+ *
+ * O entregador sai com vários pedidos por vez, então `myDeliveries` é uma
+ * lista, não uma corrida só, e as disponíveis continuam visíveis mesmo com
+ * corrida em andamento.
+ */
+export const useDeliveryDriver = () => {
+  const queryClient = useQueryClient();
+  const { play, muted, toggleMuted } = useSound("courier");
+  const soundEnabled = !muted;
 
-  // Corrida em andamento - simplificação deliberada de "um job por vez":
-  // se por algum motivo o backend devolver mais de uma, mostra só a primeira.
-  const activeDelivery: Delivery | null =
-    deliveries.find(
-      (d) => d.status === "ACCEPTED" || d.status === "PICKED_UP",
-    ) ?? null;
+  const prevPendingIdsRef = useRef<Set<string>>(new Set());
+  const initialLoadRef = useRef(true);
+  const socketRef = useRef<Socket | null>(null);
 
-  // Disponíveis pra aceitar.
-  const pendingDeliveries = deliveries.filter((d) => d.status === "PENDING");
+  const { data, isLoading, isError, refetch } = useMyDeliveriesQuery();
 
-  // ─── Alerta sonoro pra corrida nova disponível ────────────────────────────
+  const deliveries = useMemo(() => data ?? [], [data]);
+
+  // A janela de "última hora" precisa correr mesmo quando nada muda no
+  // servidor: o react-query devolve a mesma referência quando a resposta é
+  // idêntica, então sem este tique a entrega fechada ficaria no grupo muito
+  // além da hora numa parada longa.
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const groups = useMemo(() => {
+    return {
+      /** Aceitas e ainda não fechadas - PICKED_UP antes de ACCEPTED. */
+      myDeliveries: sortActive(deliveries.filter(isActiveForDriver)),
+      /** Fechadas na última hora. Mais antigas só no histórico. */
+      recentlyDelivered: sortNewestFinishedFirst(
+        deliveries.filter((delivery) => isRecentlyFinished(delivery, now)),
+      ),
+      /** Sempre visíveis, mesmo com corrida em andamento. */
+      availableDeliveries: sortOldestFirst(deliveries.filter(isAvailable)),
+    };
+  }, [deliveries, now]);
+
+  const { myDeliveries, recentlyDelivered, availableDeliveries } = groups;
+
+  // ─── Alerta sonoro pra entrega nova disponível ────────────────────────────
+  // Toque único, sempre que aparece uma PENDING nova - inclusive com corrida
+  // em andamento, já que o entregador leva vários pedidos na mesma saída.
+  const availableIdsKey = availableDeliveries.map((d) => d.id).join(",");
+  const hasLoadedOnce = data !== undefined;
+
+  useEffect(() => {
+    // Enquanto nenhuma resposta chegou, não há baseline pra comparar - sair
+    // aqui evita gastar o flag de primeira carga na render vazia e tocar o
+    // alerta pra entregas que já estavam na fila quando a tela abriu.
+    if (!hasLoadedOnce) return;
+
+    const currentIds = new Set(
+      availableIdsKey ? availableIdsKey.split(",") : [],
+    );
+
+    // A primeira carga não é "entrega nova": é a tela abrindo.
     if (initialLoadRef.current) {
       initialLoadRef.current = false;
-      prevPendingIdsRef.current = new Set(pendingDeliveries.map((d) => d.id));
+      prevPendingIdsRef.current = currentIds;
       return;
     }
 
-    const currentIds = new Set(pendingDeliveries.map((d) => d.id));
     const hasNew = [...currentIds].some(
       (id) => !prevPendingIdsRef.current.has(id),
     );
 
-    // Só toca se o entregador não estiver no meio de uma corrida - não faz
-    // sentido chamar atenção pra uma corrida nova enquanto ele já tá com uma.
-    if (
-      hasNew &&
-      pendingDeliveries.length > 0 &&
-      soundEnabled &&
-      !activeDelivery
-    ) {
-      loop("new-job");
-    }
-    if (pendingDeliveries.length === 0 || activeDelivery) {
-      stopLoop("new-job");
+    if (hasNew && soundEnabled) {
+      play("new-job");
     }
 
     prevPendingIdsRef.current = currentIds;
-  }, [pendingDeliveries, activeDelivery, soundEnabled, loop, stopLoop]);
+  }, [hasLoadedOnce, availableIdsKey, soundEnabled, play]);
 
   // ─── Rastreamento ao vivo enquanto PICKED_UP ──────────────────────────────
   // O backend só considera o tracking "ativo" nesse status (ver
-  // tracking-gateway.md) - fora dele nem vale abrir o socket.
+  // tracking-gateway.md) - fora dele nem vale abrir o socket. Com várias
+  // corridas ao mesmo tempo, transmite a primeira da fila (a que está na rua
+  // há mais tempo); o gateway hoje é por entrega, um socket de cada vez.
+  const trackedDelivery =
+    myDeliveries.find((delivery) => delivery.status === "PICKED_UP") ?? null;
+
   useEffect(() => {
-    const deliveryId = activeDelivery?.id;
-    const isTracking = activeDelivery?.status === "PICKED_UP";
-    if (!deliveryId || !isTracking || !DELIVERY_TRACKING_URL) return;
+    const deliveryId = trackedDelivery?.id;
+    if (!deliveryId || !DELIVERY_TRACKING_URL) return;
 
     // `auth` como função busca token fresco a cada (re)conexão - ver
     // socket-auth.ts. Sem isso, o rastreamento ao vivo parava de atualizar
@@ -128,7 +176,7 @@ export const useDeliveryDriver = () => {
       socketRef.current = null;
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [activeDelivery?.id, activeDelivery?.status]);
+  }, [trackedDelivery?.id]);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["my-deliveries"] });
@@ -139,7 +187,6 @@ export const useDeliveryDriver = () => {
     onSuccess: (response) => {
       invalidate();
       if (response.success) {
-        stopLoop("new-job");
         play("success");
         toast.success("Entrega aceita!");
       } else {
@@ -152,30 +199,21 @@ export const useDeliveryDriver = () => {
     onError: () => toast.error("Erro de conexão ao aceitar entrega"),
   });
 
-  const pickupMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiService.deliveries.updateStatus(id, "PICKED_UP"),
-    onSuccess: (response) => {
+  const advanceMutation = useMutation({
+    mutationFn: ({ id, next }: { id: string; next: DeliveryStatus }) =>
+      apiService.deliveries.updateStatus(id, next),
+    onSuccess: (response, { next }) => {
       invalidate();
       if (response.success) {
         play("success");
+        if (next === "DELIVERED") toast.success("Entrega concluída!");
       } else {
-        toast.error(response.message || "Erro ao marcar como coletado");
-      }
-    },
-    onError: () => toast.error("Erro de conexão"),
-  });
-
-  const deliverMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiService.deliveries.updateStatus(id, "DELIVERED"),
-    onSuccess: (response) => {
-      invalidate();
-      if (response.success) {
-        play("success");
-        toast.success("Entrega concluída!");
-      } else {
-        toast.error(response.message || "Erro ao marcar como entregue");
+        toast.error(
+          response.message ||
+            (next === "DELIVERED"
+              ? "Erro ao marcar como entregue"
+              : "Erro ao marcar como coletado"),
+        );
       }
     },
     onError: () => toast.error("Erro de conexão"),
@@ -195,21 +233,60 @@ export const useDeliveryDriver = () => {
     onError: () => toast.error("Erro de conexão"),
   });
 
+  // Com vários cards na tela, travar todos os botões enquanto um request roda
+  // esconderia qual entrega está sendo mexida - o estado é por entrega.
+  const acceptingId = acceptMutation.isPending
+    ? (acceptMutation.variables ?? null)
+    : null;
+  const advancingId = advanceMutation.isPending
+    ? (advanceMutation.variables?.id ?? null)
+    : null;
+  const cancelingId = cancelMutation.isPending
+    ? (cancelMutation.variables?.id ?? null)
+    : null;
+
   return {
     isLoading,
     isError,
     refetch,
-    activeDelivery,
-    pendingDeliveries,
+    ...groups,
     soundEnabled,
     toggleSound: toggleMuted,
     acceptDelivery: acceptMutation.mutate,
-    isAccepting: acceptMutation.isPending,
-    pickupDelivery: pickupMutation.mutate,
-    isPickingUp: pickupMutation.isPending,
-    deliverDelivery: deliverMutation.mutate,
-    isDelivering: deliverMutation.isPending,
+    acceptingId,
+    advanceDelivery: advanceMutation.mutate,
+    advancingId,
     cancelDelivery: cancelMutation.mutate,
+    cancelingId,
     isCanceling: cancelMutation.isPending,
+    counts: {
+      mine: myDeliveries.length,
+      recent: recentlyDelivered.length,
+      available: availableDeliveries.length,
+    },
   };
+};
+
+/**
+ * Histórico do entregador: concluídas e canceladas, da mais recente pra mais
+ * antiga.
+ *
+ * Lê a mesma query do painel, mas de propósito NÃO monta o socket de
+ * rastreamento nem o alerta sonoro - o histórico é tela de leitura, e abrir
+ * de novo o socket a cada navegação mexeria num rastreio que já funciona.
+ */
+export const useDeliveryHistory = () => {
+  const { data, isLoading, isError, refetch } = useMyDeliveriesQuery();
+
+  const historyDeliveries = useMemo(
+    () =>
+      sortNewestFinishedFirst(
+        (data ?? []).filter(
+          (delivery) => isFinished(delivery) || isCanceled(delivery),
+        ),
+      ),
+    [data],
+  );
+
+  return { isLoading, isError, refetch, historyDeliveries };
 };
