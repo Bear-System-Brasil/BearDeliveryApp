@@ -9,12 +9,26 @@ import {
 import { useAuthStore, useCartStore } from "@/stores";
 import { getDeliveryDiscount, getPromoDiscount } from "@/stores/cart-store";
 import { getErrorMessage } from "@/utils";
+import {
+  resolveAddressCoordinates,
+  withCoords,
+  type CoordinateSource,
+  type SourcedCoords,
+} from "@/lib/address-coordinates";
+import { parseCoords } from "@/lib/geocode";
+import { Coords } from "@/types/restaurant";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useRestaurant } from "./use-restaurants";
 import { useUserAddresses } from "./use-addresses";
 
+/**
+ * Latitude/longitude não moram aqui: elas vivem em `addressCoords` junto com
+ * a fonte que as produziu, porque quem decide se uma coordenada nova entra é
+ * a prioridade da fonte (clique no mapa > geocodificação > CEP), não a ordem
+ * em que os campos foram preenchidos.
+ */
 export interface DeliveryInfo {
   name: string;
   phone: string;
@@ -25,11 +39,19 @@ export interface DeliveryInfo {
   city: string;
   state: string;
   complement: string;
-  latitude: number | string;
-  longitude: number | string;
   reference: string;
   observations: string;
 }
+
+/** Campos que, ao mudar, invalidam a coordenada herdada de um endereço salvo. */
+const ADDRESS_TEXT_FIELDS = new Set([
+  "zipCode",
+  "street",
+  "number",
+  "neighborhood",
+  "city",
+  "state",
+]);
 
 interface CardInfo {
   number: string;
@@ -141,12 +163,17 @@ export const useCheckoutProcess = () => {
     neighborhood: "",
     city: "",
     state: "",
-    latitude: 0,
-    longitude: 0,
     complement: "",
     reference: "",
     observations: "",
   });
+
+  // Coordenada do endereço + de onde ela veio. Começa vazia de propósito:
+  // enquanto não houver fonte real (clique no mapa, geocodificação ou CEP), o
+  // endereço é salvo sem coordenada em vez de com um palpite errado.
+  const [addressCoords, setAddressCoords] = useState<SourcedCoords | null>(
+    null,
+  );
 
   const [paymentMethod, setPaymentMethod] = useState("credit");
   const [cardInfo, setCardInfo] = useState<CardInfo>({
@@ -190,11 +217,16 @@ export const useCheckoutProcess = () => {
       neighborhood: address.neighborhood,
       city: address.city,
       state: address.state,
-      latitude: address.latitude ?? 0,
-      longitude: address.longitude ?? 0,
       complement: address.complement || "",
       reference: address.reference || "",
     }));
+
+    // A coordenada do endereço salvo vale enquanto o cliente não mexer no
+    // texto dele - `handleInputChange` descarta quando isso acontece, para o
+    // endereço novo não herdar o ponto do antigo.
+    const coords = parseCoords(address.latitude, address.longitude);
+
+    setAddressCoords(coords ? { coords, source: "stored" } : null);
   };
 
   /**
@@ -213,6 +245,23 @@ export const useCheckoutProcess = () => {
    */
   const handleInputChange = (field: string, value: string | number) => {
     setDeliveryInfo((prev) => ({ ...prev, [field]: value }));
+
+    // Endereço diferente, ponto diferente: a coordenada herdada de um endereço
+    // salvo não sobrevive à edição do texto, senão o endereço novo seria
+    // gravado no lugar do antigo.
+    if (ADDRESS_TEXT_FIELDS.has(field)) {
+      setAddressCoords((coords) =>
+        coords?.source === "stored" ? null : coords,
+      );
+    }
+  };
+
+  /**
+   * Registra uma coordenada respeitando a prioridade das fontes
+   * (clique no mapa > geocodificação > CEP).
+   */
+  const applyCoords = (coords: Coords | null, source: CoordinateSource) => {
+    setAddressCoords((current) => withCoords(current, coords, source));
   };
 
   /**
@@ -223,17 +272,35 @@ export const useCheckoutProcess = () => {
   };
 
   /**
+   * Coordenada definitiva do endereço digitado. Sem gesto explícito do
+   * cliente, geocodifica o que foi digitado - é isso que evita o endereço ir
+   * para o banco com a coordenada errada (ou sem nenhuma).
+   */
+  const resolveDeliveryCoords = async () => {
+    const resolved = await resolveAddressCoordinates(
+      deliveryInfo,
+      addressCoords,
+    );
+
+    if (resolved) setAddressCoords(resolved);
+
+    return resolved?.coords ?? null;
+  };
+
+  /**
    * Salva novo endereço do usuário
    */
-  const saveNewAddress = async (): Promise<string | null> => {
+  const saveNewAddress = async (
+    coords: Coords | null,
+  ): Promise<string | null> => {
     try {
       const addressData = {
         zipCode: deliveryInfo.zipCode,
         state: deliveryInfo.state,
         city: deliveryInfo.city,
         neighborhood: deliveryInfo.neighborhood,
-        longitude: Number(deliveryInfo.longitude),
-        latitude: Number(deliveryInfo.latitude),
+        longitude: coords?.lng,
+        latitude: coords?.lat,
         street: deliveryInfo.street,
         number: deliveryInfo.number,
         complement: deliveryInfo.complement || undefined,
@@ -365,9 +432,14 @@ export const useCheckoutProcess = () => {
       let deliveryAddressId = selectedAddressId;
 
       if (orderType === "delivery") {
+        // Uma resolução só para os dois caminhos de criação abaixo: o segundo
+        // é fallback do primeiro, e geocodificar de novo seria uma ida à rede
+        // repetida bem no clique de finalizar o pedido.
+        const coords = deliveryAddressId ? null : await resolveDeliveryCoords();
+
         // For "new" address mode: always create address (delivery needs an addressId)
         if (addressMode === "new" && !deliveryAddressId) {
-          deliveryAddressId = await saveNewAddress();
+          deliveryAddressId = await saveNewAddress(coords);
         }
 
         // Fallback: if we still don't have an address, create one
@@ -379,8 +451,8 @@ export const useCheckoutProcess = () => {
             neighborhood: deliveryInfo.neighborhood,
             city: deliveryInfo.city,
             state: deliveryInfo.state,
-            latitude: Number(deliveryInfo.latitude),
-            longitude: Number(deliveryInfo.longitude),
+            latitude: coords?.lat,
+            longitude: coords?.lng,
             isDefault: false,
           };
 
@@ -619,6 +691,8 @@ export const useCheckoutProcess = () => {
 
     // Form state
     deliveryInfo,
+    addressCoords,
+    applyCoords,
     paymentMethod,
     cardInfo,
     changeAmount,

@@ -1,5 +1,15 @@
+import {
+  addressTextKey,
+  parseBrasilApiCoords,
+  resolveAddressCoordinates,
+  withCoords,
+  type CoordinateSource,
+  type SourcedCoords,
+} from "@/lib/address-coordinates";
+import { parseCoords } from "@/lib/geocode";
 import { apiService } from "@/services/api";
 import { useAuthStore } from "@/stores";
+import { Coords } from "@/types/restaurant";
 import { onlyNumbers } from "@/utils";
 import { isCompanyAdminRole } from "@/utils/role-helpers";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -65,6 +75,20 @@ export const useProfileManagement = () => {
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [lastFetchedCep, setLastFetchedCep] = useState<string | null>(null);
 
+  // Coordenada do endereço + de onde ela veio. Este formulário nunca gravou
+  // coordenada nenhuma: agora vem do CEP, da geocodificação do endereço
+  // digitado ou do clique no mapa, nessa ordem de prioridade.
+  const [addressCoords, setAddressCoords] = useState<SourcedCoords | null>(
+    null,
+  );
+
+  // Endereço como estava ao abrir a edição. Enquanto o texto não muda, a
+  // coordenada já salva continua valendo (o cliente pode ter ajustado o pino
+  // no mapa antes); assim que muda, ela é descartada e recalculada.
+  const [editingAddressTextKey, setEditingAddressTextKey] = useState<
+    string | null
+  >(null);
+
   // Form management with validation
   const profileForm = useProfileForm({
     name: user?.name || "",
@@ -81,6 +105,32 @@ export const useProfileManagement = () => {
 
   // Watch CEP field changes
   const watchedZipCode = addressForm.watch("zipCode");
+
+  const watchedAddress = addressForm.watch([
+    "zipCode",
+    "street",
+    "number",
+    "neighborhood",
+    "city",
+    "state",
+  ]);
+  const [
+    watchedCep,
+    watchedStreet,
+    watchedNumber,
+    watchedNeighborhood,
+    watchedCity,
+    watchedState,
+  ] = watchedAddress;
+
+  const watchedAddressTextKey = addressTextKey({
+    zipCode: watchedCep,
+    street: watchedStreet,
+    number: watchedNumber,
+    neighborhood: watchedNeighborhood,
+    city: watchedCity,
+    state: watchedState,
+  });
 
   /**
    * Prevent SSR issues
@@ -160,6 +210,28 @@ export const useProfileManagement = () => {
   }, [watchedZipCode]);
 
   /**
+   * O endereço mudou desde que a edição abriu, então a coordenada que estava
+   * salva aponta para outro lugar - descarta para o save geocodificar de novo.
+   */
+  useEffect(() => {
+    if (!editingAddressTextKey) return;
+    if (watchedAddressTextKey === editingAddressTextKey) return;
+
+    setEditingAddressTextKey(null);
+    setAddressCoords((coords) =>
+      coords?.source === "stored" ? null : coords,
+    );
+  }, [watchedAddressTextKey, editingAddressTextKey]);
+
+  /**
+   * Registra uma coordenada respeitando a prioridade das fontes
+   * (clique no mapa > geocodificação > CEP).
+   */
+  const applyCoords = (coords: Coords | null, source: CoordinateSource) => {
+    setAddressCoords((current) => withCoords(current, coords, source));
+  };
+
+  /**
    * Buscar CEP na BrasilAPI
    */
   const fetchCepData = async (cep: string) => {
@@ -186,6 +258,12 @@ export const useProfileManagement = () => {
       addressForm.setValue("neighborhood", data.neighborhood || "");
       addressForm.setValue("city", data.city || "");
       addressForm.setValue("state", data.state || "");
+
+      // A BrasilAPI já devolve a coordenada do logradouro - usa como ponto de
+      // partida e centra o mapa nela. É a fonte de menor prioridade: cede
+      // para a geocodificação do endereço completo e para o clique no mapa.
+      applyCoords(parseBrasilApiCoords(data), "cep");
+
       toast.success("CEP encontrado! Campos preenchidos automaticamente");
     } catch (error) {
       console.error("Erro ao buscar CEP:", error);
@@ -256,6 +334,12 @@ export const useProfileManagement = () => {
       isDefault: address.isDefault ?? false,
     });
 
+    const storedCoords = parseCoords(address.latitude, address.longitude);
+
+    setAddressCoords(
+      storedCoords ? { coords: storedCoords, source: "stored" } : null,
+    );
+    setEditingAddressTextKey(storedCoords ? addressTextKey(address) : null);
     setEditingAddressId(address.id);
     setEditingAddressOriginalComplement(address.complement || "");
     setLastFetchedCep(onlyNumbers(address.zipCode));
@@ -293,6 +377,18 @@ export const useProfileManagement = () => {
 
     setIsSavingAddress(true);
     try {
+      // Sem gesto explícito do cliente (clique no mapa) nem coordenada salva
+      // ainda válida, geocodifica o endereço digitado - é o que a loja já faz
+      // em use-company-profile-management. Sem isso este formulário gravava o
+      // endereço sem coordenada nenhuma, e o cliente sumia das buscas por
+      // proximidade.
+      const resolvedCoords = await resolveAddressCoordinates(
+        data,
+        addressCoords,
+      );
+
+      if (resolvedCoords) setAddressCoords(resolvedCoords);
+
       const payload = {
         street: data.street,
         number: data.number,
@@ -300,8 +396,8 @@ export const useProfileManagement = () => {
         neighborhood: data.neighborhood,
         city: data.city,
         state: data.state,
-        longitude: data.longitude,
-        latitude: data.latitude,
+        longitude: resolvedCoords?.coords.lng,
+        latitude: resolvedCoords?.coords.lat,
         zipCode: onlyNumbers(data.zipCode),
         isDefault: data.isDefault ?? false,
       };
@@ -362,6 +458,8 @@ export const useProfileManagement = () => {
         setEditingAddressOriginalComplement("");
         addingAddressState.close();
         setLastFetchedCep(null);
+        setAddressCoords(null);
+        setEditingAddressTextKey(null);
 
         toast.success(
           editingAddressId
@@ -401,6 +499,8 @@ export const useProfileManagement = () => {
     setLastFetchedCep(null);
     setEditingAddressId(null);
     setEditingAddressOriginalComplement("");
+    setAddressCoords(null);
+    setEditingAddressTextKey(null);
     addingAddressState.close();
   };
 
@@ -452,6 +552,8 @@ export const useProfileManagement = () => {
     handleDeleteAddress,
     handleEditAddress,
     editingAddressId,
+    addressCoords,
+    applyCoords,
     // CEP
     isLoadingCep,
     formatCep,
