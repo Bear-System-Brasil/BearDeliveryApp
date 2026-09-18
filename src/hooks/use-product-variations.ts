@@ -3,15 +3,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 /**
- * Hook para buscar as variações (tamanhos) de um produto.
- * O backend ignora o filtro `productId` da query e devolve todas as
- * variações de todas as empresas - o filtro é feito aqui.
+ * Hook para buscar as variações (tamanhos) de um produto, usado na tela de
+ * gestão. O backend ignora o filtro `productId` da query e devolve todas as
+ * variações da empresa - o filtro é feito aqui.
+ *
+ * `companyId` precisa ser repassado (mesmo fallback `user?.companyId ||
+ * user?.id` de use-menu-management.ts/use-categories.ts) - ver comentário
+ * equivalente em use-product-add-ons.ts: sem isso o JWT de uma conta owner
+ * sem a claim `companyId` faz o backend responder 500 em vez de filtrar.
  */
-export const useProductVariations = (productId: string | null) => {
+export const useProductVariations = (
+  productId: string | null,
+  companyId?: string | null,
+) => {
   return useQuery({
-    queryKey: ["product-variations", productId],
+    queryKey: ["product-variations", productId, companyId],
     queryFn: async () => {
-      const response = await apiService.productVariations.getAll();
+      const response = await apiService.productVariations.getAll(
+        companyId ?? undefined,
+      );
       if (!response.success || !response.data) {
         throw new Error(response.message || "Falha ao carregar variações");
       }
