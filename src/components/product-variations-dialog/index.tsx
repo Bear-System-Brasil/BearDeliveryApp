@@ -36,6 +36,7 @@ interface Props {
    * dois sentidos acontece aqui dentro.
    */
   salePrice: number;
+  companyId?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -68,11 +69,15 @@ export function ProductVariationsDialog({
   productId,
   productName,
   salePrice,
+  companyId,
   open,
   onOpenChange,
 }: Props) {
   const { confirm } = useConfirm();
-  const { data: variations = [], isLoading } = useProductVariations(productId);
+  const { data: variations = [], isLoading } = useProductVariations(
+    productId,
+    companyId,
+  );
   const createVariation = useCreateProductVariation();
   const updateVariation = useUpdateProductVariation();
   const deleteVariation = useDeleteProductVariation();

@@ -811,15 +811,22 @@ export const useCartActions = () => {
     });
   }, [user?.id]);
 
-  // CLEANUP: Cancelar todas requisições e timers ao desmontar
-  // CONTRAMEDIDA: Previne memory leaks e requisições órfãs
+  // CLEANUP: apenas os timers de debounce, ao desmontar.
+  // NÃO abortar `pendingRequests` aqui: esses AbortControllers são de
+  // chamadas que gravam no backend (Redis) + store global (Zustand), não
+  // estado local do componente - não há "setState em componente
+  // desmontado" a evitar. Abortar no unmount só derrubava o POST de
+  // handleAddToCart bem no meio do caminho sempre que o componente que
+  // iniciou a chamada desmontava antes dela terminar (ex: modal fecha e o
+  // usuário toca em "Ver carrinho" logo em seguida, navegando pra /cart e
+  // desmontando a página/modal) - o catch de AbortError ignora isso
+  // silenciosamente (nem reverte nem avisa), e o sync do backend na
+  // página seguinte lia o carrinho sem o item que acabou de ganhar o toast
+  // de sucesso. Isso sabotava o próprio mecanismo (`pendingAddPromises`/
+  // `waitForPendingAdds`) feito pra essas requisições sobreviverem à
+  // navegação.
   useEffect(() => {
     return () => {
-      // Abortar todas requisições pendentes
-      pendingRequests.current.forEach((controller) => controller.abort());
-      pendingRequests.current.clear();
-
-      // Limpar todos timers de debounce
       updateTimers.current.forEach((timer) => clearTimeout(timer));
       updateTimers.current.clear();
     };

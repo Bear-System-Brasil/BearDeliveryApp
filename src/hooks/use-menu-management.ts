@@ -700,6 +700,7 @@ export const useMenuManagement = () => {
     products: filteredProducts,
     allProducts: products,
     categories,
+    companyId,
     isLoading: loadingProducts || loadingCategories,
     isModalOpen,
     editingProduct,
