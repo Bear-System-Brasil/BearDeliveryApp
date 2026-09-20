@@ -15,6 +15,7 @@ import {
   formatAddressLines,
   getCourierEarnings,
   getOrderTotal,
+  getPaymentSummary,
   getRestaurantName,
 } from "@/lib/delivery";
 import type { Delivery } from "@/services/api";
@@ -48,6 +49,7 @@ export function AcceptConfirmDialog({
     : [];
   const orderTotal = delivery ? getOrderTotal(delivery) : null;
   const earnings = delivery ? getCourierEarnings(delivery) : null;
+  const payment = delivery ? getPaymentSummary(delivery) : null;
   const observations = delivery?.observations?.trim();
 
   return (
@@ -96,6 +98,20 @@ export function AcceptConfirmDialog({
             {observations && (
               <p className="rounded-xl bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
                 {observations}
+              </p>
+            )}
+
+            {/* Antes de aceitar, saber se vai lidar com dinheiro na porta. */}
+            {payment && !payment.isPaid && (
+              <p className="rounded-xl bg-emerald-50 px-3 py-2 text-[13.5px] font-bold text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                Receber na entrega:{" "}
+                {payment.amountDue > 0
+                  ? `${formatCurrency(payment.amountDue)}${
+                      payment.methods.length > 0
+                        ? ` · ${payment.methods.join(" + ")}`
+                        : ""
+                    }`
+                  : payment.methods.join(" + ")}
               </p>
             )}
 

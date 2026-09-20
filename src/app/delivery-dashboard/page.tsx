@@ -74,6 +74,7 @@ export default function DeliveryDashboardPage() {
     cancelDelivery,
     cancelingId,
     isCanceling,
+    hasMorePages,
     counts,
   } = useDeliveryDriver();
 
@@ -234,6 +235,14 @@ export default function DeliveryDashboardPage() {
                 </div>
               )}
             </Group>
+
+            {/* A rota pagina e a tela pede uma pagina so. Se houver mais,
+                avisa - truncar em silencio e o que esta tela veio corrigir. */}
+            {hasMorePages && (
+              <p className="px-1 text-center text-[12px] font-semibold text-muted-foreground">
+                Mostrando as entregas mais recentes. Há mais no histórico.
+              </p>
+            )}
           </>
         )}
       </main>

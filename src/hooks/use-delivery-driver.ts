@@ -11,7 +11,13 @@ import {
   type DeliveryStatus,
 } from "@/lib/delivery";
 import { socketAuthProvider } from "@/lib/socket-auth";
-import { apiService } from "@/services/api";
+import {
+  apiService,
+  MAX_PAGE_LIMIT,
+  toPaginated,
+  type Delivery,
+  type PaginationParams,
+} from "@/services/api";
 import { useAuthStore } from "@/stores";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -19,6 +25,17 @@ import { Socket, io } from "socket.io-client";
 import { toast } from "sonner";
 
 const POLL_INTERVAL = 15_000; // mesmo ritmo do painel da cozinha (use-order-management)
+
+/**
+ * Uma página só, no maior tamanho que o backend aceita.
+ *
+ * Este payload alimenta os três grupos da tela E o histórico, e não existe
+ * UI de paginação: com o default de 20 o entregador perderia entrega de
+ * vista em silêncio, que é exatamente o problema que esta tela veio
+ * resolver. Quando o total passar de uma página, a tela avisa em vez de
+ * truncar calada - ver `hasMorePages`.
+ */
+const DELIVERY_PAGE: PaginationParams = { page: 1, limit: MAX_PAGE_LIMIT };
 
 const DELIVERY_TRACKING_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/delivery-tracking`
@@ -36,13 +53,20 @@ function useMyDeliveriesQuery() {
   const { isAuthenticated } = useAuthStore();
 
   return useQuery({
-    queryKey: ["my-deliveries"],
+    queryKey: ["my-deliveries", DELIVERY_PAGE],
     queryFn: async () => {
-      const response = await apiService.deliveries.getMyDeliveries();
+      const response = await apiService.deliveries.getMyDeliveries(
+        DELIVERY_PAGE,
+      );
       if (!response.success) {
         throw new Error(response.message || "Erro ao carregar entregas");
       }
-      return response.data ?? [];
+
+      // A rota responde no envelope `{ data, meta }`. `toPaginated` aceita
+      // envelope e array cru e devolve sempre `{ items, meta }` - ler
+      // `response.data` direto como array é o que estourava
+      // "deliveries.find is not a function" no render.
+      return toPaginated<Delivery>(response.data, DELIVERY_PAGE);
     },
     refetchInterval: POLL_INTERVAL,
     enabled: !!isAuthenticated,
@@ -69,7 +93,7 @@ export const useDeliveryDriver = () => {
 
   const { data, isLoading, isError, refetch } = useMyDeliveriesQuery();
 
-  const deliveries = useMemo(() => data ?? [], [data]);
+  const deliveries = useMemo(() => data?.items ?? [], [data]);
 
   // A janela de "última hora" precisa correr mesmo quando nada muda no
   // servidor: o react-query devolve a mesma referência quando a resposta é
@@ -259,6 +283,10 @@ export const useDeliveryDriver = () => {
     cancelDelivery: cancelMutation.mutate,
     cancelingId,
     isCanceling: cancelMutation.isPending,
+    /** Envelope da rota - `total` e `totalPages` da página pedida. */
+    meta: data?.meta,
+    /** Há entrega além desta página: a tela avisa em vez de truncar calada. */
+    hasMorePages: (data?.meta.totalPages ?? 1) > 1,
     counts: {
       mine: myDeliveries.length,
       recent: recentlyDelivered.length,
@@ -281,12 +309,18 @@ export const useDeliveryHistory = () => {
   const historyDeliveries = useMemo(
     () =>
       sortNewestFinishedFirst(
-        (data ?? []).filter(
+        (data?.items ?? []).filter(
           (delivery) => isFinished(delivery) || isCanceled(delivery),
         ),
       ),
     [data],
   );
 
-  return { isLoading, isError, refetch, historyDeliveries };
+  return {
+    isLoading,
+    isError,
+    refetch,
+    historyDeliveries,
+    hasMorePages: (data?.meta.totalPages ?? 1) > 1,
+  };
 };

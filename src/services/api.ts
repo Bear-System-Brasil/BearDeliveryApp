@@ -856,6 +856,14 @@ export interface Order {
   | "CANCELED"
   | "ABANDONED";
   orderedItems?: OrderItem[];
+  /**
+   * Pagamentos do pedido. Vem aninhado em
+   * `GET /delivery/delivery-person/me` - é o que diz ao entregador se ele
+   * precisa receber na entrega ou se o pedido já foi pago.
+   *
+   * É lista porque o pedido pode ser dividido em mais de um pagamento.
+   */
+  payments?: Payment[];
   created_at: string;
   updated_at: string;
   /** Quando entrou no `status` atual — referência do cronômetro de coluna, não `updated_at`. */
@@ -2283,11 +2291,23 @@ export const apiService = {
       ),
 
     // Delivery-person endpoints (authenticated, role delivery)
-    // Devolve PENDING (disponíveis pra aceitar) + as próprias, qualquer status.
-    getMyDeliveries: () =>
-      apiRequest<Delivery[]>(
+    /**
+     * Devolve PENDING (disponíveis pra aceitar) + as próprias, qualquer
+     * status, com `order.company`, `order.customer` e `order.payments`
+     * aninhados.
+     *
+     * Rota paginada: responde no envelope `{ data, meta }`, aceita `page` e
+     * `limit` (default 20, máximo 100). O tipo admite os dois formatos de
+     * propósito - `apiRequest` não desembrulha envelope (ver
+     * PaginatedResponse), então quem consome passa por `toPaginated`, que
+     * normaliza envelope e array cru no mesmo `{ items, meta }`. Ler
+     * `response.data` direto como array é o que quebra a tela quando o
+     * backend manda o envelope.
+     */
+    getMyDeliveries: (params?: PaginationParams) =>
+      apiRequest<PaginatedResponse<Delivery> | Delivery[]>(
         "GET",
-        "/delivery/delivery-person/me",
+        withPagination("/delivery/delivery-person/me", params),
         undefined,
         true,
       ),

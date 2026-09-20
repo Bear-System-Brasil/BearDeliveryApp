@@ -19,7 +19,7 @@ import { useDeliveryHistory } from "@/hooks/use-delivery-driver";
  * ser tela de leitura, não monta o socket de rastreamento nem o alerta.
  */
 export default function DeliveryHistoryPage() {
-  const { isLoading, isError, refetch, historyDeliveries } =
+  const { isLoading, isError, refetch, historyDeliveries, hasMorePages } =
     useDeliveryHistory();
 
   const subtitle = isLoading
@@ -74,6 +74,11 @@ export default function DeliveryHistoryPage() {
             {historyDeliveries.map((delivery) => (
               <DeliveryCard key={delivery.id} delivery={delivery} compact />
             ))}
+            {hasMorePages && (
+              <p className="px-1 pt-2 text-center text-[12px] font-semibold text-muted-foreground">
+                Mostrando as mais recentes. Entregas antigas não aparecem aqui.
+              </p>
+            )}
           </div>
         )}
       </main>
