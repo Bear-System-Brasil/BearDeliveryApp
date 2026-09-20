@@ -28,7 +28,6 @@ import {
   usePublicCompanyProductVariations,
   useRestaurant,
 } from "@/hooks";
-import { useAuth } from "@/contexts/auth-provider";
 import { useAuthStore } from "@/stores/auth-store";
 import { formatCurrency } from "@/utils/format-currency";
 import { toast } from "sonner";
@@ -71,8 +70,7 @@ export default function RestaurantPage() {
   const companyId = params.id as string;
 
   const { totalItems, totalPrice } = useCartActions();
-  const { isAuthenticated, user } = useAuthStore();
-  const { showAuthModal } = useAuth();
+  const { user } = useAuthStore();
 
   const {
     data: restaurant,
@@ -232,12 +230,15 @@ export default function RestaurantPage() {
     typeof restaurant?.isOpen === "boolean" ? restaurant.isOpen : null;
   const restaurantDescription = restaurant?.description?.trim();
 
+  // Visitante deslogado abre o modal normalmente - descrição, tamanhos e
+  // complementos são vitrine, não dado protegido. O login só é cobrado ao
+  // tentar adicionar ao carrinho, onde `handleAddToCart` já barra quem não
+  // tem sessão (use-cart-actions.ts). Pedir login antes de deixar ver o
+  // prato afastava o visitante na etapa em que ele ainda está decidindo.
   const handleOpenModal = (item: Product) => {
-    if (!isAuthenticated) {
-      showAuthModal("login");
-      return;
-    }
-
+    // Conta de restaurante segue bloqueada: ela tem sessão, mas não é quem
+    // faz pedido - o backend rejeitaria depois, e sem aviso aqui o clique
+    // simplesmente não fazia nada.
     if (user?.role && user.role !== "client") {
       toast.error(
         "Contas de restaurante não podem fazer pedidos - entre com uma conta de cliente.",
