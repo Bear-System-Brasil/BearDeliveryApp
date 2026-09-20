@@ -621,20 +621,29 @@ export interface OrderedItem {
   updated_at: string;
 }
 
+/**
+ * GET /product/company/:companyId devolve formas diferentes por papel: o
+ * cliente recebe só id, companyId, name, description, salePrice,
+ * isAvailable, imageURL e productCategories; usuário da empresa recebe
+ * também costPrice, stockQuantity e orderedItems. Os quatro campos
+ * opcionais abaixo existem apenas no retorno da empresa - tratá-los como
+ * obrigatórios fazia o TypeScript garantir, no fluxo do cliente, campos
+ * que não chegam.
+ */
 export interface Product {
   id: string;
   name: string;
   description: string;
-  costPrice: number;
+  costPrice?: number;
   salePrice: number;
   isAvailable: boolean;
   companyId: string;
   stockQuantity?: number;
   imageURL?: ProductImage[];
-  orderedItems: OrderedItem[];
+  orderedItems?: OrderedItem[];
   productCategories?: ProductCategory[];
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Product types
