@@ -1,12 +1,16 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
+  Banknote,
   Check,
   MapPin,
   MessageSquareText,
   Navigation,
   Package,
   Phone,
+  Store,
+  User,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,8 +21,11 @@ import {
   getCourierEarnings,
   getCustomerName,
   getCustomerPhone,
+  getCustomerPhoto,
   getNextStatus,
   getOrderTotal,
+  getPaymentSummary,
+  getRestaurantLogo,
   getRestaurantName,
   isAvailable,
   STATUS_LABEL,
@@ -45,6 +52,88 @@ function StatusChip({ status }: { status: Delivery["status"] }) {
     >
       {STATUS_LABEL[status]}
     </span>
+  );
+}
+
+/**
+ * Foto vinda do backend, com espaço reservado quando não houver.
+ *
+ * `<img>` cru como no resto do projeto (company-logo-upload, main-header):
+ * são URLs de domínios que o next/image exigiria declarar em
+ * `remotePatterns`, e uma URL fora da lista quebra a imagem em produção.
+ */
+function Thumb({
+  src,
+  alt,
+  fallback,
+  className,
+}: {
+  src: string | null;
+  alt: string;
+  fallback: ReactNode;
+  className: string;
+}) {
+  if (!src) {
+    return (
+      <span
+        aria-hidden="true"
+        className={`flex shrink-0 items-center justify-center bg-muted text-muted-foreground ${className}`}
+      >
+        {fallback}
+      </span>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      className={`shrink-0 object-cover ${className}`}
+    />
+  );
+}
+
+/**
+ * Dinheiro na porta. É a informação que muda o que o entregador faz ao
+ * chegar, então "receber na entrega" tem peso visual de alerta e "pago
+ * online" é discreto - ele só precisa saber que não cobra nada.
+ */
+function PaymentRow({ delivery }: { delivery: Delivery }) {
+  const payment = getPaymentSummary(delivery);
+  if (!payment) return null;
+
+  const methods = payment.methods.join(" + ");
+
+  if (payment.isPaid) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-xl bg-muted px-3 py-2.5">
+        <Banknote className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <p className="text-[13px] font-semibold text-muted-foreground">
+          Pago online{methods && ` · ${methods}`}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl bg-emerald-50 px-3 py-2.5 dark:bg-emerald-950/40">
+      <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-[#1b7f4c] dark:text-emerald-400" />
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-[#1b7f4c] dark:text-emerald-400">
+          Receber na entrega
+        </p>
+        <p className="mt-0.5 text-[15px] font-extrabold text-emerald-900 dark:text-emerald-200">
+          {/* Sem valor utilizável, mostra só a forma - "R$ 0,00 a receber"
+              seria uma afirmação errada sobre o dinheiro na porta. */}
+          {payment.amountDue > 0 ? formatCurrency(payment.amountDue) : methods}
+          {payment.amountDue > 0 && methods && (
+            <span className="ml-1.5 text-[13px] font-bold">· {methods}</span>
+          )}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -84,9 +173,17 @@ export function DeliveryCard({
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-        <p className="truncate text-[14px] font-extrabold text-foreground">
-          {getRestaurantName(delivery)}
-        </p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Thumb
+            src={getRestaurantLogo(delivery)}
+            alt=""
+            fallback={<Store className="h-4 w-4" />}
+            className="h-9 w-9 rounded-lg"
+          />
+          <p className="truncate text-[14px] font-extrabold text-foreground">
+            {getRestaurantName(delivery)}
+          </p>
+        </div>
         <StatusChip status={delivery.status} />
       </div>
 
@@ -138,14 +235,24 @@ export function DeliveryCard({
           </div>
         )}
 
-        <div className="rounded-xl bg-muted px-3 py-2.5">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            Cliente
-          </p>
-          <p className="mt-0.5 text-[14px] font-semibold text-foreground">
-            {getCustomerName(delivery)}
-          </p>
+        <div className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2.5">
+          <Thumb
+            src={getCustomerPhoto(delivery)}
+            alt=""
+            fallback={<User className="h-4 w-4" />}
+            className="h-10 w-10 rounded-full"
+          />
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+              Cliente
+            </p>
+            <p className="mt-0.5 truncate text-[14px] font-semibold text-foreground">
+              {getCustomerName(delivery)}
+            </p>
+          </div>
         </div>
+
+        <PaymentRow delivery={delivery} />
 
         <dl className="space-y-1.5">
           {orderTotal !== null && (

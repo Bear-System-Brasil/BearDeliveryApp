@@ -1,4 +1,5 @@
-import type { Address, Delivery } from "@/services/api";
+import { getPaymentMethodLabel } from "@/constants/order-management";
+import { PaymentStatus, type Address, type Delivery } from "@/services/api";
 import { onlyNumbers } from "@/utils";
 
 export type DeliveryStatus = Delivery["status"];
@@ -199,6 +200,68 @@ export function getCustomerPhone(delivery: Delivery): string | null {
 
   const digits = onlyNumbers(phone);
   return digits.length >= 8 ? digits : null;
+}
+
+export function getRestaurantLogo(delivery: Delivery): string | null {
+  return delivery.order?.company?.logo_url?.trim() || null;
+}
+
+export function getCustomerPhoto(delivery: Delivery): string | null {
+  return delivery.order?.customer?.photoUrl?.trim() || null;
+}
+
+/** Pagamento que não vale mais - não conta nem como pago nem como a receber. */
+const DEAD_PAYMENT_STATUSES = new Set<PaymentStatus>([
+  PaymentStatus.FAILED,
+  PaymentStatus.CANCELLED,
+  PaymentStatus.REFUNDED,
+]);
+
+export type PaymentSummary = {
+  /** Tudo que vale já foi pago - o entregador não recebe nada na porta. */
+  isPaid: boolean;
+  /** Rótulos em pt-BR dos métodos que importam, sem repetir. */
+  methods: string[];
+  /** Quanto ainda falta receber. Zero quando `isPaid`. */
+  amountDue: number;
+};
+
+/**
+ * O que o entregador precisa saber sobre dinheiro antes de bater na porta:
+ * se recebe alguma coisa e em qual forma.
+ *
+ * `order.payments` é lista porque o pedido pode ser dividido. Um pagamento
+ * falho, cancelado ou estornado é descartado; sobrando algum não concluído,
+ * a corrida é "receber na entrega" e o valor é a soma só desses. Sem
+ * pagamento utilizável devolve null e o bloco some do card, em vez de
+ * afirmar "pago" sobre um pedido do qual não se sabe nada.
+ */
+export function getPaymentSummary(delivery: Delivery): PaymentSummary | null {
+  const payments = delivery.order?.payments;
+  if (!Array.isArray(payments) || payments.length === 0) return null;
+
+  const live = payments.filter(
+    (payment) => payment && !DEAD_PAYMENT_STATUSES.has(payment.status),
+  );
+  if (live.length === 0) return null;
+
+  const pending = live.filter(
+    (payment) => payment.status !== PaymentStatus.COMPLETED,
+  );
+
+  const relevant = pending.length > 0 ? pending : live;
+  const methods = [
+    ...new Set(
+      relevant.map((payment) => getPaymentMethodLabel(payment.paymentMethod)),
+    ),
+  ];
+
+  const amountDue = pending.reduce((total, payment) => {
+    const amount = Number(payment.amount);
+    return total + (Number.isFinite(amount) ? amount : 0);
+  }, 0);
+
+  return { isPaid: pending.length === 0, methods, amountDue };
 }
 
 /**
