@@ -14,6 +14,7 @@ import {
   usePublicProductVariations,
   useRestaurant,
 } from "@/hooks";
+import { useAuth } from "@/contexts/auth-provider";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/utils";
 import { Minus, Plus, X } from "lucide-react";
@@ -75,6 +76,11 @@ export function CustomizeOrder({
   const [addOnQuantities, setAddOnQuantities] = useState<
     Record<string, number>
   >({});
+  // Marca que o clique em "Adicionar" veio de visitante e ficou pendente
+  // de login - o efeito lá embaixo refaz o clique quando a sessão chega.
+  const [addAfterLogin, setAddAfterLogin] = useState(false);
+
+  const { isAuthenticated, showAuthModal } = useAuth();
 
   // O back já suporta várias fotos por prato (productData.imageURL é um
   // array) - antes só a primeira era exibida. Sem foto nenhuma, cai no
@@ -233,11 +239,24 @@ export function CustomizeOrder({
     setNotesOpen(false);
     setSelections({ variation: [], addon: [] });
     setAddOnQuantities({});
+    setAddAfterLogin(false);
   };
 
   const handleConfirmAddToCart = async () => {
     if (!productData || !restaurant || isCustomizationLoading) return;
     if (pendingRequiredGroup) return;
+
+    // Visitante: pede o login aqui, sem fechar o modal nem descartar o que
+    // ele montou. Checar antes de `addToCart` evita o toast de "precisa
+    // estar logado" (use-cart-actions) competir com o AuthModal - o pedido
+    // de login aparece uma vez só, no lugar certo. Vem depois do
+    // `pendingRequiredGroup` de propósito: não faz sentido mandar alguém
+    // logar pra só então avisar que falta escolher o tamanho.
+    if (!isAuthenticated) {
+      setAddAfterLogin(true);
+      showAuthModal("login");
+      return;
+    }
 
     setIsAddingToCart(true);
 
@@ -292,6 +311,18 @@ export function CustomizeOrder({
       setIsAddingToCart(false);
     }
   };
+
+  // O AuthModal abre por cima do modal do prato, que nunca desmonta - então
+  // tamanho, complementos, quantidade e observação seguem na tela enquanto o
+  // visitante loga. Assim que a sessão existe, o "Adicionar" que ficou
+  // pendente é refeito sozinho e o item entra no carrinho.
+  useEffect(() => {
+    if (!addAfterLogin || !isAuthenticated) return;
+
+    setAddAfterLogin(false);
+    void handleConfirmAddToCart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addAfterLogin, isAuthenticated]);
 
   const productTags = getProductCategoryNames(
     productData.productCategories,
