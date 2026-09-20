@@ -3,6 +3,11 @@
 import { Dispatch, SetStateAction } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { AddressFormData } from "@/hooks";
+import type {
+  CoordinateSource,
+  SourcedCoords,
+} from "@/lib/address-coordinates";
+import { Coords } from "@/types/restaurant";
 import { MapPin, Plus, Star, X, Pencil } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -74,7 +79,9 @@ type Props = {
   handleCloseAddressModal: () => void;
   handleAddAddress: HandleAddAddress;
   handleEditAddress: (address: Address) => void;
+  applyCoords: (coords: Coords | null, source: CoordinateSource) => void;
   addressForm: AddressForm;
+  addressCoords: SourcedCoords | null;
   addingAddressState: AddingAddressState;
   isLoadingAddresses: boolean;
   isSavingAddress: boolean;
@@ -88,11 +95,13 @@ export function Addresses({
   handleCloseAddressModal,
   handleAddAddress,
   handleEditAddress,
+  applyCoords,
   addingAddressState,
   isLoadingAddresses,
   isSavingAddress,
   isLoadingCep,
   addressForm,
+  addressCoords,
   addresses,
   editingAddressId,
 }: Props) {
@@ -196,8 +205,10 @@ export function Addresses({
         <DeliveryForm
           handleCloseAddressModal={handleCloseAddressModal}
           handleAddAddress={handleAddAddress}
+          applyCoords={applyCoords}
           isSavingAddress={isSavingAddress}
           addressForm={addressForm}
+          addressCoords={addressCoords}
           isLoadingCep={isLoadingCep}
           isEditing={!!editingAddressId}
         />

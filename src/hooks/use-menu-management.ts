@@ -489,9 +489,6 @@ export const useMenuManagement = () => {
           isAvailable: formData.available,
           stockQuantity: formData.stockQuantity ?? 0,
           companyId: companyId || "",
-          orderedItems: [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
           imageURL: selectedImages.map((file, index) => ({
             id: `local-${productId}-${index}`,
             url: URL.createObjectURL(file),
@@ -535,9 +532,6 @@ export const useMenuManagement = () => {
                   isAvailable: formData.available,
                   stockQuantity: formData.stockQuantity ?? 0,
                   companyId: companyId || "",
-                  orderedItems: [],
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
                   imageURL: [
                     {
                       id: imageId || `uploaded-${Date.now()}`,

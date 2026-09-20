@@ -1,6 +1,6 @@
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ThemeProvider } from "@/components/theme-provider";
-import { BottomBar } from "@/components/ui/bottom-bar";
+import { AppFrame } from "@/components/ui/app-frame";
 import { AuthProvider } from "@/contexts/auth-provider";
 import { Providers } from "@/providers";
 import { NotificationsProvider } from "@/providers/notifications-provider";
@@ -37,10 +37,9 @@ export default function RootLayout({
             <Providers>
               <AuthProvider>
                 <NotificationsProvider>
-                  <div className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+                  <AppFrame>
                     <Suspense fallback={null}>{children}</Suspense>
-                  </div>
-                  <BottomBar />
+                  </AppFrame>
                 </NotificationsProvider>
               </AuthProvider>
             </Providers>

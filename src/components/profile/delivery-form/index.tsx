@@ -13,12 +13,20 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { AddressForm, HandleAddAddress } from "@/components/profile/addresses";
+import { AddressMap } from "@/components/address-map";
+import type {
+  CoordinateSource,
+  SourcedCoords,
+} from "@/lib/address-coordinates";
+import { Coords } from "@/types/restaurant";
 import { toast } from "sonner";
 
 type Props = {
   handleCloseAddressModal: () => void;
   handleAddAddress: HandleAddAddress;
+  applyCoords: (coords: Coords | null, source: CoordinateSource) => void;
   addressForm: AddressForm;
+  addressCoords: SourcedCoords | null;
   isSavingAddress: boolean;
   isLoadingCep: boolean;
   isEditing?: boolean;
@@ -27,7 +35,9 @@ type Props = {
 export function DeliveryForm({
   handleCloseAddressModal,
   handleAddAddress,
+  applyCoords,
   addressForm,
+  addressCoords,
   isSavingAddress,
   isLoadingCep,
   isEditing = false,
@@ -161,6 +171,29 @@ export function DeliveryForm({
                   {addressForm.formState.errors.state.message}
                 </p>
               )}
+            </div>
+
+            {/* Localização no mapa */}
+            <div className="md:col-span-2 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-sm font-medium">
+                  Localização no mapa
+                </label>
+                <span className="text-xs text-muted-foreground">
+                  {addressCoords
+                    ? "Clique no mapa para ajustar"
+                    : "Preencha o CEP ou clique no mapa"}
+                </span>
+              </div>
+              <AddressMap
+                mapHeight={220}
+                value={addressCoords?.coords ?? null}
+                onSelect={(coords) => applyCoords(coords, "manual")}
+              />
+              <p className="text-xs text-muted-foreground">
+                Sem ajuste no mapa, localizamos o endereço automaticamente ao
+                salvar.
+              </p>
             </div>
 
             {/* Checkbox Padrão */}

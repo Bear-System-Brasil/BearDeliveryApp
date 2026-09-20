@@ -44,6 +44,8 @@ export function DeliveryWrapper() {
     setOrderType,
     isDeliveryValid,
     deliveryInfo,
+    addressCoords,
+    applyCoords,
     paymentMethod,
     cardInfo,
     changeAmount,
@@ -252,12 +254,14 @@ export function DeliveryWrapper() {
               setSelectedAddressId={setSelectedAddressId}
               handleAddressSelect={handleAddressSelect}
               handleInputChange={handleInputChange}
+              applyCoords={applyCoords}
               setAddressMode={setAddressMode}
               setSaveAddress={setSaveAddress}
               selectedAddressId={selectedAddressId}
               loadingAddresses={loadingAddresses}
               userAddresses={userAddresses}
               deliveryInfo={deliveryInfo}
+              addressCoords={addressCoords}
               addressMode={addressMode}
               saveAddress={saveAddress}
               orderType={orderType}

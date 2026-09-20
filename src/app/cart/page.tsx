@@ -195,7 +195,15 @@ export default function CartPage() {
             </span>
           </div>
 
-          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          {/* `grid-cols-1` não é redundante: sem ele, a única coluna do
+              mobile é uma faixa `auto`, cujo mínimo é o min-content do
+              conteúdo. Nome do prato, rótulo de complementos e observação
+              usam `truncate` (white-space: nowrap), então o min-content
+              deles é o texto inteiro sem quebra - a faixa esticava pra
+              530px dentro de um container de 336px e vazava a viewport.
+              `grid-cols-1` do Tailwind é `repeat(1, minmax(0,1fr))`, o
+              mesmo minmax(0,…) que a variante `lg` já usava. */}
+          <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
             <section className="space-y-3">
               <Card className="flex items-center gap-3 border-border bg-card p-3 shadow-sm">
                 <Image
@@ -416,7 +424,7 @@ function CartPageSkeleton() {
     <div className="min-h-screen bg-muted pt-24">
       <div className="mx-auto max-w-[1160px] space-y-3 px-3 sm:px-5">
         <div className="h-7 w-48 animate-pulse rounded bg-muted" />
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="space-y-3">
             {["a", "b", "c"].map((item) => (
               <div
