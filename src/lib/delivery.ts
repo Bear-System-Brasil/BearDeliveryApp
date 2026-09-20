@@ -30,8 +30,12 @@ export const isCanceled = (delivery: Delivery) =>
 export const isAvailable = (delivery: Delivery) =>
   delivery.status === "PENDING";
 
-/** Cancelar continua disponível enquanto a entrega não foi fechada. */
-export const canCancel = (delivery: Delivery) => isActiveForDriver(delivery);
+/**
+ * Cancelar vale só antes da coleta. O limite documentado é PICKED_UP e é
+ * exclusivo: depois de pegar a comida no restaurante não dá mais pra
+ * cancelar - a partir daí o caminho é entregar.
+ */
+export const canCancel = (delivery: Delivery) => delivery.status === "ACCEPTED";
 
 /**
  * Próximo status do fluxo, ou null quando não há avanço possível pelo
