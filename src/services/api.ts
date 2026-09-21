@@ -902,6 +902,16 @@ export interface CreateOrderRequest {
   discount: number;
   totalShipping: number;
   totalValue: number;
+  /**
+   * Como o pedido é atendido. O backend usa esse campo ao finalizar para
+   * criar a entrega sozinho quando é "DELIVERY" - sem ele nenhum registro
+   * de entrega é gerado e a lista do entregador fica vazia.
+   *
+   * Opcional porque o carrinho também é aberto por use-cart-actions, ao
+   * adicionar o primeiro item, quando o cliente ainda não escolheu entre
+   * entrega e retirada - a escolha só existe no checkout.
+   */
+  fulfillmentType?: "DELIVERY" | "PICKUP";
   status:
   | "CART"
   | "ORDERED"

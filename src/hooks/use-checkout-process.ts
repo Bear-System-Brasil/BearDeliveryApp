@@ -480,6 +480,10 @@ export const useCheckoutProcess = () => {
           totalShipping: deliveryFee,
           totalValue: total,
           status: "CART",
+          // É por aqui que o backend sabe se precisa criar a entrega ao
+          // finalizar. Sem o campo, pedido de entrega não gera registro de
+          // entrega e a lista do entregador fica vazia.
+          fulfillmentType: orderType === "delivery" ? "DELIVERY" : "PICKUP",
         };
 
         const orderResponse = await apiService.orders.openCart(
@@ -573,43 +577,17 @@ export const useCheckoutProcess = () => {
         }
       };
 
-      const createDelivery = async () => {
-        if (!finalOrderId || orderType !== "delivery" || !deliveryAddressId) {
-          return;
-        }
+      // A entrega não é mais criada aqui: o backend a cria sozinho ao
+      // finalizar o pedido, a partir do fulfillmentType. O POST /delivery
+      // que existia aqui é proibido pra role client, então falhava sempre e
+      // disparava um toast de erro em todo pedido de entrega.
+      await createPayment();
 
-        try {
-          const deliveryData = {
-            orderId: finalOrderId,
-            deliveryAddressId: deliveryAddressId,
-            observations: deliveryInfo.observations || undefined,
-            estimatedTime: "30-40 min",
-          };
-
-          const deliveryResponse =
-            await apiService.deliveries.create(deliveryData);
-
-          // O pedido ja existe em "Meus pedidos" mesmo sem entrega registrada,
-          // mas sem ela não ha rastreio - a falha precisa aparecer.
-          if (!deliveryResponse.success) {
-            toast.error(
-              deliveryResponse.message ||
-              "Pedido criado, mas falhou ao registrar a entrega.",
-            );
-          }
-        } catch (error) {
-          console.error("Erro no delivery:", error);
-          toast.error("Pedido criado, mas falhou ao registrar a entrega.");
-        }
-      };
-
-      await Promise.all([createPayment(), createDelivery()]);
-
-      // O endereço precisa existir pra delivery referenciar deliveryAddressId
-      // - não dá pra pular a criação. Mas se o cliente desmarcou "Salvar este
-      // endereço para pedidos futuros", ele não pode sobrar em "meus
-      // endereços" depois - descarta (soft delete) o que acabou de ser criado
-      // só pra esse pedido.
+      // O endereço continua sendo criado antes de finalizar - um pedido de
+      // entrega precisa de um endereço do cliente gravado no backend. Mas se
+      // o cliente desmarcou "Salvar este endereço para pedidos futuros", ele
+      // não pode sobrar em "meus endereços" depois - descarta (soft delete) o
+      // que acabou de ser criado só pra esse pedido.
       if (!saveAddress && addressMode === "new" && deliveryAddressId) {
         try {
           await apiService.address.deleteUserAddress(deliveryAddressId);
