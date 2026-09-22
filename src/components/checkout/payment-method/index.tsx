@@ -141,9 +141,12 @@ export function PaymentMethod({
     changeAmount.replace(",", "."),
   );
   const hasChangeAmount = changeAmount.trim().length > 0;
+  // `< total` e não `<=`: pagar exatamente o valor é válido (troco zero).
+  // Com `<=` a mensagem "Valor menor que o total" aparecia no valor exato,
+  // e divergia da regra que o hook usa pra liberar o botão de finalizar.
   const isChangeInvalid =
     hasChangeAmount &&
-    (Number.isNaN(normalizedChangeAmount) || normalizedChangeAmount <= total);
+    (Number.isNaN(normalizedChangeAmount) || normalizedChangeAmount < total);
 
   const handleMomentSelect = (moment: PaymentMoment) => {
     setPaymentMoment(moment);
