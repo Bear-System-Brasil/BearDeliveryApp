@@ -372,11 +372,15 @@ export const useCheckoutProcess = () => {
         cardInfo.name.trim(),
       );
 
-    // Se é dinheiro e precisa de troco, validar valor
+    // Se é dinheiro e precisa de troco, validar valor. `>=` e não `>`:
+    // pagar exatamente o total é válido (troco zero), e a mensagem da tela
+    // diz "menor que o total" - com `>` ela aparecia no valor exato, que
+    // não é menor que nada.
     const changeValid =
       paymentMethod !== "cash" ||
       !needsChange ||
-      (changeAmount && parseFloat(changeAmount) > total);
+      (changeAmount.trim().length > 0 &&
+        Number.parseFloat(changeAmount.replace(",", ".")) >= total);
 
     return requiredFields && paymentValid && cardValid && changeValid;
   };
@@ -495,9 +499,27 @@ export const useCheckoutProcess = () => {
         setOrderId(currentOrderId);
       }
 
+      // `changeFor` é o que o cliente entrega em dinheiro, não o troco:
+      // R$ 35,90 com changeFor 50 são R$ 14,10 de volta. Só acompanha
+      // pagamento em dinheiro com troco pedido - em qualquer outro caso o
+      // campo é omitido, e não enviado como 0, que o backend leria como
+      // "paga exatamente o valor".
+      const parsedChangeFor = Number.parseFloat(changeAmount.replace(",", "."));
+      const changeFor =
+        paymentMethod === "cash" &&
+        needsChange &&
+        Number.isFinite(parsedChangeFor) &&
+        parsedChangeFor >= total
+          ? parsedChangeFor
+          : undefined;
+
       const finishOrderResponse = await apiService.orders.finishOrder(
         user.id,
         currentOrderId,
+        {
+          fulfillmentType: orderType === "delivery" ? "DELIVERY" : "PICKUP",
+          ...(changeFor !== undefined ? { changeFor } : {}),
+        },
       );
 
       if (!finishOrderResponse.success) {
@@ -573,43 +595,17 @@ export const useCheckoutProcess = () => {
         }
       };
 
-      const createDelivery = async () => {
-        if (!finalOrderId || orderType !== "delivery" || !deliveryAddressId) {
-          return;
-        }
+      // A entrega não é mais criada aqui: o backend a cria sozinho ao
+      // finalizar o pedido, a partir do fulfillmentType. O POST /delivery
+      // que existia aqui é proibido pra role client, então falhava sempre e
+      // disparava um toast de erro em todo pedido de entrega.
+      await createPayment();
 
-        try {
-          const deliveryData = {
-            orderId: finalOrderId,
-            deliveryAddressId: deliveryAddressId,
-            observations: deliveryInfo.observations || undefined,
-            estimatedTime: "30-40 min",
-          };
-
-          const deliveryResponse =
-            await apiService.deliveries.create(deliveryData);
-
-          // O pedido ja existe em "Meus pedidos" mesmo sem entrega registrada,
-          // mas sem ela não ha rastreio - a falha precisa aparecer.
-          if (!deliveryResponse.success) {
-            toast.error(
-              deliveryResponse.message ||
-              "Pedido criado, mas falhou ao registrar a entrega.",
-            );
-          }
-        } catch (error) {
-          console.error("Erro no delivery:", error);
-          toast.error("Pedido criado, mas falhou ao registrar a entrega.");
-        }
-      };
-
-      await Promise.all([createPayment(), createDelivery()]);
-
-      // O endereço precisa existir pra delivery referenciar deliveryAddressId
-      // - não dá pra pular a criação. Mas se o cliente desmarcou "Salvar este
-      // endereço para pedidos futuros", ele não pode sobrar em "meus
-      // endereços" depois - descarta (soft delete) o que acabou de ser criado
-      // só pra esse pedido.
+      // O endereço continua sendo criado antes de finalizar - um pedido de
+      // entrega precisa de um endereço do cliente gravado no backend. Mas se
+      // o cliente desmarcou "Salvar este endereço para pedidos futuros", ele
+      // não pode sobrar em "meus endereços" depois - descarta (soft delete) o
+      // que acabou de ser criado só pra esse pedido.
       if (!saveAddress && addressMode === "new" && deliveryAddressId) {
         try {
           await apiService.address.deleteUserAddress(deliveryAddressId);
