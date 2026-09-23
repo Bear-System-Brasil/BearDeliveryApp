@@ -7,62 +7,59 @@ import {
 } from "./role-helpers";
 
 describe("isCompanyStaffRole", () => {
-  it("reconhece qualquer role de staff, incluindo o legado 'company'", () => {
-    for (const role of ["company", "admin", "owner", "manager", "financial", "cook", "delivery"]) {
-      expect(isCompanyStaffRole(role)).toBe(true);
-    }
+  it("reconhece qualquer role de staff do restaurante", () => {
+    expect(isCompanyStaffRole("owner")).toBe(true);
+    expect(isCompanyStaffRole("manager")).toBe(true);
+    expect(isCompanyStaffRole("financial")).toBe(true);
+    expect(isCompanyStaffRole("cook")).toBe(true);
+    expect(isCompanyStaffRole("delivery")).toBe(true);
+    expect(isCompanyStaffRole("company")).toBe(true);
   });
 
-  it("não reconhece role de cliente nem undefined", () => {
+  it("não reconhece cliente nem valor vazio", () => {
     expect(isCompanyStaffRole("client")).toBe(false);
     expect(isCompanyStaffRole(undefined)).toBe(false);
   });
 });
 
 describe("isCompanyAdminRole", () => {
-  it("só é true para owner, admin e o legado 'company'", () => {
+  it("só reconhece quem administra o cadastro da empresa", () => {
     expect(isCompanyAdminRole("owner")).toBe(true);
     expect(isCompanyAdminRole("admin")).toBe(true);
     expect(isCompanyAdminRole("company")).toBe(true);
   });
 
-  it("staff que não administra cadastro (manager/financial/cook/delivery) não é admin role", () => {
-    for (const role of ["manager", "financial", "cook", "delivery"]) {
-      expect(isCompanyAdminRole(role)).toBe(false);
-    }
-  });
-
-  it("retorna false para undefined", () => {
+  it("staff que não é admin fica de fora (manager, financial, cook, delivery)", () => {
+    expect(isCompanyAdminRole("manager")).toBe(false);
+    expect(isCompanyAdminRole("financial")).toBe(false);
+    expect(isCompanyAdminRole("cook")).toBe(false);
+    expect(isCompanyAdminRole("delivery")).toBe(false);
     expect(isCompanyAdminRole(undefined)).toBe(false);
   });
 });
 
 describe("isClientRole", () => {
-  it("reconhece client, customer e user", () => {
+  it("reconhece os sinônimos de cliente", () => {
     expect(isClientRole("client")).toBe(true);
     expect(isClientRole("customer")).toBe(true);
     expect(isClientRole("user")).toBe(true);
   });
 
-  it("não reconhece role de staff", () => {
+  it("não reconhece staff nem valor vazio", () => {
     expect(isClientRole("owner")).toBe(false);
+    expect(isClientRole(undefined)).toBe(false);
   });
 });
 
 describe("getProfileRoute", () => {
-  it("leva admin/owner para /company-profile", () => {
+  it("manda quem administra a empresa para /company-profile", () => {
     expect(getProfileRoute("owner")).toBe("/company-profile");
     expect(getProfileRoute("admin")).toBe("/company-profile");
   });
 
-  it("leva staff que não administra cadastro para /profile, não /company-profile", () => {
+  it("manda o restante (staff não-admin e clientes) para /profile", () => {
     expect(getProfileRoute("manager")).toBe("/profile");
     expect(getProfileRoute("financial")).toBe("/profile");
-    expect(getProfileRoute("cook")).toBe("/profile");
-    expect(getProfileRoute("delivery")).toBe("/profile");
-  });
-
-  it("leva cliente e undefined para /profile", () => {
     expect(getProfileRoute("client")).toBe("/profile");
     expect(getProfileRoute(undefined)).toBe("/profile");
   });

@@ -3,15 +3,27 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 /**
- * Hook para buscar os complementos de um produto.
+ * Hook para buscar os complementos de um produto, usado na tela de gestão.
  * O backend ignora o filtro `productId` da query e devolve todos os
- * complementos de todas as empresas - o filtro é feito aqui.
+ * complementos da empresa - o filtro é feito aqui.
+ *
+ * `companyId` precisa ser repassado (com o mesmo fallback `user?.companyId
+ * || user?.id` usado em use-menu-management.ts/use-categories.ts): o JWT de
+ * uma conta owner nem sempre carrega a claim `companyId`, e sem o query
+ * param o backend não consegue resolver a empresa e responde 500 em vez de
+ * filtrar - foi só sorte esse caso nunca ter sido coberto aqui porque staff
+ * comum sempre tem companyId no token.
  */
-export const useProductAddOns = (productId: string | null) => {
+export const useProductAddOns = (
+  productId: string | null,
+  companyId?: string | null,
+) => {
   return useQuery({
-    queryKey: ["product-add-ons", productId],
+    queryKey: ["product-add-ons", productId, companyId],
     queryFn: async () => {
-      const response = await apiService.productAddOns.getAll();
+      const response = await apiService.productAddOns.getAll(
+        companyId ?? undefined,
+      );
       if (!response.success || !response.data) {
         throw new Error(response.message || "Falha ao carregar complementos");
       }

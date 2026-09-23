@@ -83,6 +83,7 @@ function MenuManagementContent() {
   const {
     products,
     categories,
+    companyId,
     isLoading: loading,
     isModalOpen,
     editingProduct,
@@ -944,6 +945,7 @@ function MenuManagementContent() {
       <ProductAddOnsDialog
         productId={addOnsTarget?.id ?? null}
         productName={addOnsTarget?.name}
+        companyId={companyId}
         open={!!addOnsTarget}
         onOpenChange={(open) => !open && setAddOnsTarget(null)}
       />
@@ -952,6 +954,7 @@ function MenuManagementContent() {
         productId={variationsTarget?.id ?? null}
         productName={variationsTarget?.name}
         salePrice={variationsTarget?.price ?? 0}
+        companyId={companyId}
         open={!!variationsTarget}
         onOpenChange={(open) => !open && setVariationsTarget(null)}
       />

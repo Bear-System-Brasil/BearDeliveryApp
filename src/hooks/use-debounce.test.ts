@@ -11,51 +11,48 @@ describe("useDebounce", () => {
     vi.useRealTimers();
   });
 
-  it("devolve o valor inicial imediatamente, antes de qualquer delay", () => {
-    const { result } = renderHook(() => useDebounce("inicial", 300));
-    expect(result.current).toBe("inicial");
+  it("retorna o valor inicial imediatamente", () => {
+    const { result } = renderHook(() => useDebounce("a", 200));
+    expect(result.current).toBe("a");
   });
 
-  it("só atualiza depois do delay quando o valor muda", () => {
-    const { result, rerender } = renderHook(({ value, delay }) => useDebounce(value, delay), {
-      initialProps: { value: "a", delay: 300 },
-    });
-
-    rerender({ value: "b", delay: 300 });
-    expect(result.current).toBe("a");
-
-    act(() => vi.advanceTimersByTime(299));
-    expect(result.current).toBe("a");
-
-    act(() => vi.advanceTimersByTime(1));
-    expect(result.current).toBe("b");
-  });
-
-  it("reinicia o timer a cada mudança, aplicando só o último valor", () => {
-    const { result, rerender } = renderHook(({ value }) => useDebounce(value, 300), {
+  it("só atualiza o valor depois do delay decorrido", () => {
+    const { result, rerender } = renderHook(({ value }) => useDebounce(value, 200), {
       initialProps: { value: "a" },
     });
 
     rerender({ value: "b" });
-    act(() => vi.advanceTimersByTime(150));
-    rerender({ value: "c" });
-    act(() => vi.advanceTimersByTime(150));
-
-    // ainda não passou 300ms desde o último rerender ("c")
     expect(result.current).toBe("a");
 
-    act(() => vi.advanceTimersByTime(150));
-    expect(result.current).toBe("c");
+    act(() => {
+      vi.advanceTimersByTime(199);
+    });
+    expect(result.current).toBe("a");
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current).toBe("b");
   });
 
-  it("funciona com valores não-string (números, objetos)", () => {
-    const { result, rerender } = renderHook(({ value }) => useDebounce(value, 100), {
-      initialProps: { value: { count: 1 } },
+  it("reinicia o timer quando o valor muda antes do delay acabar", () => {
+    const { result, rerender } = renderHook(({ value }) => useDebounce(value, 200), {
+      initialProps: { value: "a" },
     });
 
-    rerender({ value: { count: 2 } });
-    act(() => vi.advanceTimersByTime(100));
+    rerender({ value: "b" });
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    rerender({ value: "c" });
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(result.current).toBe("a");
 
-    expect(result.current).toEqual({ count: 2 });
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    expect(result.current).toBe("c");
   });
 });

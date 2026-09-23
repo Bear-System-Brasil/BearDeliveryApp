@@ -28,6 +28,7 @@ import { useState } from "react";
 interface Props {
   productId: string | null;
   productName?: string;
+  companyId?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -50,11 +51,15 @@ const fieldClassName =
 export function ProductAddOnsDialog({
   productId,
   productName,
+  companyId,
   open,
   onOpenChange,
 }: Props) {
   const { confirm } = useConfirm();
-  const { data: addOns = [], isLoading } = useProductAddOns(productId);
+  const { data: addOns = [], isLoading } = useProductAddOns(
+    productId,
+    companyId,
+  );
   const createAddOn = useCreateProductAddOn();
   const updateAddOn = useUpdateProductAddOn();
   const deleteAddOn = useDeleteProductAddOn();

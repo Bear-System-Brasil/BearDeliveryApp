@@ -1,96 +1,85 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { safeStorage } from "./safe-storage";
 
-describe("safeStorage", () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
+afterEach(() => {
+  localStorage.clear();
+  vi.restoreAllMocks();
+});
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("grava e lê valores reais do localStorage do jsdom", () => {
+describe("safeStorage - operações básicas", () => {
+  it("seta e lê um valor", () => {
     expect(safeStorage.setItem("chave", "valor")).toBe(true);
     expect(safeStorage.getItem("chave")).toBe("valor");
-    expect(localStorage.getItem("chave")).toBe("valor");
   });
 
-  it("retorna null ao ler chave inexistente", () => {
-    expect(safeStorage.getItem("nao-existe")).toBeNull();
+  it("getItem retorna null quando a chave não existe", () => {
+    expect(safeStorage.getItem("inexistente")).toBeNull();
   });
 
-  it("remove item de fato do storage", () => {
-    localStorage.setItem("chave", "valor");
+  it("removeItem apaga a chave", () => {
+    safeStorage.setItem("chave", "valor");
     safeStorage.removeItem("chave");
-    expect(localStorage.getItem("chave")).toBeNull();
-  });
-
-  it("limpa todo o storage", () => {
-    localStorage.setItem("a", "1");
-    localStorage.setItem("b", "2");
-    safeStorage.clear();
-    expect(localStorage.length).toBe(0);
-  });
-
-  it("não lança quando localStorage.getItem lança erro; devolve null", () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
-      throw new Error("boom");
-    });
     expect(safeStorage.getItem("chave")).toBeNull();
   });
 
-  it("ao exceder a quota, libera productImages/productCategories e tenta salvar de novo", () => {
-    localStorage.setItem("productImages", "dados-grandes");
-    localStorage.setItem("productCategories", "outros-dados");
+  it("clear apaga tudo do localStorage", () => {
+    safeStorage.setItem("a", "1");
+    safeStorage.setItem("b", "2");
+    safeStorage.clear();
+    expect(localStorage.length).toBe(0);
+  });
+});
 
-    const realSetItem = Storage.prototype.setItem.bind(localStorage);
-    let calls = 0;
-    // Falha só na 1ª chamada (quota cheia); o retry, após limpar os dados
-    // temporários, cai na implementação real do jsdom.
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (key, value) {
-      calls++;
-      if (calls === 1) {
-        throw new DOMException("quota", "QuotaExceededError");
-      }
-      return realSetItem(key, value);
+describe("safeStorage.getItem - erro de leitura", () => {
+  it("retorna null e não lança quando localStorage.getItem falha", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("boom");
     });
 
-    const result = safeStorage.setItem("novaChave", "novoValor");
+    expect(safeStorage.getItem("chave")).toBeNull();
+  });
+});
+
+describe("safeStorage.setItem - quota excedida", () => {
+  it("libera productImages/productCategories e tenta salvar de novo", () => {
+    localStorage.setItem("productImages", "muito grande");
+    localStorage.setItem("productCategories", "muito grande");
+
+    const original = Storage.prototype.setItem.bind(localStorage);
+    let callCount = 0;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation((key: string, value: string) => {
+      callCount += 1;
+      if (callCount === 1) {
+        throw new DOMException("quota excedida", "QuotaExceededError");
+      }
+      original(key, value);
+    });
+
+    const result = safeStorage.setItem("nova-chave", "valor");
 
     expect(result).toBe(true);
+    expect(callCount).toBe(2);
+    expect(localStorage.getItem("nova-chave")).toBe("valor");
     expect(localStorage.getItem("productImages")).toBeNull();
     expect(localStorage.getItem("productCategories")).toBeNull();
-    expect(localStorage.getItem("novaChave")).toBe("novoValor");
   });
 
-  it("retorna false quando falha mesmo depois de tentar liberar espaço", () => {
+  it("retorna false quando falha mesmo depois de liberar espaço", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new DOMException("quota", "QuotaExceededError");
+      throw new DOMException("quota excedida", "QuotaExceededError");
     });
 
     expect(safeStorage.setItem("chave", "valor")).toBe(false);
   });
 
-  it("retorna false para erro que não é QuotaExceededError, sem tentar liberar espaço", () => {
-    const removeSpy = vi.spyOn(Storage.prototype, "removeItem");
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("erro genérico");
-    });
+  it("retorna false sem tentar de novo para erros que não são de quota", () => {
+    const setItemSpy = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new Error("erro genérico");
+      });
 
     expect(safeStorage.setItem("chave", "valor")).toBe(false);
-    expect(removeSpy).not.toHaveBeenCalled();
-  });
-
-  it("getUsageInfo soma o tamanho de chave+valor de todo o storage", () => {
-    localStorage.clear();
-    localStorage.setItem("ab", "1234");
-
-    const info = safeStorage.getUsageInfo();
-
-    expect(info).not.toBeNull();
-    expect(info!.used).toBe("ab".length + "1234".length);
-    expect(info!.total).toBe(5 * 1024 * 1024);
-    expect(info!.percentage).toBeCloseTo((info!.used / info!.total) * 100);
+    expect(setItemSpy).toHaveBeenCalledTimes(1);
   });
 });

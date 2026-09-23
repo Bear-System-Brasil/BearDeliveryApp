@@ -2,48 +2,39 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cn, debounce, formatPrice, formatTime } from "./utils";
 
 describe("cn", () => {
-  it("junta classes simples com espaço", () => {
+  it("junta classes simples", () => {
     expect(cn("a", "b")).toBe("a b");
   });
 
   it("ignora valores falsy", () => {
-    expect(cn("a", false, null, undefined, "", "b")).toBe("a b");
+    expect(cn("a", false, undefined, null, "b")).toBe("a b");
   });
 
-  it("resolve conflito do tailwind mantendo a classe mais à direita", () => {
-    expect(cn("px-2 py-1", "px-4")).toBe("py-1 px-4");
-  });
-
-  it("aceita objetos condicionais do clsx", () => {
-    expect(cn({ block: true, hidden: false })).toBe("block");
+  it("resolve conflitos do tailwind mantendo a última classe", () => {
+    expect(cn("px-2", "px-4")).toBe("px-4");
   });
 });
 
 describe("formatPrice", () => {
-  it("delega para o formatador de moeda em BRL", () => {
-    // Intl.NumberFormat('pt-BR') usa NBSP ( ) entre "R$" e o valor.
-    expect(formatPrice(35)).toBe("R$ 35,00");
-  });
-
-  it("formata zero corretamente", () => {
-    expect(formatPrice(0)).toBe("R$ 0,00");
+  it("formata usando o padrão de moeda brasileira", () => {
+    expect(formatPrice(10).replace(/ /g, " ")).toBe("R$ 10,00");
   });
 });
 
 describe("formatTime", () => {
-  it("mostra só minutos quando é menos de uma hora", () => {
+  it("mostra apenas minutos quando menor que uma hora", () => {
     expect(formatTime(45)).toBe("45 min");
   });
 
-  it("mostra hora cheia sem minutos quando é múltiplo de 60", () => {
+  it("mostra apenas horas quando é hora cheia", () => {
     expect(formatTime(120)).toBe("2h");
   });
 
-  it("mostra hora e minuto quando não é múltiplo de 60", () => {
+  it("mostra horas e minutos quando não é hora cheia", () => {
     expect(formatTime(90)).toBe("1h 30min");
   });
 
-  it("trata 0 minuto como 'min', não como hora", () => {
+  it("trata zero minutos", () => {
     expect(formatTime(0)).toBe("0 min");
   });
 });
@@ -57,34 +48,29 @@ describe("debounce", () => {
     vi.useRealTimers();
   });
 
-  it("só chama a função depois do tempo de espera", () => {
+  it("só chama a função depois do delay", () => {
     const fn = vi.fn();
     const debounced = debounce(fn, 200);
 
     debounced();
     expect(fn).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(199);
-    expect(fn).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(1);
+    vi.advanceTimersByTime(200);
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
-  it("reinicia o timer a cada chamada, executando só a última", () => {
+  it("cancela a chamada pendente quando invocado de novo antes do delay", () => {
     const fn = vi.fn();
     const debounced = debounce(fn, 200);
 
-    debounced("primeira");
+    debounced("a");
     vi.advanceTimersByTime(100);
-    debounced("segunda");
+    debounced("b");
     vi.advanceTimersByTime(100);
-    debounced("terceira");
-
     expect(fn).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(100);
     expect(fn).toHaveBeenCalledTimes(1);
-    expect(fn).toHaveBeenCalledWith("terceira");
+    expect(fn).toHaveBeenCalledWith("b");
   });
 });

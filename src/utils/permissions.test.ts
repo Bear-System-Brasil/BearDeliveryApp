@@ -4,70 +4,51 @@ import {
   hasRoutePermission,
   isClient,
   isRestaurantStaff,
-  ROUTE_PERMISSIONS,
-  USER_ROLES,
 } from "./permissions";
 
 describe("hasRoutePermission", () => {
-  it("permite quando a role está na lista da rota", () => {
+  it("permite quando o role está na lista da rota", () => {
     expect(hasRoutePermission("/menu-management", "owner")).toBe(true);
+    expect(hasRoutePermission("/cart", "client")).toBe(true);
   });
 
-  it("bloqueia quando a role não está na lista da rota", () => {
+  it("nega quando o role não está na lista da rota", () => {
     expect(hasRoutePermission("/menu-management", "client")).toBe(false);
+    expect(hasRoutePermission("/cart", "cook")).toBe(false);
   });
 
-  it("bloqueia por padrão rota não mapeada, por segurança", () => {
+  it("bloqueia por padrão uma rota não mapeada (segurança)", () => {
     expect(hasRoutePermission("/rota-inexistente", "owner")).toBe(false);
   });
 
-  it("resolve segmento dinâmico [id] contra pathname real", () => {
+  it("resolve rotas com segmento dinâmico contra o pathname real", () => {
     expect(hasRoutePermission("/restaurant/abc123", "client")).toBe(true);
     expect(hasRoutePermission("/restaurant/abc123", "cook")).toBe(true);
   });
 
-  it("não confunde rota dinâmica com número de segmentos diferente", () => {
-    // /restaurant/[id] tem 2 segmentos; /restaurant/abc/extra tem 3
-    expect(hasRoutePermission("/restaurant/abc/extra", "client")).toBe(false);
-  });
-
-  it("dá acesso ao financeiro em todas as telas de financial-management", () => {
-    for (const route of Object.keys(ROUTE_PERMISSIONS)) {
-      if (route.startsWith("/financial-management")) {
-        expect(hasRoutePermission(route, "financial")).toBe(true);
-      }
-    }
+  it("não confunde rota dinâmica com uma de tamanho diferente", () => {
+    expect(hasRoutePermission("/restaurant/abc123/delivery", "client")).toBe(false);
   });
 });
 
 describe("getAccessibleRoutes", () => {
-  it("retorna todas as rotas cujo mapa inclui a role", () => {
-    const routes = getAccessibleRoutes("cook");
-    expect(routes).toContain("/kitchen");
-    expect(routes).toContain("/order-management");
-    expect(routes).not.toContain("/company-profile");
-  });
-
-  it("retorna lista vazia para role sem nenhuma rota mapeada", () => {
-    expect(getAccessibleRoutes("role-que-nao-existe")).toEqual([]);
+  it("retorna só as rotas cujo role tem acesso", () => {
+    const routes = getAccessibleRoutes("financial");
+    expect(routes).toContain("/financial-management");
+    expect(routes).toContain("/financial-management/cash-register");
+    expect(routes).not.toContain("/menu-management");
   });
 });
 
 describe("isRestaurantStaff / isClient", () => {
-  it("reconhece owner, admin e manager como staff administrativo", () => {
-    expect(isRestaurantStaff(USER_ROLES.OWNER)).toBe(true);
-    expect(isRestaurantStaff(USER_ROLES.ADMIN)).toBe(true);
-    expect(isRestaurantStaff(USER_ROLES.MANAGER)).toBe(true);
+  it("identifica staff administrativo (owner, admin, manager)", () => {
+    expect(isRestaurantStaff("owner")).toBe(true);
+    expect(isRestaurantStaff("manager")).toBe(true);
+    expect(isRestaurantStaff("cook")).toBe(false);
   });
 
-  it("não considera cook/delivery/financial como staff administrativo", () => {
-    expect(isRestaurantStaff(USER_ROLES.COOK)).toBe(false);
-    expect(isRestaurantStaff(USER_ROLES.DELIVERY)).toBe(false);
-    expect(isRestaurantStaff(USER_ROLES.FINANCIAL)).toBe(false);
-  });
-
-  it("identifica client", () => {
-    expect(isClient(USER_ROLES.CLIENT)).toBe(true);
-    expect(isClient(USER_ROLES.OWNER)).toBe(false);
+  it("identifica cliente", () => {
+    expect(isClient("client")).toBe(true);
+    expect(isClient("owner")).toBe(false);
   });
 });

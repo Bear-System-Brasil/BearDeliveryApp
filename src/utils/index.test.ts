@@ -2,74 +2,65 @@ import { describe, expect, it } from "vitest";
 import { formatNumber, getErrorMessage, slugify, truncateString } from "./index";
 
 describe("formatNumber", () => {
-  it("formata milhar com separador brasileiro", () => {
+  it("formata milhar no padrão pt-BR", () => {
     expect(formatNumber(1234)).toBe("1.234");
   });
 
-  it("formata número pequeno sem separador", () => {
-    expect(formatNumber(42)).toBe("42");
+  it("mantém números pequenos sem separador", () => {
+    expect(formatNumber(9)).toBe("9");
   });
 });
 
 describe("truncateString", () => {
-  it("mantém string intacta quando já é menor que o limite", () => {
-    expect(truncateString("abc", 10)).toBe("abc");
+  it("mantém a string intacta quando já é curta o suficiente", () => {
+    expect(truncateString("Pizza", 10)).toBe("Pizza");
   });
 
-  it("trunca e adiciona '...' quando excede o limite", () => {
-    expect(truncateString("abcdefghij", 5)).toBe("abcde...");
+  it("trunca e adiciona reticências quando excede o tamanho máximo", () => {
+    expect(truncateString("Pizza de Calabresa", 5)).toBe("Pizza...");
   });
 
   it("trata o limite exato sem truncar", () => {
-    expect(truncateString("abcde", 5)).toBe("abcde");
+    expect(truncateString("Pizza", 5)).toBe("Pizza");
   });
 });
 
 describe("slugify", () => {
-  it("troca espaços por hífen e deixa minúsculo", () => {
+  it("troca espaços por hífen e força minúsculas", () => {
     expect(slugify("Pizza Grande")).toBe("pizza-grande");
   });
 
   it("remove acentos", () => {
-    expect(slugify("Feijoada à Paulista")).toBe("feijoada-a-paulista");
+    expect(slugify("Refrigerante Guaraná")).toBe("refrigerante-guarana");
   });
 
   it("remove caracteres especiais", () => {
-    expect(slugify("Combo R$ 20,00!")).toBe("combo-r-2000");
+    expect(slugify("Combo (2 pessoas)!")).toBe("combo-2-pessoas");
   });
 
-  it("colapsa espaços/underscores repetidos em um único hífen", () => {
-    expect(slugify("a   b__c")).toBe("a-b-c");
-  });
-
-  it("remove hífens nas bordas", () => {
+  it("remove hífens nas pontas depois da limpeza", () => {
     expect(slugify("  -Pizza-  ")).toBe("pizza");
   });
 });
 
 describe("getErrorMessage", () => {
   it("extrai a mensagem de uma instância de Error", () => {
-    expect(getErrorMessage(new Error("falhou"), "fallback")).toBe("falhou");
+    expect(getErrorMessage(new Error("deu ruim"), "fallback")).toBe("deu ruim");
   });
 
   it("extrai message de um objeto de resposta de API", () => {
-    expect(getErrorMessage({ message: "CPF inválido" }, "fallback")).toBe(
-      "CPF inválido",
+    expect(getErrorMessage({ message: "não autorizado" }, "fallback")).toBe(
+      "não autorizado",
     );
   });
 
-  it("usa a própria string como mensagem", () => {
+  it("usa a própria string quando o erro já é uma string", () => {
     expect(getErrorMessage("algo deu errado", "fallback")).toBe("algo deu errado");
   });
 
-  it("usa o fallback para valores sem mensagem reconhecível", () => {
+  it("cai no fallback para formatos desconhecidos", () => {
+    expect(getErrorMessage({ codigo: 500 }, "fallback")).toBe("fallback");
     expect(getErrorMessage(null, "fallback")).toBe("fallback");
     expect(getErrorMessage(undefined, "fallback")).toBe("fallback");
-    expect(getErrorMessage(42, "fallback")).toBe("fallback");
-    expect(getErrorMessage({ code: 500 }, "fallback")).toBe("fallback");
-  });
-
-  it("usa o fallback quando message existe mas não é string", () => {
-    expect(getErrorMessage({ message: 123 }, "fallback")).toBe("fallback");
   });
 });

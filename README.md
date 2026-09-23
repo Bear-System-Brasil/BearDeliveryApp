@@ -2,55 +2,64 @@
 
 > A modern, full-featured food delivery platform built with Next.js 15 and React 19
 
-[![Next.js](https://img.shields.io/badge/Next.js-15.1.6-black?style=flat-square&logo=next.js)](https://nextjs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-15.1.11-black?style=flat-square&logo=next.js)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19.2-61dafb?style=flat-square&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-4.1-38bdf8?style=flat-square&logo=tailwind-css)](https://tailwindcss.com)
 
 ## Table of Contents
 
-- [Overview](#-overview)
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Getting Started](#-getting-started)
-- [Project Structure](#-project-structure)
-- [Architecture](#-architecture)
-- [Development Guide](#-development-guide)
-- [Deployment](#-deployment)
-- [Contributing](#-contributing)
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Architecture](#architecture)
+- [Development Guide](#development-guide)
+- [Deployment](#deployment)
+- [Contributing](#contributing)
 
 ## Overview
 
 BearDelivery is a comprehensive food delivery platform that connects customers with restaurants. The application provides a seamless experience for browsing restaurants, managing orders, and tracking deliveries in real-time.
 
-**Key Roles:**
-- **Customers** - Browse restaurants, place orders, track deliveries
-- **Restaurant Admins** - Manage menus, process orders, update business info
-- **Platform Admins** - Oversee the entire platform (future)
+**Key Roles** (enforced via `middleware.ts` route protection):
+- **client** - Browse restaurants, place orders, track deliveries
+- **owner / admin / manager** - Manage menus, categories, orders, team and business profile
+- **cook** - Kitchen Display System (accepts/prepares/finishes orders)
+- **financial** - Financial dashboard, cash register, payments and customer management
+- **delivery** - Delivery dashboard (accept/track deliveries, availability toggle)
 
 ## Features
 
 ### Customer Features
 - Advanced restaurant search with filters
 - Real-time shopping cart with backend sync
-- Multiple delivery addresses management
-- Multiple payment methods
-- Real-time order tracking
+- Product customization (variations, add-ons with per-item quantity, notes)
+- Multiple delivery addresses management (with Google Maps geocoding)
+- Multiple payment methods (Pix, credit/debit card online, cash or card on delivery)
+- Real-time order tracking with live status updates
 - Restaurant favorites
 - Profile management with photo upload
+- In-app notification bell (order status, delivery updates)
 
-### Restaurant Features
-- Complete menu management
-- Order management dashboard
+### Restaurant / Management Features
+- Complete menu management (products, variations, add-ons)
+- Category management
+- Order management dashboard with observations for dishes and delivery
+- **Kitchen Display System (KDS)** - real-time order queue for the kitchen (accept, prepare, finish) with sound alerts
+- **Financial management** - dashboard, cash register (open/close, movements), payments overview, company orders and customer list
+- **Team management** - manage staff accounts and roles (owner, admin, manager, cook, financial, delivery)
+- **Delivery dashboard** - dedicated view for delivery drivers to accept and track deliveries
 - Business profile customization
 - Logo and cover photo uploads
-- Basic analytics (orders, revenue)
 
 ### Technical Features
 - Modern, responsive UI with glass-morphism design
 - Dark mode support (infrastructure ready)
+- Role-based route protection via Next.js middleware (`src/middleware.ts`)
+- Real-time updates via WebSockets (Socket.IO) for kitchen orders, deliveries and notifications
 - Optimistic UI updates
-- Real-time data synchronization
 - Mobile-first approach
 - Progressive rendering for performance
 - Secure authentication with JWT
@@ -59,7 +68,7 @@ BearDelivery is a comprehensive food delivery platform that connects customers w
 ## Tech Stack
 
 ### Core
-- **Framework:** Next.js 15.1.6 (App Router)
+- **Framework:** Next.js 15.1.11 (App Router)
 - **React:** 19.2.0
 - **TypeScript:** 5.x
 - **Styling:** Tailwind CSS 4.1.17
@@ -73,9 +82,16 @@ BearDelivery is a comprehensive food delivery platform that connects customers w
 - **Lucide React** - Icon system
 - **Sonner** - Toast notifications
 - **React Hook Form** - Form handling
+- **Recharts** - Charts for the financial dashboard
+- **Embla Carousel** - Carousels
+- **cmdk / vaul** - Command palette and drawer primitives
+
+### Real-time & External Services
+- **Socket.IO Client** - Real-time updates (kitchen orders, deliveries, notifications)
+- **@react-google-maps/api** - Address geocoding and map display
 
 ### Utilities
-- **date-fns** - Date manipulation
+- **date-fns / dayjs / react-day-picker** - Date manipulation and pickers
 - **zod** - Schema validation
 - **clsx/tailwind-merge** - CSS utilities
 
@@ -118,6 +134,7 @@ Edit `.env.local` and add your configuration:
 ```env
 NEXT_PUBLIC_API_URL=https://bearsystem.tech
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
 4. **Run the development server**
@@ -140,62 +157,99 @@ npm start
 ```
 like-delivery-app/
 ├── src/
+│   ├── middleware.ts             # Role-based route protection
 │   ├── app/                      # Next.js App Router pages
-│   │   ├── page.tsx             # Home page
-│   │   ├── layout.tsx           # Root layout
-│   │   ├── cart/                # Cart page
-│   │   ├── checkout/            # Checkout flow
-│   │   ├── orders/              # Order history
-│   │   ├── profile/             # User profile
-│   │   ├── restaurants/         # Restaurant listing
-│   │   ├── restaurant/[id]/     # Restaurant detail
-│   │   ├── menu-management/     # Admin: Menu management
-│   │   ├── order-management/    # Admin: Order management
-│   │   └── company-profile/     # Admin: Business profile
+│   │   ├── (home)/               # Home page (route group)
+│   │   ├── layout.tsx            # Root layout
+│   │   ├── cart/                 # Cart page
+│   │   ├── checkout/             # Checkout flow
+│   │   ├── orders/               # Order history (client)
+│   │   ├── order-status/         # Order status tracking page
+│   │   ├── profile/              # User profile
+│   │   ├── restaurant/[id]/      # Restaurant detail
+│   │   ├── restaurant-landing-page/ # Public restaurant landing page
+│   │   ├── restaurant-register/  # Restaurant self-registration
+│   │   ├── menu-management/      # Management: Menu management
+│   │   ├── category-management/  # Management: Category management
+│   │   ├── order-management/     # Management: Order management
+│   │   ├── kitchen/               # Cook: Kitchen Display System (KDS)
+│   │   ├── financial-management/ # Financial: dashboard, cash-register, finance, orders, customers, settings
+│   │   ├── team-management/      # Management: staff & roles
+│   │   ├── delivery-dashboard/   # Delivery: driver dashboard
+│   │   ├── company-profile/      # Management: Business profile
+│   │   └── unauthorized/         # Access denied page
 │   │
-│   ├── components/              # React components
-│   │   ├── ui/                  # Base UI components (shadcn/ui)
-│   │   ├── auth-modal/          # Authentication modal
-│   │   ├── footer/              # Footer component
-│   │   ├── main-header/         # Header component
-│   │   ├── restaurant-card/     # Restaurant card
-│   │   └── ...                  # Other feature components
+│   ├── components/               # React components
+│   │   ├── ui/                   # Base UI components (shadcn/ui)
+│   │   ├── auth-modal/           # Authentication modal
+│   │   ├── checkout/             # Checkout steps (delivery, payment, review)
+│   │   ├── customize-order/      # Product variations/add-ons customization
+│   │   ├── kitchen/              # Kitchen Display System components
+│   │   ├── financial-dashboard/  # Financial dashboard widgets
+│   │   ├── order-management/     # Order management dashboard
+│   │   ├── order-detail-sheet/   # Order detail side sheet
+│   │   ├── delivery/             # Delivery list/tracking components
+│   │   ├── notifications/        # Notification bell/panel
+│   │   ├── sidebar-menu-management/ # Admin sidebar navigation
+│   │   ├── protected-route/      # Client-side role guard
+│   │   ├── footer/                # Footer component
+│   │   ├── main-header/          # Header component
+│   │   ├── restaurant-info/      # Restaurant info card
+│   │   └── ...                   # Other feature components
 │   │
-│   ├── hooks/                   # Custom React hooks
-│   │   ├── use-auth.ts         # Authentication hook
-│   │   ├── use-cart-actions.ts # Cart management
-│   │   ├── use-restaurants.ts  # Restaurant data
-│   │   └── ...                 # Other hooks
+│   ├── hooks/                     # Custom React hooks
+│   │   ├── use-cart-actions.ts   # Cart management
+│   │   ├── use-restaurants.ts    # Restaurant data
+│   │   ├── use-kitchen-orders.ts # KDS real-time order queue
+│   │   ├── use-order-management.ts # Order management dashboard logic
+│   │   ├── use-financial-dashboard.ts # Financial dashboard data
+│   │   ├── use-cash-register.ts / use-cash-movement.ts # Cash register
+│   │   ├── use-delivery-driver.ts # Delivery dashboard logic
+│   │   ├── use-team-management.ts # Team/staff management
+│   │   ├── use-notifications.ts  # Notification bell feed
+│   │   └── ...                   # Other hooks
 │   │
-│   ├── stores/                  # Zustand stores
-│   │   ├── auth-store.ts       # Auth state
-│   │   ├── cart-store.ts       # Cart state
-│   │   ├── favorites-store.ts  # Favorites
-│   │   └── preferences-store.ts # User preferences
+│   ├── stores/                    # Zustand stores
+│   │   ├── auth-store.ts         # Auth state
+│   │   ├── cart-store.ts         # Cart state
+│   │   ├── favorites-store.ts    # Favorites
+│   │   ├── notifications-store.ts # Notification bell feed
+│   │   ├── preferences-store.ts  # User preferences
+│   │   ├── financial-preferences-store.ts # Financial UI preferences
+│   │   └── ui-store.ts           # Misc UI state
 │   │
-│   ├── services/               # API services
-│   │   └── api.ts             # Centralized API client
+│   ├── providers/                 # App-level providers
+│   │   └── notifications-provider.tsx # Socket.IO notifications listener
 │   │
-│   ├── utils/                  # Utility functions
-│   │   ├── storage-manager.ts  # Storage abstraction
-│   │   ├── format-currency.ts  # Currency formatting
-│   │   └── ...                # Other utilities
+│   ├── services/                  # API services
+│   │   ├── api.ts                # Centralized API client
+│   │   └── restaurants/          # Restaurant-specific service helpers
 │   │
-│   ├── contexts/              # React contexts
-│   │   └── auth-provider.tsx  # Auth context wrapper
+│   ├── utils/                     # Utility functions
+│   │   ├── storage-manager.ts    # Storage abstraction
+│   │   ├── format-currency.ts    # Currency formatting
+│   │   └── ...                   # Other utilities
 │   │
-│   ├── types/                 # TypeScript types
-│   │   └── index.ts          # Type definitions
+│   ├── contexts/                  # React contexts
+│   │   └── auth-provider.tsx     # Auth context wrapper
 │   │
-│   ├── constants/            # Constants
-│   │   └── restaurant-categories.ts
+│   ├── types/                     # TypeScript types
+│   │   └── index.ts              # Type definitions
 │   │
-│   └── lib/                  # Library configurations
-│       └── utils.ts         # Shared utilities
+│   ├── constants/                 # Constants
+│   │   ├── restaurant-categories.ts
+│   │   └── order-management.ts
+│   │
+│   └── lib/                       # Library configurations
+│       ├── utils.ts              # Shared utilities
+│       ├── jwt.ts / session.ts   # Auth session helpers
+│       ├── socket-auth.ts        # Socket.IO auth handshake
+│       ├── geocode.ts            # Google Maps geocoding
+│       └── notify.ts             # Notification dispatch rules
 │
-├── public/                   # Static assets
-├── DOCS/                     # Documentation
-└── like-delivery-backend-dev/ # Backend (separate project)
+├── public/                        # Static assets
+├── DOCS/                          # Documentation
+└── like-delivery-backend-dev/     # Backend (separate project)
 ```
 
 ## Architecture
@@ -216,7 +270,10 @@ Feature Component (Smart)
 - `auth-store.ts` - Authentication state (user, token)
 - `cart-store.ts` - Shopping cart (orderId for persistence)
 - `favorites-store.ts` - Favorite restaurants
+- `notifications-store.ts` - Notification bell feed (customer & management)
 - `preferences-store.ts` - User preferences (theme, language, notifications)
+- `financial-preferences-store.ts` - Financial dashboard UI preferences
+- `ui-store.ts` - Misc shared UI state
 
 **TanStack Query** (Server State)
 - Restaurants data with caching
@@ -295,25 +352,21 @@ const products = await apiService.products.getByCompany(companyId)
 1. User submits login form
 2. API returns JWT token + user data
 3. Data saved to both:
-   - Zustand store (`auth-store.ts`)
-   - localStorage (legacy compatibility)
+   - Zustand store (`auth-store.ts`, persisted)
+   - `like_session` cookie (read by `src/middleware.ts` on the server)
 4. Token included in all subsequent requests
-5. Protected routes check authentication via `useAuthStore`
+5. Routes are protected on two layers:
+   - **Server**: `src/middleware.ts` decodes the JWT cookie and redirects unauthenticated/unauthorized requests before the page renders (see the `PROTECTED` route table for role requirements per prefix)
+   - **Client**: the `<ProtectedRoute allowedRoles={[...]}>` component (`src/components/protected-route`) double-checks the hydrated Zustand auth state and redirects to `/?openAuth=true` or `/unauthorized`
 
-```typescript
-// Protected route example
-const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { isAuthenticated, user } = useAuthStore()
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/" />
-  }
-  
-  if (!allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" />
-  }
-  
-  return children
+```tsx
+// Client-side guard example (src/app/kitchen/page.tsx)
+export default function KitchenPage() {
+  return (
+    <ProtectedRoute allowedRoles={["cook", "manager", "owner", "admin"]}>
+      <Kitchen />
+    </ProtectedRoute>
+  )
 }
 ```
 
@@ -526,6 +579,7 @@ Set these in your deployment platform:
 ```env
 NEXT_PUBLIC_API_URL=https://bearsystem.tech
 NEXT_PUBLIC_APP_URL=https://your-domain.com
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
 ### Build Optimization
@@ -595,9 +649,9 @@ chore: Build process or auxiliary tool changes
 ## Additional Resources
 
 ### Documentation
-- [DOCS/](./DOCS/) - Detailed documentation files
-- [STORAGE_STANDARDIZATION.md](./DOCS/STORAGE_STANDARDIZATION.md) - Storage patterns
-- [TEAM_HANDOFF.md](./TEAM_HANDOFF.md) - Project handoff notes
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Full contribution guide (branching, commits, PR process, testing)
+- [CHANGELOG.md](./CHANGELOG.md) - Release history
+- [QUICKSTART.md](./QUICKSTART.md) - Fast-track setup guide
 
 ### Backend
 - Backend repository: `like-delivery-backend-dev/`
@@ -615,30 +669,30 @@ chore: Build process or auxiliary tool changes
 
 ### Short Term (MVP Complete)
 - Customer flow (browse, cart, checkout, orders)
-- Restaurant admin (menu, orders, profile)
-- Authentication and authorization
-- Real-time order tracking
-- Multiple addresses and payments
+- Restaurant management (menu, categories, orders, team, business profile)
+- Kitchen Display System (KDS) for cooks
+- Financial management (dashboard, cash register, payments, customers)
+- Delivery dashboard for drivers
+- Authentication and role-based authorization (client, owner, admin, manager, cook, financial, delivery)
+- Real-time order tracking and in-app notifications (Socket.IO)
+- Multiple addresses (with Google Maps geocoding) and payment methods
 - Image uploads to S3
 
 ### Medium Term (Enhancements)
 - [ ] Implement comprehensive testing suite
-- [ ] Add real-time notifications (WebSockets)
 - [ ] Implement actual ratings and reviews
 - [ ] Add coupon and promotion system
 - [ ] Delivery time calculation based on location
-- [ ] Advanced analytics dashboard
 - [ ] Multi-language support (i18n)
-- [ ] Platform admin panel
+- [ ] Platform admin panel (cross-restaurant oversight)
 
 ### Long Term (Scale)
-- [ ] Native mobile apps (React Native)
-- [ ] Delivery driver app and tracking
+- [ ] Native mobile apps (React Native), including a dedicated delivery driver app
 - [ ] Advanced search with filters (price, rating, cuisine)
 - [ ] Restaurant recommendations (ML)
 - [ ] Loyalty program
 - [ ] Integration with payment gateways
-- [ ] Push notifications
+- [ ] True Web Push notifications (Service Worker + VAPID, works with the browser closed) - today's notifications only work while a tab is open
 
 ## License
 

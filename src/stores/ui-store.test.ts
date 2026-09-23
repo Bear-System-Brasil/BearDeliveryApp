@@ -1,70 +1,79 @@
-import { act } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { useUIStore } from "./ui-store";
 
-const initialState = useUIStore.getState();
+afterEach(() => {
+  useUIStore.setState({
+    isAuthModalOpen: false,
+    isAddressModalOpen: false,
+    isMenuItemModalOpen: false,
+    isCategoryModalOpen: false,
+    isGlobalLoading: false,
+    loadingMessage: null,
+  });
+});
 
 describe("useUIStore", () => {
-  beforeEach(() => {
-    useUIStore.setState(initialState, true);
-  });
-
-  it("começa com todos os modais fechados e sem loading", () => {
+  it("todos os modais começam fechados", () => {
     const state = useUIStore.getState();
     expect(state.isAuthModalOpen).toBe(false);
     expect(state.isAddressModalOpen).toBe(false);
     expect(state.isMenuItemModalOpen).toBe(false);
     expect(state.isCategoryModalOpen).toBe(false);
-    expect(state.isGlobalLoading).toBe(false);
-    expect(state.loadingMessage).toBeNull();
   });
 
-  it.each([
-    ["Auth", "openAuthModal", "closeAuthModal", "isAuthModalOpen"],
-    ["Address", "openAddressModal", "closeAddressModal", "isAddressModalOpen"],
-    ["MenuItem", "openMenuItemModal", "closeMenuItemModal", "isMenuItemModalOpen"],
-    ["Category", "openCategoryModal", "closeCategoryModal", "isCategoryModalOpen"],
-  ] as const)("abre e fecha o modal de %s de forma independente dos outros", (_label, openKey, closeKey, flagKey) => {
-    act(() => useUIStore.getState()[openKey]());
-    expect(useUIStore.getState()[flagKey]).toBe(true);
+  it("abre e fecha o modal de autenticação de forma independente dos outros", () => {
+    useUIStore.getState().openAuthModal();
+    expect(useUIStore.getState().isAuthModalOpen).toBe(true);
+    expect(useUIStore.getState().isAddressModalOpen).toBe(false);
 
-    // os outros modais continuam intocados
-    const others = (["isAuthModalOpen", "isAddressModalOpen", "isMenuItemModalOpen", "isCategoryModalOpen"] as const).filter(
-      (k) => k !== flagKey,
-    );
-    for (const other of others) {
-      expect(useUIStore.getState()[other]).toBe(false);
-    }
-
-    act(() => useUIStore.getState()[closeKey]());
-    expect(useUIStore.getState()[flagKey]).toBe(false);
+    useUIStore.getState().closeAuthModal();
+    expect(useUIStore.getState().isAuthModalOpen).toBe(false);
   });
 
-  it("setGlobalLoading liga o loading com mensagem opcional", () => {
-    act(() => useUIStore.getState().setGlobalLoading(true, "Carregando pedido..."));
+  it("abre e fecha o modal de endereço", () => {
+    useUIStore.getState().openAddressModal();
+    expect(useUIStore.getState().isAddressModalOpen).toBe(true);
 
-    const state = useUIStore.getState();
-    expect(state.isGlobalLoading).toBe(true);
-    expect(state.loadingMessage).toBe("Carregando pedido...");
+    useUIStore.getState().closeAddressModal();
+    expect(useUIStore.getState().isAddressModalOpen).toBe(false);
   });
 
-  it("setGlobalLoading sem mensagem zera loadingMessage (null, não undefined)", () => {
-    act(() => {
-      useUIStore.getState().setGlobalLoading(true, "Mensagem antiga");
-      useUIStore.getState().setGlobalLoading(true);
+  it("abre e fecha o modal de item de menu", () => {
+    useUIStore.getState().openMenuItemModal();
+    expect(useUIStore.getState().isMenuItemModalOpen).toBe(true);
+
+    useUIStore.getState().closeMenuItemModal();
+    expect(useUIStore.getState().isMenuItemModalOpen).toBe(false);
+  });
+
+  it("abre e fecha o modal de categoria", () => {
+    useUIStore.getState().openCategoryModal();
+    expect(useUIStore.getState().isCategoryModalOpen).toBe(true);
+
+    useUIStore.getState().closeCategoryModal();
+    expect(useUIStore.getState().isCategoryModalOpen).toBe(false);
+  });
+
+  it("setGlobalLoading liga o loading com uma mensagem opcional", () => {
+    useUIStore.getState().setGlobalLoading(true, "Carregando pedido...");
+    expect(useUIStore.getState()).toMatchObject({
+      isGlobalLoading: true,
+      loadingMessage: "Carregando pedido...",
     });
+  });
 
+  it("setGlobalLoading sem mensagem usa null", () => {
+    useUIStore.getState().setGlobalLoading(true);
     expect(useUIStore.getState().loadingMessage).toBeNull();
   });
 
   it("clearLoading desliga o loading e limpa a mensagem", () => {
-    act(() => {
-      useUIStore.getState().setGlobalLoading(true, "Enviando...");
-      useUIStore.getState().clearLoading();
-    });
+    useUIStore.getState().setGlobalLoading(true, "Carregando...");
+    useUIStore.getState().clearLoading();
 
-    const state = useUIStore.getState();
-    expect(state.isGlobalLoading).toBe(false);
-    expect(state.loadingMessage).toBeNull();
+    expect(useUIStore.getState()).toMatchObject({
+      isGlobalLoading: false,
+      loadingMessage: null,
+    });
   });
 });

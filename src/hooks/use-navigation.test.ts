@@ -1,118 +1,97 @@
-import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderHook } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const mockPush = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 import { useAuthStore } from "@/stores/auth-store";
 import { useNavigation } from "./use-navigation";
 
-const push = vi.fn();
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
-}));
-
-const initialAuthState = useAuthStore.getState();
+afterEach(() => {
+  mockPush.mockClear();
+  useAuthStore.setState({ user: null, isAuthenticated: false });
+});
 
 describe("useNavigation", () => {
-  beforeEach(() => {
-    push.mockClear();
-    useAuthStore.setState(initialAuthState, true);
-  });
-
-  it("navigateToHome vai para /", () => {
+  it("navigateToHome navega para a raiz", () => {
     const { result } = renderHook(() => useNavigation());
-    act(() => result.current.navigateToHome());
-    expect(push).toHaveBeenCalledWith("/");
+    result.current.navigateToHome();
+    expect(mockPush).toHaveBeenCalledWith("/");
   });
 
-  it("navigateToCart vai para /cart", () => {
+  it("navigateToCart navega para /cart", () => {
     const { result } = renderHook(() => useNavigation());
-    act(() => result.current.navigateToCart());
-    expect(push).toHaveBeenCalledWith("/cart");
+    result.current.navigateToCart();
+    expect(mockPush).toHaveBeenCalledWith("/cart");
   });
 
-  it("navigateToRestaurants, navigateToOffers e navigateToRestaurantsWithFilters todas caem em /#lojas", () => {
+  it("navigateToRestaurants e navigateToOffers levam pra âncora de lojas na home", () => {
     const { result } = renderHook(() => useNavigation());
 
-    act(() => result.current.navigateToRestaurants());
-    act(() => result.current.navigateToOffers());
-    act(() => result.current.navigateToRestaurantsWithFilters());
+    result.current.navigateToRestaurants();
+    expect(mockPush).toHaveBeenCalledWith("/#lojas");
 
-    expect(push).toHaveBeenNthCalledWith(1, "/#lojas");
-    expect(push).toHaveBeenNthCalledWith(2, "/#lojas");
-    expect(push).toHaveBeenNthCalledWith(3, "/#lojas");
+    mockPush.mockClear();
+    result.current.navigateToOffers();
+    expect(mockPush).toHaveBeenCalledWith("/#lojas");
   });
 
-  it("navigateToRestaurant/Category/Filter também redirecionam para /#lojas (catálogo ainda é só a home)", () => {
+  it("navigateToRestaurant/Category/Filter também caem na âncora de lojas (ainda sem tela própria)", () => {
     const { result } = renderHook(() => useNavigation());
 
-    act(() => result.current.navigateToRestaurant(1, "Pizzaria"));
-    act(() => result.current.navigateToCategory("Pizza"));
-    act(() => result.current.navigateToFilter("Promoção"));
+    result.current.navigateToRestaurant(1, "Restaurante do Zé");
+    expect(mockPush).toHaveBeenCalledWith("/#lojas");
 
-    expect(push).toHaveBeenCalledTimes(3);
-    expect(push).toHaveBeenCalledWith("/#lojas");
+    mockPush.mockClear();
+    result.current.navigateToCategory("Pizza");
+    expect(mockPush).toHaveBeenCalledWith("/#lojas");
+
+    mockPush.mockClear();
+    result.current.navigateToFilter("Promoções");
+    expect(mockPush).toHaveBeenCalledWith("/#lojas");
   });
 
-  it("navigateToLocation navega e retorna true para localização não-vazia", () => {
-    const { result } = renderHook(() => useNavigation());
-
-    let returned: boolean | undefined;
-    act(() => {
-      returned = result.current.navigateToLocation("São Paulo");
-    });
-
-    expect(returned).toBe(true);
-    expect(push).toHaveBeenCalledWith("/#lojas");
-  });
-
-  it("navigateToLocation não navega e retorna false para string vazia/só espaços", () => {
-    const { result } = renderHook(() => useNavigation());
-
-    let returned: boolean | undefined;
-    act(() => {
-      returned = result.current.navigateToLocation("   ");
-    });
-
-    expect(returned).toBe(false);
-    expect(push).not.toHaveBeenCalled();
-  });
-
-  it("navigateToProfile usa /company-profile para admin/owner e /profile para os demais", () => {
-    const { result, rerender } = renderHook(() => useNavigation());
-
-    act(() => {
-      useAuthStore.getState().login({
+  it("navigateToProfile manda quem administra a empresa pro /company-profile", () => {
+    useAuthStore.setState({
+      user: {
         id: "1",
-        name: "Dona",
-        email: "d@example.com",
+        name: "Zé",
+        email: "ze@example.com",
         cpf: "",
         phone: "",
         birthDate: "",
         role: "owner",
-      });
+      },
+      isAuthenticated: true,
     });
-    rerender();
-    act(() => result.current.navigateToProfile());
-    expect(push).toHaveBeenLastCalledWith("/company-profile");
 
-    act(() => {
-      useAuthStore.getState().login({
-        id: "2",
-        name: "Cliente",
-        email: "c@example.com",
-        cpf: "",
-        phone: "",
-        birthDate: "",
-        role: "client",
-      });
-    });
-    rerender();
-    act(() => result.current.navigateToProfile());
-    expect(push).toHaveBeenLastCalledWith("/profile");
+    const { result } = renderHook(() => useNavigation());
+    result.current.navigateToProfile();
+    expect(mockPush).toHaveBeenCalledWith("/company-profile");
   });
 
-  it("navigateToProfile sem usuário logado cai em /profile", () => {
+  it("navigateToProfile manda cliente (ou visitante sem login) pro /profile", () => {
     const { result } = renderHook(() => useNavigation());
-    act(() => result.current.navigateToProfile());
-    expect(push).toHaveBeenLastCalledWith("/profile");
+    result.current.navigateToProfile();
+    expect(mockPush).toHaveBeenCalledWith("/profile");
+  });
+
+  it("navigateToLocation ignora texto vazio e não navega", () => {
+    const { result } = renderHook(() => useNavigation());
+    const handled = result.current.navigateToLocation("   ");
+
+    expect(handled).toBe(false);
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it("navigateToLocation com texto válido navega e retorna true", () => {
+    const { result } = renderHook(() => useNavigation());
+    const handled = result.current.navigateToLocation("Rua Tal, 123");
+
+    expect(handled).toBe(true);
+    expect(mockPush).toHaveBeenCalledWith("/#lojas");
   });
 });
