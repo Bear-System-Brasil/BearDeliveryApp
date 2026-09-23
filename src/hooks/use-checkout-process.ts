@@ -469,6 +469,43 @@ export const useCheckoutProcess = () => {
             throw new Error("Erro ao criar endereço de entrega");
           }
         }
+
+        // O backend monta a entrega a partir do endereço PADRÃO do cliente
+        // (order.md, POST /order/:id), não do que foi escolhido aqui - o
+        // fechamento nem envia `deliveryAddressId`. E nenhum endereço criado
+        // pelo checkout nasce padrão: os dois pontos de criação acima usam
+        // `isDefault: false`. Resultado: quem só cadastrou endereço por aqui
+        // não tem padrão nenhum, o backend não acha, e o finalizar falha com
+        // "Pedido não encontrado" - mensagem que fala de pedido para um
+        // problema de endereço.
+        //
+        // Promove o endereço deste pedido a padrão APENAS quando não existe
+        // nenhum. Quem já escolheu um padrão no perfil não tem a preferência
+        // sobrescrita a cada compra. E, por agir só no caso "nenhum", não
+        // precisa desmarcar outro - o backend não faz isso sozinho, é o
+        // perfil que desmarca na mão (ver use-profile-management).
+        //
+        // Remover quando POST /order/:id aceitar `deliveryAddressId`: aí o
+        // endereço do pedido passa a ser o escolhido, e não o padrão.
+        const hasDefaultAddress = userAddresses.some(
+          (address: Address) => address.isDefault,
+        );
+
+        if (!hasDefaultAddress && deliveryAddressId) {
+          const promoteResponse = await apiService.address.updateUserAddress(
+            deliveryAddressId,
+            { isDefault: true },
+          );
+
+          // Sem padrão o finalizar falharia logo abaixo, com a mensagem
+          // enganosa. Falhar aqui, dizendo o que de fato aconteceu, poupa
+          // o cliente de um erro que não explica nada.
+          if (!promoteResponse.success) {
+            throw new Error(
+              "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
+            );
+          }
+        }
       }
 
       // --------------------------------------------------
