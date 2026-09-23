@@ -1125,7 +1125,7 @@ export default function CashRegisterPage() {
               </div>
               <Button
                 onClick={() => setDialog("open-register")}
-                className="h-[34px] rounded-[9px] bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,.25)] hover:bg-brand-600"
+                className="h-[34px] rounded-[9px] bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/25 hover:bg-brand-600"
               >
                 🔓 Abrir Caixa
               </Button>
