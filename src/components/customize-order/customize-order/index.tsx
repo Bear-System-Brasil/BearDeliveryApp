@@ -518,7 +518,7 @@ export function CustomizeOrder({
             disabled={
               isAddingToCart || isCustomizationLoading || !!pendingRequiredGroup
             }
-            className="h-10 flex-1 rounded-[10px] bg-brand-500 text-[13.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,.3)] hover:bg-brand-600 disabled:opacity-60"
+            className="h-10 flex-1 rounded-[10px] bg-brand-500 text-[13.5px] font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/30 hover:bg-brand-600 disabled:opacity-60"
           >
             {isCustomizationLoading ? (
               <span className="flex items-center justify-center gap-2">

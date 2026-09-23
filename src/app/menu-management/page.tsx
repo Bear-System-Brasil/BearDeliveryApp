@@ -415,7 +415,7 @@ function MenuManagementContent() {
               resetImageState();
               handleOpenCreateModal();
             }}
-            className="h-[34px] flex-1 cursor-pointer rounded-[9px] bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] transition-colors hover:bg-brand-600 sm:flex-none"
+            className="h-[34px] flex-1 cursor-pointer rounded-[9px] bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/25 transition-colors hover:bg-brand-600 sm:flex-none"
           >
             <Plus className="h-4 w-4" />
             Adicionar Prato
@@ -474,9 +474,9 @@ function MenuManagementContent() {
                 onPointerUp={handleCategoryDragPointerEnd}
                 onPointerCancel={handleCategoryDragPointerEnd}
                 onKeyDown={handleCategoryDragKeyDown}
-                className={`absolute left-0 top-1/2 z-10 flex h-[30px] min-w-[112px] touch-none select-none items-center justify-center gap-1.5 rounded-full px-3 text-[11px] font-extrabold text-white shadow-[0_8px_18px_rgba(255,107,0,0.26)] outline-none transition-[background-color,box-shadow] focus-visible:ring-2 focus-visible:ring-brand-500/35 sm:min-w-[126px] ${
+                className={`absolute left-0 top-1/2 z-10 flex h-[30px] min-w-[112px] touch-none select-none items-center justify-center gap-1.5 rounded-full px-3 text-[11px] font-extrabold text-white shadow-[0_8px_18px_var(--tw-shadow-color)] shadow-brand-500/26 outline-none transition-[background-color,box-shadow] focus-visible:ring-2 focus-visible:ring-brand-500/35 sm:min-w-[126px] ${
                   isCategoryDragActive
-                    ? "cursor-grabbing bg-brand-600 shadow-[0_10px_22px_rgba(255,107,0,0.34)]"
+                    ? "cursor-grabbing bg-brand-600 shadow-[0_10px_22px_var(--tw-shadow-color)] shadow-brand-500/34"
                     : "cursor-grab bg-brand-500 hover:bg-brand-600"
                 }`}
                 style={{
@@ -868,7 +868,7 @@ function MenuManagementContent() {
               <Button
                 onClick={() => handleSaveProduct(selectedImages)}
                 disabled={isSaving}
-                className="h-9 w-full cursor-pointer rounded-[9px] bg-brand-500 text-sm font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] transition-colors hover:bg-brand-600 sm:w-auto"
+                className="h-9 w-full cursor-pointer rounded-[9px] bg-brand-500 text-sm font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/25 transition-colors hover:bg-brand-600 sm:w-auto"
               >
                 {isSaving ? (
                   <>

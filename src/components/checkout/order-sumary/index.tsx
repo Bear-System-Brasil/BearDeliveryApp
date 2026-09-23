@@ -132,7 +132,7 @@ export function OrderSummary({
           onClick={step === 1 ? onContinue : handleSubmitOrder}
           disabled={step === 2 && isProcessing}
           className={cn(
-            "flex h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-500 px-5 text-sm font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,.28)] transition-colors sm:flex-none",
+            "flex h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-500 px-5 text-sm font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/28 transition-colors sm:flex-none",
             step === 2 && isProcessing
               ? "cursor-not-allowed opacity-60"
               : "hover:bg-brand-600",

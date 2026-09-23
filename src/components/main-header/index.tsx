@@ -298,9 +298,9 @@ export function MainHeader({
               searchOpen && "max-sm:hidden",
             )}
           >
-            <div className="flex gap-3 items-center">
-              <Link href="/" className="shrink-0">
-                <BearDeliveryLogo />
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <Link href="/" className="shrink-0" aria-label="BearDelivery - início">
+                <BearDeliveryLogo iconOnlyBelow="lg" />
               </Link>
 
               <div className="min-w-0 leading-tight">
@@ -318,7 +318,7 @@ export function MainHeader({
                   <SheetTrigger asChild>
                     <button
                       type="button"
-                      className="flex max-w-[90px] cursor-pointer items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted xs:max-w-[120px] sm:max-w-[140px] md:max-w-[180px] lg:max-w-[240px]"
+                      className="flex max-w-[150px] cursor-pointer items-center gap-1.5 rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted xs:max-w-[190px] sm:max-w-[140px] md:max-w-[180px] lg:max-w-[240px]"
                       title="Alterar endereço"
                     >
                       <MapPin className="h-3.5 w-3.5 shrink-0 fill-brand-500 text-brand-500" />
@@ -708,7 +708,7 @@ export function MainHeader({
                           <button
                             type="button"
                             onClick={handleLogout}
-                            className="flex h-[38px] w-full items-center gap-[11px] rounded-[14px] bg-brand-500 px-3 text-[13px] font-semibold text-white shadow-[0_6px_14px_rgba(255,107,0,0.35)] transition-colors hover:bg-brand-400 cursor-pointer"
+                            className="flex h-[38px] w-full items-center gap-[11px] rounded-[14px] bg-brand-500 px-3 text-[13px] font-semibold text-white shadow-[0_6px_14px_var(--tw-shadow-color)] shadow-brand-500/35 transition-colors hover:bg-brand-400 cursor-pointer"
                           >
                             <LogOut className="h-4 w-4 shrink-0" />
                             <span className="truncate">Sair da conta</span>
