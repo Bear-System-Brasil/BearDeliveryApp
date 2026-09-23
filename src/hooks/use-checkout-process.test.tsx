@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -44,6 +46,16 @@ const ADDRESSES_WITH_DEFAULT = {
 // os dois pontos de criação usam isDefault: false.
 const ADDRESSES_WITHOUT_DEFAULT = {
   data: [{ ...ADDRESS_BASE, isDefault: false }],
+  isLoading: false,
+};
+
+// Dois endereços: o padrão é a casa, o pedido vai para o trabalho. É o caso
+// em que a entrega saía no endereço errado sem ninguém perceber.
+const ADDRESSES_TWO = {
+  data: [
+    { ...ADDRESS_BASE, id: "addr-casa", isDefault: true },
+    { ...ADDRESS_BASE, id: "addr-trabalho", isDefault: false },
+  ],
   isLoading: false,
 };
 
@@ -119,13 +131,34 @@ vi.mock("@/services/api", () => ({
 
 const { useCheckoutProcess } = await import("./use-checkout-process");
 
+// Cliente único e estável: um novo a cada render reiniciaria as queries em
+// laço. Só serve para o hook poder invalidar o cache de endereços.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+const Wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+);
+
+const renderCheckout = () =>
+  renderHook(() => useCheckoutProcess(), { wrapper: Wrapper });
+
 /** Corpo com que o finishOrder foi chamado (3º argumento). */
 const finishBody = () => finishOrder.mock.calls[0]?.[2];
+
+/** Sequência real de marcações/desmarcações de padrão, na ordem. */
+const defaultCalls = () =>
+  updateUserAddress.mock.calls.map(
+    ([id, body]) => `${id}:${body.isDefault ? "on" : "off"}`,
+  );
+
+const SWAP_KEY = "pending-default-address";
 
 type Hook = ReturnType<typeof useCheckoutProcess>;
 
 async function submitWith(setup: (h: Hook) => void) {
-  const { result } = renderHook(() => useCheckoutProcess());
+  const { result } = renderCheckout();
 
   // O endereço padrão é auto-selecionado por efeito - esperar evita o
   // caminho de criação de endereço, que não é o que estes testes cobrem.
@@ -253,7 +286,7 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
 
 describe("useCheckoutProcess - isFormValid e o troco", () => {
   it("libera o valor exato do total e barra abaixo dele", async () => {
-    const { result } = renderHook(() => useCheckoutProcess());
+    const { result } = renderCheckout();
 
     act(() => {
       result.current.setPaymentMethod("cash");
@@ -268,10 +301,12 @@ describe("useCheckoutProcess - isFormValid e o troco", () => {
 });
 
 /**
- * O backend monta a entrega a partir do endereço PADRÃO do cliente, e nenhum
- * endereço criado pelo checkout nasce padrão. Sem um padrão, o finalizar
- * falha com "Pedido não encontrado" - mensagem que fala de pedido para um
- * problema de endereço, e que custou uma investigação inteira.
+ * O corpo do finalizar não aceita `deliveryAddressId`: o backend monta a
+ * entrega a partir do endereço PADRÃO do cliente. Então o checkout promove o
+ * endereço do pedido a padrão só durante a finalização e devolve o anterior
+ * logo depois. Sem a promoção, quem só cadastrou endereço por aqui não tem
+ * padrão e o finalizar quebra; sem a volta, o cliente perde a preferência
+ * dele a cada compra.
  */
 describe("useCheckoutProcess - endereço padrão da entrega", () => {
   beforeEach(() => {
@@ -281,8 +316,11 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
     paymentsCreate.mockResolvedValue({ success: true, data: {} });
     updateUserAddress.mockReset();
     updateUserAddress.mockResolvedValue({ success: true, data: {} });
+    deleteUserAddress.mockReset();
+    deleteUserAddress.mockResolvedValue({ success: true, data: {} });
     toastError.mockReset();
     addressesQuery = ADDRESSES_WITH_DEFAULT;
+    localStorage.clear();
   });
 
   it("promove o endereço do pedido a padrão quando o cliente não tem nenhum", async () => {
@@ -293,13 +331,11 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
       h.setPaymentMethod("pix");
     });
 
-    expect(updateUserAddress).toHaveBeenCalledWith("addr-1", {
-      isDefault: true,
-    });
+    expect(defaultCalls()).toEqual(["addr-1:on"]);
     expect(finishOrder).toHaveBeenCalledTimes(1);
   });
 
-  it("não toca no padrão de quem já escolheu um no perfil", async () => {
+  it("não mexe em nada quando o endereço do pedido já é o padrão", async () => {
     addressesQuery = ADDRESSES_WITH_DEFAULT;
 
     await submitWith((h) => {
@@ -309,6 +345,63 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
 
     expect(updateUserAddress).not.toHaveBeenCalled();
     expect(finishOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it("troca o padrão pelo endereço escolhido e devolve o anterior depois", async () => {
+    addressesQuery = ADDRESSES_TWO;
+
+    const { result } = renderCheckout();
+    await waitFor(() =>
+      expect(result.current.selectedAddressId).toBe("addr-casa"),
+    );
+
+    act(() => {
+      result.current.setOrderType("delivery");
+      result.current.setPaymentMethod("pix");
+      result.current.handleAddressSelect("addr-trabalho");
+    });
+
+    await act(async () => {
+      await result.current.handleSubmitOrder();
+    });
+
+    // A entrega sai no trabalho, e a casa volta a ser o padrão do cliente.
+    expect(defaultCalls()).toEqual([
+      "addr-casa:off",
+      "addr-trabalho:on",
+      "addr-trabalho:off",
+      "addr-casa:on",
+    ]);
+    expect(finishOrder).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(SWAP_KEY)).toBeNull();
+  });
+
+  it("devolve o padrão anterior quando o finalizar falha", async () => {
+    addressesQuery = ADDRESSES_TWO;
+    finishOrder.mockResolvedValue({ success: false, message: "boom" });
+
+    const { result } = renderCheckout();
+    await waitFor(() =>
+      expect(result.current.selectedAddressId).toBe("addr-casa"),
+    );
+
+    act(() => {
+      result.current.setOrderType("delivery");
+      result.current.setPaymentMethod("pix");
+      result.current.handleAddressSelect("addr-trabalho");
+    });
+
+    await act(async () => {
+      await result.current.handleSubmitOrder();
+    });
+
+    // Um pedido que nem foi criado não pode custar ao cliente a preferência
+    // de endereço dele.
+    expect(defaultCalls().slice(-2)).toEqual([
+      "addr-trabalho:off",
+      "addr-casa:on",
+    ]);
+    expect(localStorage.getItem(SWAP_KEY)).toBeNull();
   });
 
   it("não promove nada em retirada no local", async () => {
@@ -339,5 +432,42 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
     expect(toastError).toHaveBeenCalledWith(
       "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
     );
+  });
+
+  it("desmarca o endereço temporário antes de descartá-lo", async () => {
+    addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+
+    await submitWith((h) => {
+      h.setOrderType("delivery");
+      h.setPaymentMethod("pix");
+      // "Salvar este endereço para pedidos futuros" desmarcado.
+      h.setSaveAddress(false);
+      h.setAddressMode("new");
+    });
+
+    // Sem o "off", o cliente ficaria com um endereço padrão apagado - e o
+    // próximo pedido de entrega sairia desse endereço morto.
+    expect(defaultCalls()).toEqual(["addr-1:on", "addr-1:off"]);
+    expect(deleteUserAddress).toHaveBeenCalledWith("addr-1");
+  });
+
+  it("desfaz na montagem uma troca que ficou pela metade", async () => {
+    // Aba fechada entre a promoção e a volta: o padrão do cliente ficou no
+    // endereço de um pedido antigo.
+    localStorage.setItem(
+      SWAP_KEY,
+      JSON.stringify({
+        previousDefaultId: "addr-casa",
+        promotedId: "addr-trabalho",
+        userId: "user-1",
+      }),
+    );
+
+    renderCheckout();
+
+    await waitFor(() =>
+      expect(defaultCalls()).toEqual(["addr-trabalho:off", "addr-casa:on"]),
+    );
+    expect(localStorage.getItem(SWAP_KEY)).toBeNull();
   });
 });

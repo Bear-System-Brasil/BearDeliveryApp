@@ -76,6 +76,8 @@ interface Address extends AddressFormData {
 
 type Props = {
   handleDeleteAddress: (addressId: string) => Promise<void>;
+  handleSetDefaultAddress: (addressId: string) => Promise<void>;
+  settingDefaultAddressId: string | null;
   handleCloseAddressModal: () => void;
   handleAddAddress: HandleAddAddress;
   handleEditAddress: (address: Address) => void;
@@ -95,6 +97,8 @@ export function Addresses({
   handleCloseAddressModal,
   handleAddAddress,
   handleEditAddress,
+  handleSetDefaultAddress,
+  settingDefaultAddressId,
   applyCoords,
   addingAddressState,
   isLoadingAddresses,
@@ -162,6 +166,22 @@ export function Addresses({
                 </div>
 
                 <div className="flex items-center gap-1">
+                  {/* Sem isto, escolher o padrão exigia abrir "Editar" e
+                      salvar o endereço inteiro de novo, passando por
+                      validações que não têm relação nenhuma com o padrão. */}
+                  {!address.isDefault && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSetDefaultAddress(address.id)}
+                      disabled={settingDefaultAddressId === address.id}
+                      className="text-muted-foreground hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40"
+                      aria-label="Tornar endereço padrão"
+                      title="Tornar endereço padrão"
+                    >
+                      <Star className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"

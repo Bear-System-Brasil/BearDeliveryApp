@@ -8,6 +8,10 @@ import {
 } from "@/lib/address-coordinates";
 import { parseCoords } from "@/lib/geocode";
 import { apiService } from "@/services/api";
+import {
+  restorePendingDefaultAddress,
+  setDefaultAddress,
+} from "@/lib/default-address";
 import { useAuthStore } from "@/stores";
 import { Coords } from "@/types/restaurant";
 import { onlyNumbers } from "@/utils";
@@ -210,6 +214,30 @@ export const useProfileManagement = () => {
   }, [watchedZipCode]);
 
   /**
+   * O checkout promove o endereço do pedido a padrão durante a finalização e
+   * devolve o anterior logo depois (ver src/lib/default-address.ts). Se
+   * aquele pedido foi interrompido no meio, a troca ficou de pé - e é nesta
+   * tela que o cliente veria o padrão errado. Desfaz aqui também.
+   */
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let active = true;
+
+    restorePendingDefaultAddress(user.id).then((restored) => {
+      if (restored && active) {
+        queryClient.invalidateQueries({
+          queryKey: ["addresses", "user", user.id],
+        });
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id, queryClient]);
+
+  /**
    * O endereço mudou desde que a edição abriu, então a coordenada que estava
    * salva aponta para outro lugar - descarta para o save geocodificar de novo.
    */
@@ -402,40 +430,6 @@ export const useProfileManagement = () => {
         isDefault: data.isDefault ?? false,
       };
 
-      // Se for marcado como padrão, desmarca os outros
-      let failedToUnsetDefault = false;
-      if (payload.isDefault) {
-        const currentAddresses = await apiService.address.getUserAddresses();
-        if (currentAddresses.success && currentAddresses.data) {
-          const backendAddresses = Array.isArray(currentAddresses.data)
-            ? currentAddresses.data
-            : [];
-
-          const backendDefaults = backendAddresses.filter(
-            (addr) => addr.isDefault,
-          );
-
-          for (const addr of backendDefaults) {
-            if (editingAddressId && addr.id === editingAddressId) continue;
-
-            try {
-              const unsetResponse = await apiService.address.updateUserAddress(
-                addr.id,
-                {
-                  isDefault: false,
-                  latitude: addr.latitude ?? undefined,
-                  longitude: addr.longitude ?? undefined,
-                },
-              );
-              if (!unsetResponse.success) failedToUnsetDefault = true;
-            } catch (error) {
-              console.error("Erro ao desmarcar endereço padrão:", error);
-              failedToUnsetDefault = true;
-            }
-          }
-        }
-      }
-
       let response;
 
       if (editingAddressId) {
@@ -447,6 +441,33 @@ export const useProfileManagement = () => {
       } else {
         // CREATE
         response = await apiService.address.createUserAddress(payload);
+      }
+
+      // O backend não desmarca o padrão anterior sozinho (ver adress.md).
+      // Isto rodava ANTES do salvamento: quando o PATCH do endereço falhava
+      // - e ele falha por regras que nada têm a ver com o padrão, como o
+      // mínimo de 5 caracteres no complemento - o cliente ficava sem padrão
+      // nenhum, e sem padrão o finalizar de uma entrega quebra. Agora só
+      // desmarca depois que o endereço escolhido virou padrão de fato: um
+      // salvamento que falha não mexe em nada.
+      let failedToUnsetDefault = false;
+
+      if (payload.isDefault && response.success) {
+        const savedId = editingAddressId ?? response.data?.id;
+
+        if (savedId) {
+          const currentAddresses = await apiService.address.getUserAddresses();
+          const backendAddresses =
+            currentAddresses.success && Array.isArray(currentAddresses.data)
+              ? currentAddresses.data
+              : [];
+
+          const { demotedAll } = await setDefaultAddress(
+            backendAddresses,
+            savedId,
+          );
+          failedToUnsetDefault = !demotedAll;
+        }
       }
 
       if (response.success) {
@@ -505,6 +526,51 @@ export const useProfileManagement = () => {
   };
 
   /**
+   * Marcar um endereço como padrão direto da lista.
+   *
+   * Até aqui, o único jeito de escolher o padrão era abrir "Editar", marcar
+   * a caixa e salvar o endereço inteiro de novo - e o PATCH do endereço tem
+   * regras próprias (complemento com mínimo de 5 caracteres, latitude e
+   * longitude como número) que fazem o salvamento falhar por motivos que não
+   * têm nada a ver com o padrão. Da lista sai um PATCH só, com um campo só.
+   */
+  const [settingDefaultAddressId, setSettingDefaultAddressId] = useState<
+    string | null
+  >(null);
+
+  const handleSetDefaultAddress = async (addressId: string) => {
+    setSettingDefaultAddressId(addressId);
+
+    try {
+      const { promoted, demotedAll } = await setDefaultAddress(
+        rawAddresses,
+        addressId,
+      );
+
+      if (!promoted) {
+        toast.error("Não foi possível definir este endereço como padrão.");
+        return;
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: ["addresses", "user", user?.id],
+      });
+
+      if (demotedAll) {
+        toast.success("Endereço padrão atualizado!");
+      } else {
+        // Dois padrões ao mesmo tempo fazem o backend escolher sozinho o
+        // endereço da entrega - o cliente precisa saber que ficou assim.
+        toast.warning(
+          "Endereço marcado como padrão, mas não conseguimos desmarcar o anterior. Confira sua lista de endereços.",
+        );
+      }
+    } finally {
+      setSettingDefaultAddressId(null);
+    }
+  };
+
+  /**
    * Deletar endereço
    */
   const handleDeleteAddress = async (addressId: string) => {
@@ -548,6 +614,8 @@ export const useProfileManagement = () => {
     addingAddressState,
     isSavingAddress,
     handleAddAddress,
+    handleSetDefaultAddress,
+    settingDefaultAddressId,
     handleCloseAddressModal,
     handleDeleteAddress,
     handleEditAddress,

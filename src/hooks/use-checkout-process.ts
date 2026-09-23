@@ -15,8 +15,15 @@ import {
   type CoordinateSource,
   type SourcedCoords,
 } from "@/lib/address-coordinates";
+import {
+  restorePendingDefaultAddress,
+  takeOverDefaultAddress,
+  restoreDefaultAddress,
+  type PendingDefaultSwap,
+} from "@/lib/default-address";
 import { parseCoords } from "@/lib/geocode";
 import { Coords } from "@/types/restaurant";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -121,6 +128,7 @@ async function resolveFinalOrderId(
  */
 export const useCheckoutProcess = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { play, unlock } = useSound("customer");
   const { user } = useAuthStore();
   const cartStore = useCartStore();
@@ -428,6 +436,11 @@ export const useCheckoutProcess = () => {
 
     setIsProcessing(true);
 
+    // Preenchido quando o endereço do pedido não é o padrão do cliente. O
+    // `finally` devolve o padrão anterior em qualquer saída - inclusive
+    // quando o pedido falha no meio.
+    let defaultAddressSwap: PendingDefaultSwap | null = null;
+
     try {
       // --------------------------------------------------
       // 1️⃣ GARANTIR QUE EXISTE UM ADDRESS (apenas para entrega)
@@ -472,39 +485,30 @@ export const useCheckoutProcess = () => {
 
         // O backend monta a entrega a partir do endereço PADRÃO do cliente
         // (order.md, POST /order/:id), não do que foi escolhido aqui - o
-        // fechamento nem envia `deliveryAddressId`. E nenhum endereço criado
-        // pelo checkout nasce padrão: os dois pontos de criação acima usam
-        // `isDefault: false`. Resultado: quem só cadastrou endereço por aqui
-        // não tem padrão nenhum, o backend não acha, e o finalizar falha com
-        // "Pedido não encontrado" - mensagem que fala de pedido para um
-        // problema de endereço.
+        // corpo do finalizar nem aceita `deliveryAddressId`. Duas
+        // consequências, as duas ruins:
         //
-        // Promove o endereço deste pedido a padrão APENAS quando não existe
-        // nenhum. Quem já escolheu um padrão no perfil não tem a preferência
-        // sobrescrita a cada compra. E, por agir só no caso "nenhum", não
-        // precisa desmarcar outro - o backend não faz isso sozinho, é o
-        // perfil que desmarca na mão (ver use-profile-management).
+        // 1. Quem só cadastrou endereço pelo checkout não tem padrão nenhum
+        //    (os dois pontos de criação acima usam `isDefault: false`), o
+        //    backend não acha, e o finalizar falha com "Pedido não
+        //    encontrado" - mensagem que fala de pedido para um problema de
+        //    endereço.
+        // 2. Quem tem mais de um endereço recebe no padrão, e não no que
+        //    escolheu na tela. Em silêncio.
+        //
+        // Então o endereço do pedido vira padrão durante a finalização e o
+        // padrão anterior volta logo depois (ver src/lib/default-address.ts).
+        // A troca fica gravada em localStorage enquanto dura, para ser
+        // desfeita mesmo se a aba fechar no meio.
         //
         // Remover quando POST /order/:id aceitar `deliveryAddressId`: aí o
         // endereço do pedido passa a ser o escolhido, e não o padrão.
-        const hasDefaultAddress = userAddresses.some(
-          (address: Address) => address.isDefault,
-        );
-
-        if (!hasDefaultAddress && deliveryAddressId) {
-          const promoteResponse = await apiService.address.updateUserAddress(
-            deliveryAddressId,
-            { isDefault: true },
-          );
-
-          // Sem padrão o finalizar falharia logo abaixo, com a mensagem
-          // enganosa. Falhar aqui, dizendo o que de fato aconteceu, poupa
-          // o cliente de um erro que não explica nada.
-          if (!promoteResponse.success) {
-            throw new Error(
-              "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
-            );
-          }
+        if (deliveryAddressId) {
+          defaultAddressSwap = await takeOverDefaultAddress({
+            addresses: userAddresses,
+            addressId: deliveryAddressId,
+            userId: user.id,
+          });
         }
       }
 
@@ -563,6 +567,26 @@ export const useCheckoutProcess = () => {
         throw new Error(
           finishOrderResponse.message || "Erro ao finalizar pedido",
         );
+      }
+
+      // O backend já leu o padrão para montar a entrega: daqui em diante a
+      // troca não serve mais a ninguém. Devolver agora, e não no `finally`,
+      // deixa o descarte do endereço temporário (lá embaixo) acontecer com
+      // ele já desmarcado - apagar o endereço padrão do cliente deixaria a
+      // entrega do próximo pedido apontando para um registro inativo.
+      if (defaultAddressSwap) {
+        const restored = await restoreDefaultAddress(defaultAddressSwap);
+        defaultAddressSwap = null;
+
+        if (!restored) {
+          toast.warning(
+            "Não conseguimos devolver seu endereço padrão anterior. Confira em Meus endereços.",
+          );
+        }
+
+        queryClient.invalidateQueries({
+          queryKey: ["addresses", "user", user.id],
+        });
       }
 
       const finalOrderId = await resolveFinalOrderId(
@@ -645,6 +669,15 @@ export const useCheckoutProcess = () => {
       // que acabou de ser criado só pra esse pedido.
       if (!saveAddress && addressMode === "new" && deliveryAddressId) {
         try {
+          // Este endereço pode ter acabado de virar o padrão do cliente:
+          // quando não havia padrão nenhum, a promoção acima fica de pé em
+          // vez de ser desfeita. Apagar sem desmarcar deixaria um padrão
+          // apontando para um registro inativo - e o próximo pedido de
+          // entrega sairia dali. Quando a promoção já foi desfeita, este
+          // PATCH não muda nada.
+          await apiService.address.updateUserAddress(deliveryAddressId, {
+            isDefault: false,
+          });
           await apiService.address.deleteUserAddress(deliveryAddressId);
         } catch (error) {
           console.error("Erro ao descartar endereço temporário:", error);
@@ -669,8 +702,39 @@ export const useCheckoutProcess = () => {
       );
     } finally {
       setIsProcessing(false);
+
+      // Só sobra troca aqui quando o pedido não chegou ao fim. O padrão do
+      // cliente não pode ficar trocado por causa de um pedido que falhou.
+      if (defaultAddressSwap) {
+        await restoreDefaultAddress(defaultAddressSwap);
+        queryClient.invalidateQueries({
+          queryKey: ["addresses", "user", user.id],
+        });
+      }
     }
   };
+
+  // Uma finalização interrompida (aba fechada, rede caída, F5 no meio) pode
+  // ter deixado o endereço daquele pedido como padrão do cliente. A troca
+  // fica gravada em localStorage justamente para ser desfeita aqui, na
+  // próxima abertura do checkout.
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let active = true;
+
+    restorePendingDefaultAddress(user.id).then((restored) => {
+      if (restored && active) {
+        queryClient.invalidateQueries({
+          queryKey: ["addresses", "user", user.id],
+        });
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id, queryClient]);
 
   // Auto-select o endereço padrão quando os endereços carregam - antes
   // pegava sempre userAddresses[0], ignorando qual o cliente marcou como

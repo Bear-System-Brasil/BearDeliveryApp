@@ -100,8 +100,10 @@ describe("getOrderStatusBadgeClass", () => {
     expect(getOrderStatusBadgeClass({ status: "CART" })).toContain("gray");
   });
 
-  it("usa laranja para pedidos ativos", () => {
-    expect(getOrderStatusBadgeClass({ status: "IN_PRODUCTION" })).toContain("orange");
+  it("usa a cor da marca para pedidos ativos", () => {
+    // Era "orange" até o rebrand trocar a paleta por tokens - o teste ficou
+    // preso na cor antiga e quebrou sozinho, sem nada de errado no código.
+    expect(getOrderStatusBadgeClass({ status: "IN_PRODUCTION" })).toContain("brand");
   });
 
   it("usa verde para os demais (ex.: concluído)", () => {
