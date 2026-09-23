@@ -897,6 +897,27 @@ export interface OrderItem {
   updated_at: string;
 }
 
+/**
+ * Corpo de POST /order/:id (finalizar). O pedido nasce no carrinho sem
+ * saber como vai ser atendido - a escolha entre entrega e retirada só
+ * existe no checkout, então ela viaja aqui, na finalização.
+ */
+export interface FinishOrderRequest {
+  /**
+   * O backend usa este campo para criar a entrega sozinho quando é
+   * "DELIVERY". Sem ele nenhum registro de entrega é gerado e a lista do
+   * entregador fica vazia.
+   */
+  fulfillmentType: "DELIVERY" | "PICKUP";
+  /**
+   * Quanto o cliente entrega em dinheiro, não o troco calculado: num
+   * pedido de R$ 35,90 com `changeFor: 50`, o troco é R$ 14,10. Omitido
+   * quando o pagamento não é em dinheiro ou quando o cliente dispensa o
+   * troco.
+   */
+  changeFor?: number;
+}
+
 export interface CreateOrderRequest {
   companyId: string; // OBRIGATÓRIO - ID do restaurante
   discount: number;
@@ -1985,11 +2006,15 @@ export const apiService = {
         true,
       ),
 
-    finishOrder: (_customerId: string, orderId: string) =>
+    finishOrder: (
+      _customerId: string,
+      orderId: string,
+      data: FinishOrderRequest,
+    ) =>
       apiRequest<Order>(
         "POST",
         `/order/${encodeOrderId(orderId)}`,
-        undefined,
+        data,
         true,
       ),
 
