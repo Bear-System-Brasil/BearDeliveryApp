@@ -13,6 +13,8 @@ const finishOrder = vi.fn();
 const openCart = vi.fn();
 const paymentsCreate = vi.fn();
 const deleteUserAddress = vi.fn();
+const updateUserAddress = vi.fn();
+const toastError = vi.fn();
 
 const CART_ITEMS = [
   { id: "line-1", productId: "p1", name: "xTudo", price: 35.9, quantity: 1 },
@@ -23,21 +25,29 @@ const AUTH = {
   user: { id: "user-1", name: "Cliente", phone: "11999999999" },
 };
 const RESTAURANT_QUERY = { data: { id: "comp-1", deliveryFee: "0" } };
-const ADDRESSES_QUERY = {
-  data: [
-    {
-      id: "addr-1",
-      isDefault: true,
-      zipCode: "01001000",
-      street: "Praça da Sé",
-      number: "1",
-      neighborhood: "Sé",
-      city: "São Paulo",
-      state: "SP",
-    },
-  ],
+const ADDRESS_BASE = {
+  id: "addr-1",
+  zipCode: "01001000",
+  street: "Praça da Sé",
+  number: "1",
+  neighborhood: "Sé",
+  city: "São Paulo",
+  state: "SP",
+};
+
+const ADDRESSES_WITH_DEFAULT = {
+  data: [{ ...ADDRESS_BASE, isDefault: true }],
   isLoading: false,
 };
+
+// Cliente que só cadastrou endereço pelo checkout: nada é padrão, porque
+// os dois pontos de criação usam isDefault: false.
+const ADDRESSES_WITHOUT_DEFAULT = {
+  data: [{ ...ADDRESS_BASE, isDefault: false }],
+  isLoading: false,
+};
+
+let addressesQuery: typeof ADDRESSES_WITH_DEFAULT = ADDRESSES_WITH_DEFAULT;
 const ROUTER = { push: vi.fn(), back: vi.fn() };
 
 const cartStore = {
@@ -66,7 +76,12 @@ vi.mock("@/stores/cart-store", () => ({
 vi.mock("next/navigation", () => ({ useRouter: () => ROUTER }));
 
 vi.mock("sonner", () => ({
-  toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
+  toast: {
+    success: vi.fn(),
+    error: toastError,
+    info: vi.fn(),
+    warning: vi.fn(),
+  },
 }));
 
 vi.mock("./use-restaurants", () => ({
@@ -76,7 +91,7 @@ vi.mock("./use-restaurants", () => ({
 // Endereço já salvo e marcado como padrão: o hook auto-seleciona, e o
 // caminho de entrega pula geocodificação e criação de endereço.
 vi.mock("./use-addresses", () => ({
-  useUserAddresses: () => ADDRESSES_QUERY,
+  useUserAddresses: () => addressesQuery,
 }));
 
 vi.mock("@/lib/address-coordinates", () => ({
@@ -90,7 +105,7 @@ vi.mock("@/services/api", () => ({
   apiService: {
     orders: { finishOrder, openCart },
     payments: { create: paymentsCreate },
-    address: { deleteUserAddress, createUserAddress: vi.fn() },
+    address: { deleteUserAddress, updateUserAddress, createUserAddress: vi.fn() },
   },
   PaymentMethod: {
     CASH: "CASH",
@@ -132,6 +147,9 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
     paymentsCreate.mockReset();
     paymentsCreate.mockResolvedValue({ success: true, data: {} });
     deleteUserAddress.mockReset();
+    updateUserAddress.mockReset();
+    updateUserAddress.mockResolvedValue({ success: true, data: {} });
+    addressesQuery = ADDRESSES_WITH_DEFAULT;
   });
 
   it("manda DELIVERY quando o pedido é entrega", async () => {
@@ -246,5 +264,80 @@ describe("useCheckoutProcess - isFormValid e o troco", () => {
 
     act(() => result.current.setChangeAmount("20"));
     expect(result.current.isFormValid()).toBe(false);
+  });
+});
+
+/**
+ * O backend monta a entrega a partir do endereço PADRÃO do cliente, e nenhum
+ * endereço criado pelo checkout nasce padrão. Sem um padrão, o finalizar
+ * falha com "Pedido não encontrado" - mensagem que fala de pedido para um
+ * problema de endereço, e que custou uma investigação inteira.
+ */
+describe("useCheckoutProcess - endereço padrão da entrega", () => {
+  beforeEach(() => {
+    finishOrder.mockReset();
+    finishOrder.mockResolvedValue({ success: true, data: { id: "order-1" } });
+    paymentsCreate.mockReset();
+    paymentsCreate.mockResolvedValue({ success: true, data: {} });
+    updateUserAddress.mockReset();
+    updateUserAddress.mockResolvedValue({ success: true, data: {} });
+    toastError.mockReset();
+    addressesQuery = ADDRESSES_WITH_DEFAULT;
+  });
+
+  it("promove o endereço do pedido a padrão quando o cliente não tem nenhum", async () => {
+    addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+
+    await submitWith((h) => {
+      h.setOrderType("delivery");
+      h.setPaymentMethod("pix");
+    });
+
+    expect(updateUserAddress).toHaveBeenCalledWith("addr-1", {
+      isDefault: true,
+    });
+    expect(finishOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it("não toca no padrão de quem já escolheu um no perfil", async () => {
+    addressesQuery = ADDRESSES_WITH_DEFAULT;
+
+    await submitWith((h) => {
+      h.setOrderType("delivery");
+      h.setPaymentMethod("pix");
+    });
+
+    expect(updateUserAddress).not.toHaveBeenCalled();
+    expect(finishOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it("não promove nada em retirada no local", async () => {
+    addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+
+    await submitWith((h) => {
+      h.setOrderType("pickup");
+      h.setPaymentMethod("pix");
+    });
+
+    // Retirada não gera entrega, então não há endereço a definir.
+    expect(updateUserAddress).not.toHaveBeenCalled();
+    expect(finishOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it("falha com mensagem própria se não conseguir definir o padrão", async () => {
+    addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+    updateUserAddress.mockResolvedValue({ success: false, message: "boom" });
+
+    await submitWith((h) => {
+      h.setOrderType("delivery");
+      h.setPaymentMethod("pix");
+    });
+
+    // Sem padrão o finalizar falharia com "Pedido não encontrado", que não
+    // explica nada - então nem chega a ser chamado.
+    expect(finishOrder).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith(
+      "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
+    );
   });
 });
