@@ -82,7 +82,7 @@ export function DeliveryForm({
                 />
                 {isLoadingCep && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                   </div>
                 )}
               </div>
@@ -202,7 +202,7 @@ export function DeliveryForm({
                 type="checkbox"
                 id="isDefault"
                 {...addressForm.register("isDefault")}
-                className="h-4 w-4 rounded border-border text-orange-500 focus:ring-orange-500"
+                className="h-4 w-4 rounded border-border text-brand-500 focus:ring-brand-500"
               />
               <label
                 htmlFor="isDefault"

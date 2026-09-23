@@ -19,7 +19,7 @@ export default function AnimatedText() {
       speed={25}
       repeat={Infinity}
       deletionSpeed={25}
-      className="bg-linear-to-r from-orange-500 to-orange-500 bg-clip-text text-transparent"
+      className="bg-linear-to-r from-brand-500 to-brand-500 bg-clip-text text-transparent"
     />
   );
 }

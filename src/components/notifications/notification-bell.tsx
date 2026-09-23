@@ -58,7 +58,7 @@ export function NotificationBell({ audience, className }: NotificationBellProps)
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -72,7 +72,7 @@ export function NotificationBell({ audience, className }: NotificationBellProps)
             <button
               type="button"
               onClick={markAllAsRead}
-              className="flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400 hover:underline"
+              className="flex items-center gap-1 text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline"
             >
               <Check className="h-3 w-3" />
               Marcar todas como lidas
@@ -84,7 +84,7 @@ export function NotificationBell({ audience, className }: NotificationBellProps)
           <button
             type="button"
             onClick={requestPermission}
-            className="flex w-full items-center gap-2 border-b bg-orange-50/60 dark:bg-orange-950/40 px-4 py-2.5 text-left text-xs font-medium text-orange-700 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40"
+            className="flex w-full items-center gap-2 border-b bg-brand-50/60 dark:bg-brand-950/40 px-4 py-2.5 text-left text-xs font-medium text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40"
           >
             <BellRing className="h-3.5 w-3.5 shrink-0" />
             Ativar notificações no navegador
@@ -106,12 +106,12 @@ export function NotificationBell({ audience, className }: NotificationBellProps)
                     onClick={() => handleSelect(item)}
                     className={cn(
                       "flex w-full flex-col items-start gap-0.5 border-b px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-muted",
-                      !item.read && "bg-orange-50/40 dark:bg-orange-950/40",
+                      !item.read && "bg-brand-50/40 dark:bg-brand-950/40",
                     )}
                   >
                     <div className="flex w-full items-center gap-2">
                       {!item.read && (
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-orange-500" />
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
                       )}
                       <span className="truncate text-sm font-medium text-foreground">
                         {item.title}

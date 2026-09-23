@@ -29,7 +29,7 @@ const PAY_STATUS_OPTIONS: { value: PaymentStatus | "ALL"; label: string }[] = [
 
 const STATUS_BADGE: Record<PaymentStatus, string> = {
   [PaymentStatus.COMPLETED]: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
-  [PaymentStatus.PENDING]: "bg-orange-50 dark:bg-orange-950/40 text-amber-700 dark:text-amber-400",
+  [PaymentStatus.PENDING]: "bg-brand-50 dark:bg-brand-950/40 text-amber-700 dark:text-amber-400",
   [PaymentStatus.FAILED]: "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400",
   [PaymentStatus.CANCELLED]: "bg-muted text-muted-foreground",
   [PaymentStatus.REFUNDED]: "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400",

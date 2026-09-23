@@ -90,7 +90,7 @@ const MOVEMENT_TYPE_BADGE: Record<CashMovementType, string> = {
   [CashMovementType.SALE]: "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
   [CashMovementType.DEPOSIT]: "bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400",
   [CashMovementType.WITHDRAWAL]: "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400",
-  [CashMovementType.REFUND]: "bg-orange-50 dark:bg-orange-950/40 text-amber-700 dark:text-amber-400",
+  [CashMovementType.REFUND]: "bg-brand-50 dark:bg-brand-950/40 text-amber-700 dark:text-amber-400",
 };
 
 /** Sangria e reembolso tiram dinheiro do caixa; venda e suprimento põem. */
@@ -488,7 +488,7 @@ export default function CashRegisterPage() {
       actions={
         <Button
           onClick={handleRefresh}
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-[9px] border border-border bg-card px-3.5 text-xs font-bold text-[#FF6B00] transition-colors hover:bg-orange-50 dark:hover:bg-orange-950/40"
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-[9px] border border-border bg-card px-3.5 text-xs font-bold text-brand-500 transition-colors hover:bg-brand-50 dark:hover:bg-brand-950/40"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Atualizar
@@ -622,7 +622,7 @@ export default function CashRegisterPage() {
                                 {m.label}
                               </span>
                               {m.gaveta && (
-                                <span className="shrink-0 rounded-[5px] bg-orange-50 dark:bg-orange-950/40 px-[7px] py-px text-[9.5px] font-extrabold text-[#E05A00]">
+                                <span className="shrink-0 rounded-[5px] bg-brand-50 dark:bg-brand-950/40 px-[7px] py-px text-[9.5px] font-extrabold text-brand-600">
                                   GAVETA
                                 </span>
                               )}
@@ -649,7 +649,7 @@ export default function CashRegisterPage() {
                             </div>
                             <div className="mt-[5px] h-[5px] overflow-hidden rounded-full bg-muted">
                               <div
-                                className="h-full rounded-full bg-[#FF6B00]"
+                                className="h-full rounded-full bg-brand-500"
                                 style={{ width: `${share}%` }}
                               />
                             </div>
@@ -1125,7 +1125,7 @@ export default function CashRegisterPage() {
               </div>
               <Button
                 onClick={() => setDialog("open-register")}
-                className="h-[34px] rounded-[9px] bg-[#FF6B00] px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,.25)] hover:bg-[#E86000]"
+                className="h-[34px] rounded-[9px] bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,.25)] hover:bg-brand-600"
               >
                 🔓 Abrir Caixa
               </Button>
@@ -1182,7 +1182,7 @@ export default function CashRegisterPage() {
             <Button
               onClick={handleOpenRegister}
               disabled={openMutation.isPending || !openingBalance}
-              className="h-9 flex-1 rounded-[9px] bg-[#FF6B00] text-xs font-extrabold text-white transition-colors hover:bg-[#E86000] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-9 flex-1 rounded-[9px] bg-brand-500 text-xs font-extrabold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {openMutation.isPending ? "Abrindo..." : "Abrir"}
             </Button>
@@ -1279,7 +1279,7 @@ export default function CashRegisterPage() {
                 !description ||
                 missingPaymentMethod
               }
-              className="h-9 flex-1 rounded-[9px] bg-[#FF6B00] text-xs font-extrabold text-white transition-colors hover:bg-[#E86000] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-9 flex-1 rounded-[9px] bg-brand-500 text-xs font-extrabold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isMovementPending ? "Registrando..." : "Registrar"}
             </Button>

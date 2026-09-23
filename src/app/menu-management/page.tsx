@@ -53,10 +53,10 @@ import {
 import { toast } from "sonner";
 
 const fieldClassName =
-  "h-9 sm:h-10 rounded-[10px] border-border bg-card text-xs sm:text-sm shadow-none focus-visible:ring-1 focus-visible:ring-[#FF6B00]";
+  "h-9 sm:h-10 rounded-[10px] border-border bg-card text-xs sm:text-sm shadow-none focus-visible:ring-1 focus-visible:ring-brand-500";
 
 const textareaClassName =
-  "min-h-[64px] rounded-[10px] border-border bg-card text-xs sm:text-sm shadow-none resize-none focus-visible:ring-1 focus-visible:ring-[#FF6B00]";
+  "min-h-[64px] rounded-[10px] border-border bg-card text-xs sm:text-sm shadow-none resize-none focus-visible:ring-1 focus-visible:ring-brand-500";
 
 function MenuManagementContent() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -401,7 +401,7 @@ function MenuManagementContent() {
           <Button
             asChild
             variant="outline"
-            className="h-[34px] flex-1 cursor-pointer rounded-[9px] border-border bg-card px-3 text-[12.5px] font-bold text-foreground shadow-none transition-colors hover:border-orange-200 dark:hover:border-orange-800 hover:bg-card hover:text-[#FF6B00] sm:flex-none"
+            className="h-[34px] flex-1 cursor-pointer rounded-[9px] border-border bg-card px-3 text-[12.5px] font-bold text-foreground shadow-none transition-colors hover:border-brand-200 dark:hover:border-brand-800 hover:bg-card hover:text-brand-500 sm:flex-none"
           >
             <Link href="/company-profile">
               <Building2 className="h-4 w-4" />
@@ -414,7 +414,7 @@ function MenuManagementContent() {
               resetImageState();
               handleOpenCreateModal();
             }}
-            className="h-[34px] flex-1 cursor-pointer rounded-[9px] bg-[#FF6B00] px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] transition-colors hover:bg-[#E05A00] sm:flex-none"
+            className="h-[34px] flex-1 cursor-pointer rounded-[9px] bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] transition-colors hover:bg-brand-600 sm:flex-none"
           >
             <Plus className="h-4 w-4" />
             Adicionar Prato
@@ -430,7 +430,7 @@ function MenuManagementContent() {
               placeholder="Buscar pratos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-[38px] rounded-[10px] border-border bg-card pl-9 text-[12.5px] font-medium text-foreground shadow-none transition-colors placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-[#FF6B00]"
+              className="h-[38px] rounded-[10px] border-border bg-card pl-9 text-[12.5px] font-medium text-foreground shadow-none transition-colors placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-brand-500"
             />
           </div>
         </div>
@@ -459,9 +459,9 @@ function MenuManagementContent() {
           {canCategoryScroll && (
             <div
               ref={categoryDragTrackRef}
-              className="relative mt-2 h-[38px] overflow-hidden rounded-full border border-orange-200 dark:border-orange-800 bg-card shadow-[inset_0_1px_2px_rgba(20,22,26,0.06)]"
+              className="relative mt-2 h-[38px] overflow-hidden rounded-full border border-brand-200 dark:border-brand-800 bg-card shadow-[inset_0_1px_2px_rgba(20,22,26,0.06)]"
             >
-              <div className="pointer-events-none absolute left-3 right-3 top-1/2 h-1 -translate-y-1/2 rounded-full bg-orange-100 dark:bg-orange-950/60" />
+              <div className="pointer-events-none absolute left-3 right-3 top-1/2 h-1 -translate-y-1/2 rounded-full bg-brand-100 dark:bg-brand-950/60" />
               <button
                 ref={categoryDragButtonRef}
                 type="button"
@@ -473,10 +473,10 @@ function MenuManagementContent() {
                 onPointerUp={handleCategoryDragPointerEnd}
                 onPointerCancel={handleCategoryDragPointerEnd}
                 onKeyDown={handleCategoryDragKeyDown}
-                className={`absolute left-0 top-1/2 z-10 flex h-[30px] min-w-[112px] touch-none select-none items-center justify-center gap-1.5 rounded-full px-3 text-[11px] font-extrabold text-white shadow-[0_8px_18px_rgba(255,107,0,0.26)] outline-none transition-[background-color,box-shadow] focus-visible:ring-2 focus-visible:ring-[#FF6B00]/35 sm:min-w-[126px] ${
+                className={`absolute left-0 top-1/2 z-10 flex h-[30px] min-w-[112px] touch-none select-none items-center justify-center gap-1.5 rounded-full px-3 text-[11px] font-extrabold text-white shadow-[0_8px_18px_rgba(255,107,0,0.26)] outline-none transition-[background-color,box-shadow] focus-visible:ring-2 focus-visible:ring-brand-500/35 sm:min-w-[126px] ${
                   isCategoryDragActive
-                    ? "cursor-grabbing bg-[#E05A00] shadow-[0_10px_22px_rgba(255,107,0,0.34)]"
-                    : "cursor-grab bg-[#FF6B00] hover:bg-[#E05A00]"
+                    ? "cursor-grabbing bg-brand-600 shadow-[0_10px_22px_rgba(255,107,0,0.34)]"
+                    : "cursor-grab bg-brand-500 hover:bg-brand-600"
                 }`}
                 style={{
                   transform: "translate3d(0, -50%, 0)",
@@ -533,7 +533,7 @@ function MenuManagementContent() {
           </div>
         ) : (
           <div className="rounded-[13px] border border-border bg-card px-5 py-9 text-center">
-            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-[10px] bg-muted text-[#FF6B00]">
+            <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-[10px] bg-muted text-brand-500">
               <Plus className="h-5 w-5" />
             </div>
             <p className="text-[13.5px] font-bold text-foreground">
@@ -710,7 +710,7 @@ function MenuManagementContent() {
                         updateFormField("categoryId", "");
                       }
                     }}
-                    className="cursor-pointer text-xs font-extrabold text-[#FF6B00] transition-colors hover:text-[#E05A00]"
+                    className="cursor-pointer text-xs font-extrabold text-brand-500 transition-colors hover:text-brand-600"
                   >
                     {isCreatingCategory
                       ? "Selecionar existente"
@@ -734,7 +734,7 @@ function MenuManagementContent() {
                     onChange={(e) =>
                       updateFormField("categoryId", e.target.value)
                     }
-                    className="h-9 w-full rounded-[10px] border border-border bg-card px-3 text-xs font-medium text-foreground outline-none transition-colors focus:border-[#FF6B00] sm:h-10 sm:text-sm"
+                    className="h-9 w-full rounded-[10px] border border-border bg-card px-3 text-xs font-medium text-foreground outline-none transition-colors focus:border-brand-500 sm:h-10 sm:text-sm"
                   >
                     <option value="">Selecione uma categoria</option>
                     {categories.map((cat) => (
@@ -836,7 +836,7 @@ function MenuManagementContent() {
                   onChange={(e) =>
                     updateFormField("available", e.target.checked)
                   }
-                  className="h-4 w-4 cursor-pointer accent-[#FF6B00]"
+                  className="h-4 w-4 cursor-pointer accent-brand-500"
                 />
                 <Label
                   htmlFor="isAvailable"
@@ -867,7 +867,7 @@ function MenuManagementContent() {
               <Button
                 onClick={() => handleSaveProduct(selectedImages)}
                 disabled={isSaving}
-                className="h-9 w-full cursor-pointer rounded-[9px] bg-[#FF6B00] text-sm font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] transition-colors hover:bg-[#E05A00] sm:w-auto"
+                className="h-9 w-full cursor-pointer rounded-[9px] bg-brand-500 text-sm font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] transition-colors hover:bg-brand-600 sm:w-auto"
               >
                 {isSaving ? (
                   <>

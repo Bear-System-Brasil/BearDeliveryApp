@@ -32,7 +32,7 @@ export default function FinancialDashboardPage() {
         <Button
           onClick={dashboard.refetch}
           disabled={dashboard.isFetching}
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-[9px] border border-border bg-card px-3.5 text-xs font-bold text-[#FF6B00] transition-colors hover:bg-orange-50 dark:hover:bg-orange-950/40 disabled:opacity-60"
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-[9px] border border-border bg-card px-3.5 text-xs font-bold text-brand-500 transition-colors hover:bg-brand-50 dark:hover:bg-brand-950/40 disabled:opacity-60"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           {dashboard.isFetching ? "Atualizando..." : "Atualizar"}

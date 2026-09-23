@@ -1,6 +1,6 @@
-# Contributing to Like Delivery App
+# Contributing to BearDelivery App
 
-Thank you for your interest in contributing to Like Delivery! This document provides guidelines and best practices for contributing to the project.
+Thank you for your interest in contributing to BearDelivery! This document provides guidelines and best practices for contributing to the project.
 
 ## Table of Contents
 
@@ -171,7 +171,7 @@ const [restaurants, setRestaurants] = useState([]) // Don't use useState for ser
 
 ```tsx
 // Good - Tailwind utilities
-<button className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg transition-colors">
+<button className="px-4 py-2 bg-brand-500 hover:bg-brand-600 rounded-lg transition-colors">
   Order Now
 </button>
 

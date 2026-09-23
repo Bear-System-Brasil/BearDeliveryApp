@@ -150,7 +150,7 @@ export const PageSection = React.memo<PageSectionProps>(
 
             {/* Divider */}
             {divider && (
-              <div className="h-px bg-linear-to-r from-orange-200 via-orange-200 to-transparent dark:from-orange-800 dark:via-orange-800" />
+              <div className="h-px bg-linear-to-r from-brand-200 via-brand-200 to-transparent dark:from-brand-800 dark:via-brand-800" />
             )}
           </div>
         )}
@@ -208,14 +208,14 @@ export const PageHeader = React.memo<PageHeaderProps>(
             <div className="flex items-center gap-2 sm:gap-3">
               {Icon && (
                 <div className="shrink-0">
-                  <Icon className="h-6 w-6 sm:h-8 sm:w-8 text-orange-500" />
+                  <Icon className="h-6 w-6 sm:h-8 sm:w-8 text-brand-500" />
                 </div>
               )}
               <h1
                 className={cn(
                   "text-2xl sm:text-3xl md:text-4xl font-bold",
                   gradient
-                    ? "bg-linear-to-r from-orange-500 to-orange-500 bg-clip-text text-transparent"
+                    ? "bg-linear-to-r from-brand-500 to-brand-500 bg-clip-text text-transparent"
                     : "text-foreground",
                 )}
               >

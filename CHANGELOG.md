@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Like Delivery App will be documented in this file.
+All notable changes to the BearDelivery App will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Initial MVP Release
 
-The first production-ready version of Like Delivery App with core features for customers and restaurant admins.
+The first production-ready version of BearDelivery App with core features for customers and restaurant admins.
 
 ### Features
 

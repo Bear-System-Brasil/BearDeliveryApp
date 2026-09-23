@@ -34,28 +34,28 @@ export interface AnimatedBackgroundProps {
 const blobConfigs = [
   {
     id: "blob-orange-orange",
-    gradient: "from-orange-400/20 to-orange-400/20",
+    gradient: "from-brand-400/20 to-brand-400/20",
     size: "w-64 h-64",
     position: "top-20 left-10",
     animation: "animate-pulse",
   },
   {
     id: "blob-purple-blue",
-    gradient: "from-purple-400/15 to-blue-400/15",
+    gradient: "from-brand-deep/15 to-brand-400/15",
     size: "w-48 h-48",
     position: "top-40 right-20",
     animation: "animate-pulse delay-1000",
   },
   {
     id: "blob-yellow-orange",
-    gradient: "from-yellow-400/10 to-orange-400/10",
+    gradient: "from-yellow-400/10 to-brand-400/10",
     size: "w-80 h-80",
     position: "bottom-40 left-1/4",
     animation: "animate-pulse delay-2000",
   },
   {
     id: "blob-orange-purple",
-    gradient: "from-orange-400/15 to-purple-400/15",
+    gradient: "from-brand-400/15 to-brand-deep/15",
     size: "w-56 h-56",
     position: "bottom-20 right-1/3",
     animation: "animate-pulse delay-500",

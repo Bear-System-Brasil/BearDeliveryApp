@@ -103,7 +103,7 @@ export function LoadingState({ text = "Carregando..." }: LoadingStateProps) {
       <div className="relative">
         {/* Background glow effect */}
         <div className="absolute inset-0 blur-2xl opacity-30">
-          <div className="w-32 h-32 bg-gradient-to-r from-orange-400 to-orange-400 rounded-full animate-pulse"></div>
+          <div className="w-32 h-32 bg-gradient-to-r from-brand-400 to-brand-400 rounded-full animate-pulse"></div>
         </div>
 
         {/* Main loading content */}
@@ -111,7 +111,7 @@ export function LoadingState({ text = "Carregando..." }: LoadingStateProps) {
           {/* Spinner with gradient border effect */}
           <div className="relative">
             <div className="w-16 h-16 rounded-full border-4 border-border"></div>
-            <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent border-t-orange-500 border-r-orange-500 animate-spin"></div>
+            <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent border-t-brand-500 border-r-brand-500 animate-spin"></div>
           </div>
 
           {/* Loading text */}
@@ -121,15 +121,15 @@ export function LoadingState({ text = "Carregando..." }: LoadingStateProps) {
             </span>
             <div className="flex space-x-1">
               <span
-                className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"
+                className="w-2 h-2 bg-brand-500 rounded-full animate-bounce"
                 style={{ animationDelay: "0ms" }}
               ></span>
               <span
-                className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"
+                className="w-2 h-2 bg-brand-500 rounded-full animate-bounce"
                 style={{ animationDelay: "150ms" }}
               ></span>
               <span
-                className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"
+                className="w-2 h-2 bg-brand-500 rounded-full animate-bounce"
                 style={{ animationDelay: "300ms" }}
               ></span>
             </div>

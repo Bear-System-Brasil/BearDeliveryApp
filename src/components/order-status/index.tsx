@@ -52,8 +52,8 @@ export function OrderStatus({ data }: Props) {
         </p>
         {data.isRefreshing && (
           <div className="mt-2 flex items-center justify-center gap-1">
-            <Loader2 className="h-3 w-3 animate-spin text-[#ff6b00]" />
-            <span className="text-xs font-medium text-[#ff6b00]">
+            <Loader2 className="h-3 w-3 animate-spin text-brand-500" />
+            <span className="text-xs font-medium text-brand-500">
               Atualizando...
             </span>
           </div>
@@ -64,11 +64,11 @@ export function OrderStatus({ data }: Props) {
         <div className="flex min-w-0 flex-col gap-3">
           <section
             className={`${CARD} border-t-[3px] p-4 ${
-              order.isCanceled ? "border-t-red-500" : "border-t-[#ff6b00]"
+              order.isCanceled ? "border-t-red-500" : "border-t-brand-500"
             }`}
           >
             <h2 className={CARD_TITLE}>
-              <span aria-hidden className="text-[#ff6b00]">
+              <span aria-hidden className="text-brand-500">
                 {order.isCanceled ? "✕" : "⏱"}
               </span>
               Status do Pedido
@@ -157,11 +157,11 @@ export function OrderStatus({ data }: Props) {
             </div>
           </section>
 
-          <div className="flex flex-col gap-2 rounded-[13px] bg-orange-50 dark:bg-orange-950/40 p-3">
+          <div className="flex flex-col gap-2 rounded-[13px] bg-brand-50 dark:bg-brand-950/40 p-3">
             <button
               type="button"
               onClick={() => router.push("/#lojas")}
-              className="h-[38px] rounded-[10px] bg-[#ff6b00] text-[12.5px] font-extrabold text-white transition-colors hover:bg-[#e05a00]"
+              className="h-[38px] rounded-[10px] bg-brand-500 text-[12.5px] font-extrabold text-white transition-colors hover:bg-brand-600"
             >
               Fazer Novo Pedido
             </button>
@@ -169,7 +169,7 @@ export function OrderStatus({ data }: Props) {
             <button
               type="button"
               onClick={() => router.push("/orders")}
-              className="h-[38px] rounded-[10px] border border-orange-200 dark:border-orange-800 bg-card text-[12.5px] font-extrabold text-[#e05a00] transition-colors hover:bg-orange-50 dark:hover:bg-orange-950/40"
+              className="h-[38px] rounded-[10px] border border-brand-200 dark:border-brand-800 bg-card text-[12.5px] font-extrabold text-brand-600 transition-colors hover:bg-brand-50 dark:hover:bg-brand-950/40"
             >
               Ver Meus Pedidos
             </button>

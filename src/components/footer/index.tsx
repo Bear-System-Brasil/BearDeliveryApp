@@ -9,8 +9,8 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-5 border-b border-zinc-700 dark:border-border py-5 md:grid-cols-[1.5fr_1fr_1fr] md:gap-10">
           <div className="space-y-3">
-            <h3 className="bg-gradient-to-r from-orange-400 to-amber-500 bg-clip-text text-xl font-bold text-transparent">
-              Like Delivery
+            <h3 className="bg-gradient-to-r from-brand-400 to-amber-500 bg-clip-text text-xl font-bold text-transparent">
+              BearDelivery
             </h3>
             <p className="max-w-sm text-sm leading-normal text-muted-foreground">
               Encontre os melhores restaurantes e receba seu pedido com rapidez
@@ -20,7 +20,7 @@ export function Footer() {
               <Link
                 href="https://facebook.com"
                 target="_blank"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 dark:bg-muted transition-colors hover:bg-orange-500 hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 dark:bg-muted transition-colors hover:bg-brand-500 hover:text-white"
                 aria-label="Facebook"
               >
                 <Facebook className="h-4 w-4" />
@@ -28,7 +28,7 @@ export function Footer() {
               <Link
                 href="https://instagram.com"
                 target="_blank"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 dark:bg-muted transition-colors hover:bg-orange-500 hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 dark:bg-muted transition-colors hover:bg-brand-500 hover:text-white"
                 aria-label="Instagram"
               >
                 <Instagram className="h-4 w-4" />
@@ -36,7 +36,7 @@ export function Footer() {
               <Link
                 href="https://twitter.com"
                 target="_blank"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 dark:bg-muted transition-colors hover:bg-orange-500 hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 dark:bg-muted transition-colors hover:bg-brand-500 hover:text-white"
                 aria-label="Twitter"
               >
                 <Twitter className="h-4 w-4" />
@@ -44,7 +44,7 @@ export function Footer() {
               <Link
                 href="https://linkedin.com"
                 target="_blank"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 dark:bg-muted transition-colors hover:bg-orange-500 hover:text-white"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 dark:bg-muted transition-colors hover:bg-brand-500 hover:text-white"
                 aria-label="LinkedIn"
               >
                 <Linkedin className="h-4 w-4" />
@@ -58,7 +58,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/"
-                  className="text-sm text-muted-foreground transition-colors hover:text-orange-400"
+                  className="text-sm text-muted-foreground transition-colors hover:text-brand-400"
                 >
                   Início
                 </Link>
@@ -66,7 +66,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/#lojas"
-                  className="text-sm text-muted-foreground transition-colors hover:text-orange-400"
+                  className="text-sm text-muted-foreground transition-colors hover:text-brand-400"
                 >
                   Lojas
                 </Link>
@@ -74,7 +74,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/orders"
-                  className="text-sm text-muted-foreground transition-colors hover:text-orange-400"
+                  className="text-sm text-muted-foreground transition-colors hover:text-brand-400"
                 >
                   Meus pedidos
                 </Link>
@@ -82,7 +82,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/profile"
-                  className="text-sm text-muted-foreground transition-colors hover:text-orange-400"
+                  className="text-sm text-muted-foreground transition-colors hover:text-brand-400"
                 >
                   Minha conta
                 </Link>
@@ -90,7 +90,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/restaurant-landing-page"
-                  className="text-sm text-muted-foreground transition-colors hover:text-orange-400"
+                  className="text-sm text-muted-foreground transition-colors hover:text-brand-400"
                 >
                   Registar meu restaurante
                 </Link>
@@ -104,7 +104,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/help"
-                  className="text-sm text-muted-foreground transition-colors hover:text-orange-400"
+                  className="text-sm text-muted-foreground transition-colors hover:text-brand-400"
                 >
                   Central de ajuda
                 </Link>
@@ -112,7 +112,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/terms"
-                  className="text-sm text-muted-foreground transition-colors hover:text-orange-400"
+                  className="text-sm text-muted-foreground transition-colors hover:text-brand-400"
                 >
                   Termos de uso
                 </Link>
@@ -120,7 +120,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/privacy"
-                  className="text-sm text-muted-foreground transition-colors hover:text-orange-400"
+                  className="text-sm text-muted-foreground transition-colors hover:text-brand-400"
                 >
                   Privacidade
                 </Link>
@@ -131,7 +131,7 @@ export function Footer() {
 
         <div className="py-3">
           <p className="text-center text-sm text-muted-foreground">
-            © {currentYear} Like Delivery. Todos os direitos reservados.
+            © {currentYear} BearDelivery. Todos os direitos reservados.
           </p>
         </div>
       </div>

@@ -42,7 +42,7 @@ export function PageHeader({
             {badge && (
               <Badge
                 variant={badge.variant || "default"}
-                className="bg-linear-to-br from-orange-100 to-orange-100 text-orange-700 dark:text-orange-400 border-0"
+                className="bg-linear-to-br from-brand-100 to-brand-100 text-brand-700 dark:text-brand-400 border-0"
               >
                 {badge.text}
               </Badge>

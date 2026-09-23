@@ -154,7 +154,7 @@ export function Addresses({
                     {address.type}
                   </Badge>
                   {address.isDefault && (
-                    <Badge className="bg-linear-to-r from-orange-500 to-orange-500 text-white border-0 text-xs flex items-center gap-1">
+                    <Badge className="bg-linear-to-r from-brand-500 to-brand-500 text-white border-0 text-xs flex items-center gap-1">
                       <Star className="h-3 w-3 fill-current" />
                       Padrão
                     </Badge>
@@ -166,7 +166,7 @@ export function Addresses({
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEditAddress(address)}
-                    className="text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40"
+                    className="text-muted-foreground hover:text-brand-600 dark:hover:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40"
                     aria-label="Editar endereço"
                     title="Editar endereço"
                   >

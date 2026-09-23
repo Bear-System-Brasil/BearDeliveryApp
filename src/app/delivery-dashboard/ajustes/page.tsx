@@ -40,7 +40,7 @@ function SettingToggle({
       <span
         aria-hidden="true"
         className={`flex h-8 w-14 shrink-0 items-center rounded-full p-1 transition-colors ${
-          checked ? "bg-orange-500" : "bg-zinc-300 dark:bg-zinc-700"
+          checked ? "bg-brand-500" : "bg-zinc-300 dark:bg-zinc-700"
         }`}
       >
         <span

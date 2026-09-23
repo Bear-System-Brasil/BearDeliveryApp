@@ -119,7 +119,7 @@ describe("getOrderStatusBadgeClass", () => {
   });
 
   it("usa laranja para pedido ativo na cozinha", () => {
-    expect(getOrderStatusBadgeClass({ status: "IN_PRODUCTION" })).toContain("orange");
+    expect(getOrderStatusBadgeClass({ status: "IN_PRODUCTION" })).toContain("brand");
   });
 
   it("usa verde como fallback (ex.: concluído)", () => {

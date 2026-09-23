@@ -68,7 +68,7 @@ function KitchenCounterTile({
         "flex min-w-[84px] flex-1 cursor-pointer flex-col items-center gap-1 rounded-xl border p-2 transition-shadow md:p-3",
         config.tone.header,
         config.tone.text,
-        active && "ring-2 ring-orange-400 ring-offset-1",
+        active && "ring-2 ring-brand-400 ring-offset-1",
       )}
     >
       <Icon className="h-4 w-4 md:h-5 md:w-5" />
@@ -233,7 +233,7 @@ export default function Kitchen() {
       {/* Cabeçalho compacto: identidade da estação, relógio, total ativo e controles */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-card px-3 py-2 print:hidden">
         <div className="flex min-w-0 items-center gap-2 font-bold text-foreground">
-          <Store className="h-4 w-4 shrink-0 text-orange-500" />
+          <Store className="h-4 w-4 shrink-0 text-brand-500" />
           <span className="truncate">{restaurantName}</span>
         </div>
 
@@ -306,7 +306,7 @@ export default function Kitchen() {
             aria-pressed={soundEnabled}
           >
             {soundEnabled ? (
-              <Bell className="h-4 w-4 text-orange-500" />
+              <Bell className="h-4 w-4 text-brand-500" />
             ) : (
               <BellOff className="h-4 w-4 text-muted-foreground" />
             )}
