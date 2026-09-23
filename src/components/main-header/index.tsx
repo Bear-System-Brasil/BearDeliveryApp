@@ -12,6 +12,10 @@ import {
 import { useAuth } from "@/contexts/auth-provider";
 import { useAuthStore } from "@/stores";
 import { getWorkspaceLink } from "@/constants/workspace-links";
+import {
+  OPEN_LOCATION_SHEET_EVENT,
+  type OpenLocationSheetMode,
+} from "@/lib/location-sheet";
 import { getProfileRoute, isCompanyStaffRole } from "@/utils/role-helpers";
 import clsx from "clsx";
 import {
@@ -29,12 +33,28 @@ import {
   X,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  DeliveryAddressForm,
+  type SavedDeliveryLocation,
+} from "./delivery-address-form";
 import { LikeDeliveryLogo } from "../ui/likedelivery-logo";
 import { ThemeToggle } from "../ui/theme-toggle";
 import Link from "next/link";
 
 const DEFAULT_LOCATION_LABEL = "Escolha seu endereço";
+
+/** Texto da pill do header: "Casa · R. X, 304 - Bairro, Cidade - UF". */
+function formatLocationLabel(location: {
+  address?: string;
+  locality?: string;
+  city?: string;
+  label?: string;
+}) {
+  const place = location.address || location.locality || location.city;
+  if (!place) return "";
+  return location.label ? `${location.label} · ${place}` : place;
+}
 
 interface MainHeaderProps {
   cartItems?: number;
@@ -71,7 +91,6 @@ export function MainHeader({
   const [locationLabel, setLocationLabel] = useState(DEFAULT_LOCATION_LABEL);
   const [locationOpen, setLocationOpen] = useState(false);
   const [isChangingLocation, setIsChangingLocation] = useState(false);
-  const [manualLocation, setManualLocation] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState("");
 
@@ -80,6 +99,24 @@ export function MainHeader({
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  // A home (sem endereço escolhido) chama o painel daqui por evento.
+  useEffect(() => {
+    const handleOpenLocation = (event: Event) => {
+      const mode = (event as CustomEvent<{ mode?: OpenLocationSheetMode }>)
+        .detail?.mode;
+      setLocationError("");
+      setIsChangingLocation(mode !== "card");
+      setLocationOpen(true);
+    };
+
+    window.addEventListener(OPEN_LOCATION_SHEET_EVENT, handleOpenLocation);
+    return () =>
+      window.removeEventListener(
+        OPEN_LOCATION_SHEET_EVENT,
+        handleOpenLocation,
+      );
   }, []);
 
   useEffect(() => {
@@ -114,62 +151,18 @@ export function MainHeader({
       }
     }
   };
-  const saveLocation = (location: {
-    lat: number;
-    lng: number;
-    city: string;
-    address: string;
-  }) => {
+  const saveLocation = (
+    location: Omit<SavedDeliveryLocation, "label"> &
+      Partial<Pick<SavedDeliveryLocation, "label">>,
+  ) => {
     document.cookie = `userLocation=${encodeURIComponent(
       JSON.stringify(location),
     )}; path=/; max-age=86400; SameSite=Lax`;
-    setLocationLabel(location.address || location.city);
+    setLocationLabel(formatLocationLabel(location) || DEFAULT_LOCATION_LABEL);
     setLocationOpen(false);
     setIsChangingLocation(false);
-    setManualLocation("");
     setLocationError("");
     window.dispatchEvent(new Event("locationChanged"));
-  };
-
-  const handleManualLocation = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const query = manualLocation.trim();
-    if (!query) {
-      setLocationError("Digite uma cidade, bairro ou endereço.");
-      return;
-    }
-    setLocationLoading(true);
-    setLocationError("");
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          `${query}, Brasil`,
-        )}&format=jsonv2&limit=1&addressdetails=1`,
-      );
-      if (!response.ok) throw new Error("Falha ao buscar localização");
-      const results = await response.json();
-      const result = results?.[0];
-      if (!result?.lat || !result?.lon) {
-        throw new Error("Localização não encontrada");
-      }
-      const city =
-        result.address?.city ||
-        result.address?.town ||
-        result.address?.municipality ||
-        query;
-      saveLocation({
-        lat: Number(result.lat),
-        lng: Number(result.lon),
-        city,
-        address: result.display_name || query,
-      });
-    } catch {
-      setLocationError(
-        "Não encontramos esse local. Tente uma cidade ou bairro.",
-      );
-    } finally {
-      setLocationLoading(false);
-    }
   };
 
   const handleCurrentLocation = async () => {
@@ -228,11 +221,9 @@ export function MainHeader({
       const encodedLocation = locationCookie.split("=").slice(1).join("=");
       try {
         const parsedLocation = JSON.parse(decodeURIComponent(encodedLocation));
-        const label =
-          parsedLocation?.address ||
-          parsedLocation?.locality ||
-          parsedLocation?.city;
-        setLocationLabel(label || DEFAULT_LOCATION_LABEL);
+        setLocationLabel(
+          formatLocationLabel(parsedLocation ?? {}) || DEFAULT_LOCATION_LABEL,
+        );
       } catch {
         setLocationLabel(DEFAULT_LOCATION_LABEL);
       }
@@ -310,7 +301,6 @@ export function MainHeader({
                     if (!open) {
                       setLocationError("");
                       setIsChangingLocation(false);
-                      setManualLocation("");
                     }
                   }}
                 >
@@ -330,114 +320,73 @@ export function MainHeader({
 
                   <SheetContent
                     side="bottom"
-                    className="rounded-t-3xl border-t border-orange-100 dark:border-orange-900 bg-card px-4 pb-8 pt-4 sm:px-6"
+                    className="max-h-[92dvh] overflow-y-auto rounded-t-3xl border-t border-orange-100 dark:border-orange-900 bg-card px-4 pb-8 pt-4 sm:px-6"
                   >
                     {/* Handle visual (opcional mas fica bonito) */}
                     <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted" />
 
-                    <div className="mx-auto w-full max-w-xl space-y-4">
-                      <div className="space-y-1">
-                        <SheetTitle className="text-lg font-bold text-foreground">
-                          Endereço de entrega
-                        </SheetTitle>
-                        <p className="text-sm text-muted-foreground">
-                          Onde seu pedido será entregue
-                        </p>
-                      </div>
-
-                      {/* Card do endereço atual */}
-                      <div className="rounded-2xl border border-orange-100 dark:border-orange-900 bg-orange-50/60 dark:bg-orange-950/40 dark:bg-orange-950/30 p-4">
-                        <div className="flex gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card text-orange-500 shadow-sm">
-                            <MapPin className="h-5 w-5 fill-orange-500" />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
-                              Entregando em
-                            </p>
-                            <p className="mt-1 text-sm font-semibold leading-snug text-foreground">
-                              {currentLocationText}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              setManualLocation("");
-                              setLocationError("");
-                              setIsChangingLocation(true);
-                            }}
-                            className="h-11 justify-center rounded-xl border-orange-200 dark:border-orange-800 bg-card text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40"
-                          >
-                            <PencilLine className="mr-2 h-4 w-4" />
-                            Trocar
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={locationLoading}
-                            onClick={handleCurrentLocation}
-                            className="h-11 justify-center rounded-xl border-border bg-card text-foreground hover:bg-muted"
-                          >
-                            <Navigation className="mr-2 h-4 w-4" />
-                            Usar atual
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Formulário só aparece quando o usuário clica em "Trocar" */}
-                      {isChangingLocation && (
-                        <form
-                          onSubmit={handleManualLocation}
-                          className="rounded-2xl border border-border bg-muted p-4"
-                        >
-                          <p className="mb-3 text-sm font-semibold text-foreground">
-                            Digite o novo endereço
+                    {isChangingLocation ? (
+                      <DeliveryAddressForm onSave={saveLocation} />
+                    ) : (
+                      <div className="mx-auto w-full max-w-xl space-y-4">
+                        <div className="space-y-1">
+                          <SheetTitle className="text-lg font-bold text-foreground">
+                            Endereço de entrega
+                          </SheetTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Onde seu pedido será entregue
                           </p>
-                          <div className="flex flex-col gap-2">
-                            <Input
-                              value={manualLocation}
-                              onChange={(event) =>
-                                setManualLocation(event.target.value)
-                              }
-                              placeholder="Ex.: Rua Machado de Assis, 334"
-                              className="h-11 rounded-xl bg-card"
-                              // ← sem autoFocus
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  setIsChangingLocation(false);
-                                  setManualLocation("");
-                                  setLocationError("");
-                                }}
-                                className="h-11 flex-1 rounded-xl"
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                type="submit"
-                                disabled={locationLoading}
-                                className="h-11 flex-1 rounded-xl bg-orange-500 hover:bg-orange-600"
-                              >
-                                {locationLoading ? "Buscando..." : "Salvar"}
-                              </Button>
+                        </div>
+
+                        {/* Card do endereço atual */}
+                        <div className="rounded-2xl border border-orange-100 dark:border-orange-900 bg-orange-50/60 dark:bg-orange-950/40 dark:bg-orange-950/30 p-4">
+                          <div className="flex gap-3">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card text-orange-500 shadow-sm">
+                              <MapPin className="h-5 w-5 fill-orange-500" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] font-bold uppercase tracking-wide text-orange-600 dark:text-orange-400">
+                                Entregando em
+                              </p>
+                              <p className="mt-1 text-sm font-semibold leading-snug text-foreground">
+                                {currentLocationText}
+                              </p>
                             </div>
                           </div>
-                        </form>
-                      )}
 
-                      {locationError && (
-                        <p className="rounded-xl bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-600 dark:text-red-400">
-                          {locationError}
-                        </p>
-                      )}
-                    </div>
+                          <div className="mt-4 grid grid-cols-2 gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setLocationError("");
+                                setIsChangingLocation(true);
+                              }}
+                              className="h-11 justify-center rounded-xl border-orange-200 dark:border-orange-800 bg-card text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40"
+                            >
+                              <PencilLine className="mr-2 h-4 w-4" />
+                              Trocar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={locationLoading}
+                              onClick={handleCurrentLocation}
+                              className="h-11 justify-center rounded-xl border-border bg-card text-foreground hover:bg-muted"
+                            >
+                              <Navigation className="mr-2 h-4 w-4" />
+                              Usar atual
+                            </Button>
+                          </div>
+                        </div>
+
+                        {locationError && (
+                          <p className="rounded-xl bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+                            {locationError}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </SheetContent>
                 </Sheet>
               </div>

@@ -1,6 +1,7 @@
 // React Query hooks - Data fetching
 export * from './use-addresses'
 export * from './use-categories'
+export * from './use-new-dishes'
 export * from './use-orders'
 export * from './use-prefetch'
 export * from './use-product-add-ons'

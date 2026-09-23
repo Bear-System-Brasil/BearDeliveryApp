@@ -92,9 +92,11 @@ export function SelectOptions({
                     isSelected ? "text-orange-500/90" : "text-muted-foreground",
                   )}
                 >
-                  {option.price > 0
-                    ? `+ ${formatCurrency(option.price)}`
-                    : "Incluso"}
+                  {group.basePrice !== undefined
+                    ? formatCurrency(group.basePrice + option.price)
+                    : option.price > 0
+                      ? `+ ${formatCurrency(option.price)}`
+                      : "Incluso"}
                 </span>
               </button>
             );

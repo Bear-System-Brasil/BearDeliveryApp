@@ -1,14 +1,33 @@
 "use client";
 
+import { Navigation } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { GradientButton } from "@/components/ui/gradient-button";
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
-export function GeolocationButton() {
+type Props = {
+  /**
+   * Pede a localização sozinho ao montar (sem endereço salvo). Fica de
+   * fora quando o botão é só uma opção na tela - abrir o popup do
+   * navegador sem o cliente pedir assusta mais do que ajuda.
+   */
+  autoRequest?: boolean;
+  variant?: "gradient" | "outline";
+  className?: string;
+};
+
+export function GeolocationButton({
+  autoRequest = true,
+  variant = "gradient",
+  className,
+}: Props = {}) {
   const [isLoading, setIsLoading] = useState(false);
 
   // Tenta pegar localização automaticamente
   useEffect(() => {
+    if (!autoRequest) return;
     const hasLocationCookie = document.cookie.includes("userLocation=");
     if (!hasLocationCookie) {
       const timer = setTimeout(() => {
@@ -16,7 +35,8 @@ export function GeolocationButton() {
       }, 1200);
       return () => clearTimeout(timer);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRequest]);
 
   const handleGetGeolocation = async () => {
     if (!navigator.geolocation) {
@@ -115,15 +135,34 @@ export function GeolocationButton() {
     }
   };
 
+  const label = isLoading
+    ? "Obtendo localização..."
+    : "Usar minha localização";
+
+  if (variant === "outline") {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleGetGeolocation}
+        disabled={isLoading}
+        className={cn("w-full", className)}
+      >
+        <Navigation className="mr-2 h-4 w-4" />
+        {label}
+      </Button>
+    );
+  }
+
   return (
     <GradientButton
       size="lg"
       onClick={handleGetGeolocation}
       disabled={isLoading}
       fullWidth
-      className="sm:w-auto h-12 sm:h-14 text-base sm:text-lg"
+      className={cn("sm:w-auto h-12 sm:h-14 text-base sm:text-lg", className)}
     >
-      {isLoading ? "Obtendo localização..." : "Usar minha localização"}
+      {label}
     </GradientButton>
   );
 }

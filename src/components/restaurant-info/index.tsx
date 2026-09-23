@@ -5,9 +5,11 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
+  ChevronLeft,
   Clock3,
   Heart,
+  MapPin,
+  Phone,
   Plus,
   ShoppingBag,
   Star,
@@ -19,8 +21,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AnimatedBackground } from "@/components/ui/animated-background";
+import { DeliveryBikeIcon } from "@/components/ui/delivery-bike-icon";
 import { GradientButton } from "@/components/ui/gradient-button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { withDeliveryDefaults } from "@/constants/delivery-defaults";
+import {
+  DEFAULT_OPENING_HOURS,
+  getTodayKey,
+  parseOpeningHours,
+} from "@/constants/opening-hours";
 import {
   useAllCategories,
   useCartActions,
@@ -28,11 +42,13 @@ import {
   usePublicCompanyProductVariations,
   useRestaurant,
 } from "@/hooks";
+import { useFavoritesStore } from "@/stores";
 import { useAuthStore } from "@/stores/auth-store";
 import { formatCurrency } from "@/utils/format-currency";
+import { formatDeliveryFee } from "@/utils/format-delivery-fee";
 import { toast } from "sonner";
 import type { Category, Product } from "@/services/api";
-import type { ProductCategory } from "@/types/restaurant";
+import type { ProductCategory, Restaurant } from "@/types/restaurant";
 
 // Função para gerar IDs seguros e sem colisão
 function slugify(text: string) {
@@ -71,6 +87,8 @@ export default function RestaurantPage() {
 
   const { totalItems, totalPrice } = useCartActions();
   const { user } = useAuthStore();
+  const { favorites, toggleFavorite } = useFavoritesStore();
+  const isFavorite = favorites.includes(companyId);
 
   const {
     data: restaurant,
@@ -87,7 +105,7 @@ export default function RestaurantPage() {
     usePublicCompanyProductVariations(companyId);
 
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Product | null>(null);
   
@@ -212,20 +230,17 @@ export default function RestaurantPage() {
     }
   };
 
-  const specialties = restaurant?.specialty || [];
-  const restaurantCategory =
-    specialties[0]?.name || restaurant?.categories?.[0]?.name || "Delivery";
   const restaurantRating = Number(restaurant?.rating || 0);
   const totalReviews = Number(restaurant?.totalReviews || 0);
   const hasRating = Number.isFinite(restaurantRating) && restaurantRating > 0;
-  const deliveryTime = restaurant?.time || "30-40 min";
-  const deliveryFee = Number.parseFloat(
-    String(restaurant?.deliveryFee ?? "").replace(",", "."),
-  );
-  const deliveryLabel =
-    Number.isFinite(deliveryFee) && deliveryFee > 0
-      ? formatCurrency(deliveryFee)
-      : "Entrega grátis";
+  // Mesmos valores de vitrine da home enquanto a API não manda frete/tempo.
+  const delivery = withDeliveryDefaults({
+    deliveryFee: restaurant?.deliveryFee,
+    time: restaurant?.time,
+  });
+  const deliveryTime = delivery.time;
+  const deliveryLabel = formatDeliveryFee(delivery.deliveryFee) ?? "Grátis";
+  const isFreeDelivery = deliveryLabel === "Grátis";
   const isOpen =
     typeof restaurant?.isOpen === "boolean" ? restaurant.isOpen : null;
   const restaurantDescription = restaurant?.description?.trim();
@@ -276,7 +291,8 @@ export default function RestaurantPage() {
             <>
               {/* === CABEÇALHO DO RESTAURANTE === */}
               <section className="overflow-hidden rounded-[14px] border border-border bg-card shadow-sm">
-                <div className="relative h-32 bg-muted sm:h-40 md:h-[158px]">
+                {/* Capa que se dissolve no card, com o logo por cima */}
+                <div className="relative h-40 sm:h-48">
                   <Image
                     fill
                     priority
@@ -286,87 +302,130 @@ export default function RestaurantPage() {
                       restaurant.logo_url ||
                       "/placeholder.svg"
                     }
-                    alt={restaurant.tradeName || "Restaurante"}
+                    alt=""
                     className="object-cover"
                   />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/35 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-card" />
 
                   <button
                     type="button"
+                    aria-label="Voltar para as lojas"
                     onClick={() => router.push("/#lojas")}
-                    className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-card/95 text-foreground shadow-sm transition hover:bg-card"
+                    className="absolute left-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card/95 text-foreground shadow-sm transition hover:bg-card"
                   >
-                    <ArrowLeft className="h-4 w-4" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsFavorite((favorite) => !favorite)}
-                    className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-card/95 text-foreground shadow-sm transition hover:bg-card"
-                  >
-                    <Heart
-                      className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500 dark:text-red-400" : ""}`}
-                    />
+                    <ChevronLeft className="h-5 w-5" />
                   </button>
                 </div>
 
-                <div className="flex items-start gap-3 px-3 pb-4 sm:px-4">
-                  <Image
-                    width={56}
-                    height={56}
-                    src={restaurant.logo_url || "/placeholder.svg"}
-                    alt={`Logo de ${restaurant.tradeName || "restaurante"}`}
-                    className="relative z-10 -mt-7 h-14 w-14 shrink-0 rounded-[14px] border-[3px] border-background bg-muted object-cover"
-                  />
-
-                  <div className="min-w-0 flex-1 pt-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h1 className="truncate text-[18px] font-extrabold tracking-[-0.02em] text-foreground">
-                        {restaurant.tradeName}
-                      </h1>
-                      {isOpen !== null && (
-                        <span
-                          className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-extrabold ${
-                            isOpen
-                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                              : "bg-orange-50 dark:bg-orange-950/40 text-[#e05a00]"
-                          }`}
-                        >
-                          {isOpen ? "Aberto" : "Fechado"}
-                        </span>
-                      )}
-                    </div>
-
-                    {restaurantDescription && (
-                      <p className="mt-1 line-clamp-2 text-xs font-medium text-muted-foreground">
-                        {restaurantDescription}
-                      </p>
-                    )}
-
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
-                      {hasRating && (
-                        <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-foreground">
-                          <Star className="h-3 w-3 fill-[#ffb020] text-[#ffb020]" />
-                          {restaurantRating.toLocaleString("pt-BR", {
-                            minimumFractionDigits: 1,
-                            maximumFractionDigits: 1,
-                          })}
-                        </span>
-                      )}
-                      <span className="rounded-full bg-muted px-2.5 py-1 text-foreground">
-                        {restaurantCategory}
-                      </span>
-                      <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-foreground">
-                        <Clock3 className="h-3 w-3" />
-                        {deliveryTime}
-                      </span>
-                      <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-emerald-700 dark:text-emerald-400">
-                        {deliveryLabel}
-                      </span>
-                    </div>
+                <div className="relative z-10 -mt-14 flex justify-center">
+                  <div className="relative">
+                    <Image
+                      width={176}
+                      height={176}
+                      src={restaurant.logo_url || "/placeholder.svg"}
+                      alt={`Logo de ${restaurant.tradeName || "restaurante"}`}
+                      className="h-[88px] w-[88px] rounded-[22px] border-4 border-card bg-muted object-cover shadow-md"
+                    />
+                    <button
+                      type="button"
+                      aria-label={
+                        isFavorite
+                          ? "Remover dos favoritos"
+                          : "Salvar nos favoritos"
+                      }
+                      aria-pressed={isFavorite}
+                      onClick={() => toggleFavorite(companyId)}
+                      className={`absolute -right-1.5 -top-1.5 flex h-8 w-8 items-center justify-center rounded-full border-[3px] border-card shadow-sm transition-colors ${
+                        isFavorite
+                          ? "bg-orange-500 text-white"
+                          : "bg-card text-zinc-300 hover:text-orange-500 dark:text-zinc-500"
+                      }`}
+                    >
+                      <Heart
+                        className={`h-3.5 w-3.5 ${isFavorite ? "fill-current" : ""}`}
+                      />
+                    </button>
                   </div>
                 </div>
+
+                <div className="px-4 pb-4 pt-3 text-center sm:px-6">
+                  <h1 className="text-xl font-extrabold tracking-[-0.02em] text-foreground">
+                    {restaurant.tradeName}
+                  </h1>
+
+                  {restaurantDescription && (
+                    <p className="mx-auto mt-1 max-w-md text-[13px] text-muted-foreground">
+                      {restaurantDescription}
+                    </p>
+                  )}
+
+                  <div className="relative mx-auto mt-6 grid max-w-md grid-cols-3 divide-x divide-border rounded-2xl border border-border bg-card">
+                    {isOpen !== null && (
+                      <span
+                        className={`absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border-[3px] border-card px-2.5 py-1 text-[11px] font-bold leading-none shadow-sm ${
+                          isOpen
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                            : "bg-orange-50 text-[#e05a00] dark:bg-orange-950 dark:text-orange-400"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isOpen ? "bg-emerald-500" : "bg-orange-500"
+                          }`}
+                        />
+                        {isOpen ? "Aberto" : "Fechado"}
+                      </span>
+                    )}
+                    <div className="px-2 py-3">
+                      <div className="flex items-center justify-center gap-1 text-base font-extrabold text-foreground">
+                        <Star className="h-3.5 w-3.5 fill-[#ffb020] text-[#ffb020]" />
+                        {hasRating
+                          ? restaurantRating.toLocaleString("pt-BR", {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 1,
+                            })
+                          : "Novo"}
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {totalReviews > 0
+                          ? `${totalReviews.toLocaleString("pt-BR")} ${
+                              totalReviews === 1 ? "avaliação" : "avaliações"
+                            }`
+                          : "sem avaliações"}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center px-2 py-3 text-[15px] font-bold text-foreground">
+                      {deliveryTime}
+                    </div>
+                    <div
+                      className={`flex items-center justify-center gap-1.5 px-2 py-3 text-[15px] font-bold ${
+                        isFreeDelivery
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-foreground"
+                      }`}
+                    >
+                      <DeliveryBikeIcon />
+                      {deliveryLabel}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setInfoOpen(true)}
+                    className="mx-auto mt-3 flex h-12 w-full max-w-md items-center justify-center rounded-xl border border-border bg-card text-sm font-bold text-foreground transition-colors hover:bg-muted/60"
+                  >
+                    Informações
+                  </button>
+                </div>
               </section>
+
+              <RestaurantInfoSheet
+                open={infoOpen}
+                onOpenChange={setInfoOpen}
+                restaurant={restaurant}
+                isOpen={isOpen}
+              />
 
               {/* === BARRA DE NAVEGAÇÃO DE CATEGORIAS FIXA === */}
               <nav
@@ -381,10 +440,10 @@ export default function RestaurantPage() {
                       id={`nav-btn-${slugify(category)}`} // Uso do slug
                       type="button"
                       onClick={() => scrollToCategory(category)}
-                      className={`shrink-0 rounded-lg border px-3.5 py-1.5 text-xs font-bold transition-all ${
+                      className={`flex h-8 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-xs font-medium shadow-sm transition-all sm:h-9 sm:px-4 sm:text-sm ${
                         isActive
-                          ? "border-zinc-900 bg-zinc-900 text-white"
-                          : "border-border bg-card text-foreground hover:border-border"
+                          ? "border-orange-500 bg-orange-500 text-white"
+                          : "border-border bg-card text-foreground hover:border-orange-200 hover:bg-orange-50 dark:hover:border-orange-800 dark:hover:bg-orange-950/40"
                       }`}
                     >
                       {category}
@@ -394,7 +453,7 @@ export default function RestaurantPage() {
               </nav>
 
               {/* === LISTA DE PRODUTOS AGRUPADOS POR CATEGORIA === */}
-              <section aria-label="Itens do cardápio" className="mt-2 space-y-8">
+              <section aria-label="Itens do cardápio" className="mt-2 space-y-6">
                 {menuItems.length === 0 ? (
                   <Card className="border-border bg-card p-10 text-center shadow-sm">
                     <p className="text-sm font-medium text-muted-foreground">
@@ -408,7 +467,7 @@ export default function RestaurantPage() {
                       id={`category-${slugify(category)}`} // Uso do slug
                       className="scroll-mt-[130px]"
                     >
-                      <h2 className="mb-4 text-xl font-extrabold text-foreground">
+                      <h2 className="mb-2 text-sm font-bold text-foreground sm:mb-3 sm:text-base">
                         {category}
                       </h2>
                       
@@ -510,10 +569,10 @@ export default function RestaurantPage() {
 
       {totalItems > 0 && (
         <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-3 right-3 z-40 sm:left-4 sm:right-4 md:bottom-4">
-          <div className="mx-auto max-w-[1160px] rounded-xl bg-zinc-900 px-3 py-3 text-white shadow-xl sm:px-4">
+          <div className="mx-auto max-w-[1160px] rounded-xl border border-border bg-card px-3 py-3 text-foreground shadow-lg sm:px-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
-                <ShoppingBag className="h-4 w-4 shrink-0 text-orange-400" />
+                <ShoppingBag className="h-4 w-4 shrink-0 text-orange-500" />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-bold sm:text-sm">
                     {totalItems} {totalItems === 1 ? "item" : "itens"} no
@@ -527,7 +586,7 @@ export default function RestaurantPage() {
               <Button
                 type="button"
                 onClick={() => router.push("/cart")}
-                className="h-9 shrink-0 rounded-lg bg-card px-3 text-xs font-bold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40 sm:px-4"
+                className="h-9 shrink-0 rounded-lg bg-orange-500 px-3 text-xs font-bold text-white hover:bg-orange-600 sm:px-4"
               >
                 Ver carrinho
               </Button>
@@ -543,14 +602,13 @@ function RestaurantPageSkeleton() {
   return (
     <div className="space-y-3">
       <Card className="overflow-hidden border-border bg-card shadow-sm">
-        <Skeleton className="h-32 w-full rounded-none sm:h-40 md:h-[158px]" />
-        <div className="flex gap-3 px-3 pb-4 sm:px-4">
-          <Skeleton className="relative z-10 -mt-7 h-14 w-14 shrink-0 rounded-[14px]" />
-          <div className="flex-1 space-y-2 pt-3">
-            <Skeleton className="h-5 w-44" />
-            <Skeleton className="h-3 w-full max-w-md" />
-            <Skeleton className="h-6 w-72 max-w-full" />
-          </div>
+        <Skeleton className="h-40 w-full rounded-none sm:h-48" />
+        <div className="flex flex-col items-center px-4 pb-4">
+          <Skeleton className="relative z-10 -mt-14 h-[88px] w-[88px] rounded-[22px] border-4 border-card" />
+          <Skeleton className="mt-3 h-6 w-48" />
+          <Skeleton className="mt-2 h-3 w-40" />
+          <Skeleton className="mt-4 h-16 w-full max-w-md rounded-2xl" />
+          <Skeleton className="mt-3 h-12 w-full max-w-md rounded-xl" />
         </div>
       </Card>
 
@@ -576,5 +634,147 @@ function RestaurantPageSkeleton() {
         ))}
       </div>
     </div>
+  );
+}
+
+type RestaurantInfoSheetProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  restaurant: Restaurant;
+  isOpen: boolean | null;
+};
+
+/** "Informações": endereço, telefone e descrição da loja. */
+function RestaurantInfoSheet({
+  open,
+  onOpenChange,
+  restaurant,
+  isOpen,
+}: RestaurantInfoSheetProps) {
+  const address = restaurant.Address?.[0];
+  const addressLine = address
+    ? [
+        [address.street, address.number].filter(Boolean).join(", "),
+        address.neighborhood,
+        [address.city, address.state].filter(Boolean).join(" - "),
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+  const description = restaurant.description?.trim();
+  // Horário real quando a API mandar; até lá, o padrão de vitrine.
+  const openingHours =
+    parseOpeningHours(restaurant.openingHours) ?? DEFAULT_OPENING_HOURS;
+  const todayKey = getTodayKey();
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-border bg-card px-4 pb-8 pt-4 sm:px-6"
+      >
+        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted" />
+
+        <div className="mx-auto w-full max-w-xl space-y-4">
+          <div className="space-y-1">
+            <SheetTitle className="text-lg font-bold text-foreground">
+              {restaurant.tradeName}
+            </SheetTitle>
+            {isOpen !== null && (
+              <p
+                className={`text-xs font-bold ${
+                  isOpen
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-orange-600 dark:text-orange-400"
+                }`}
+              >
+                {isOpen ? "Aberto agora" : "Fechado no momento"}
+              </p>
+            )}
+          </div>
+
+          {description && (
+            <p className="text-sm text-muted-foreground">{description}</p>
+          )}
+
+          <div className="divide-y divide-border rounded-2xl border border-border">
+            {addressLine && (
+              <div className="flex items-start gap-3 px-4 py-3">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                    Endereço
+                  </p>
+                  <p className="mt-0.5 text-sm text-foreground">{addressLine}</p>
+                </div>
+              </div>
+            )}
+            {restaurant.phone && (
+              <a
+                href={`tel:${restaurant.phone.replace(/\D/g, "")}`}
+                className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
+              >
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                    Telefone
+                  </p>
+                  <p className="mt-0.5 text-sm text-foreground">
+                    {restaurant.phone}
+                  </p>
+                </div>
+              </a>
+            )}
+            {!addressLine && !restaurant.phone && (
+              <p className="px-4 py-3 text-sm text-muted-foreground">
+                A loja ainda não informou endereço nem telefone.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-border">
+            <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+              <Clock3 className="h-4 w-4 shrink-0 text-orange-500" />
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Horário de funcionamento
+              </p>
+            </div>
+            <ul className="divide-y divide-border">
+              {openingHours.map((day) => {
+                const isToday = day.day === todayKey;
+                return (
+                  <li
+                    key={day.day}
+                    className={`flex items-center justify-between gap-3 px-4 py-2 text-sm ${
+                      isToday ? "bg-orange-50/60 font-bold dark:bg-orange-950/30" : ""
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-foreground">
+                      {day.label}
+                      {isToday && (
+                        <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[9.5px] font-extrabold uppercase leading-none tracking-wide text-white">
+                          Hoje
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={
+                        day.isOpen
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                      }
+                    >
+                      {day.isOpen
+                        ? `${day.openTime} – ${day.closeTime}`
+                        : "Fechado"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
