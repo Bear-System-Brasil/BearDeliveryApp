@@ -1,0 +1,265 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiService } from "./api";
+
+/**
+ * `apiRequest` (o único ponto que fala HTTP nesse arquivo) não é exportado -
+ * de propósito, é implementação interna. Testamos o comportamento dele
+ * através de métodos públicos que são passthrough direto pra ele
+ * (`getAllProducts`, `updateUser`, `orderItems.addProductToCart`...),
+ * mockando só o `fetch` global - a fronteira real com a rede.
+ */
+
+function jsonResponse(body: unknown, init: Partial<Response> & { status?: number } = {}) {
+  const status = init.status ?? 200;
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: init.statusText ?? "",
+    headers: { get: () => "application/json" },
+    json: () => Promise.resolve(body),
+  } as unknown as Response;
+}
+
+function noContentResponse(status = 204) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: "",
+    headers: { get: () => null },
+    json: () => Promise.resolve(undefined),
+  } as unknown as Response;
+}
+
+describe("apiService (via apiRequest)", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("em sucesso, devolve success:true com data e status", async () => {
+    const products = [{ id: "p1", name: "Pizza" }];
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(products));
+
+    const result = await apiService.getAllProducts();
+
+    expect(result).toEqual({ success: true, data: products, status: 200 });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/proxy/product",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("adiciona o header X-Auth-Required só quando o endpoint exige autenticação", async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse([]));
+    await apiService.getAllProducts(); // requiresAuth = false
+    const [, publicConfig] = vi.mocked(fetch).mock.calls[0];
+    expect((publicConfig?.headers as Record<string, string>)["X-Auth-Required"]).toBeUndefined();
+
+    vi.mocked(fetch).mockClear();
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "u1" }));
+    await apiService.updateUser({ name: "Nova" } as never); // requiresAuth = true
+    const [, authedConfig] = vi.mocked(fetch).mock.calls[0];
+    expect((authedConfig?.headers as Record<string, string>)["X-Auth-Required"]).toBe("1");
+  });
+
+  it("prefixa o endpoint com /api/proxy", async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse([]));
+    await apiService.getAllCategories();
+    expect(fetch).toHaveBeenCalledWith("/api/proxy/categories", expect.anything());
+  });
+
+  describe("401 em rota que exige autenticação", () => {
+    it("dispara 'auth:unauthorized' e devolve a mensagem de sessão expirada", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ message: "unauthorized" }, { status: 401 }));
+      const listener = vi.fn();
+      window.addEventListener("auth:unauthorized", listener);
+
+      const result = await apiService.updateUser({ name: "X" } as never);
+
+      expect(result).toEqual({
+        success: false,
+        message: "Sessão expirada. Faça login novamente.",
+        status: 401,
+      });
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      window.removeEventListener("auth:unauthorized", listener);
+    });
+  });
+
+  it("401 em rota pública (sem requiresAuth) não dispara o evento nem o texto de sessão - segue o fluxo normal de erro", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ message: "Not allowed here" }, { status: 401, statusText: "Unauthorized" }),
+    );
+    const listener = vi.fn();
+    window.addEventListener("auth:unauthorized", listener);
+
+    const result = await apiService.getAllProducts();
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe("Not allowed here");
+    expect(listener).not.toHaveBeenCalled();
+
+    window.removeEventListener("auth:unauthorized", listener);
+  });
+
+  describe("extração de mensagem de erro", () => {
+    it("usa message string quando presente", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ message: "CPF inválido" }, { status: 400 }));
+      const result = await apiService.getAllProducts();
+      expect(result.message).toBe("CPF inválido");
+    });
+
+    it("usa o primeiro elemento quando message é array de strings", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ message: ["nome é obrigatório", "email é obrigatório"] }, { status: 400 }),
+      );
+      const result = await apiService.getAllProducts();
+      expect(result.message).toBe("nome é obrigatório");
+    });
+
+    it("serializa em JSON quando o primeiro elemento do array não é string", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ message: [{ field: "cpf", issue: "invalid" }] }, { status: 400 }),
+      );
+      const result = await apiService.getAllProducts();
+      expect(result.message).toBe(JSON.stringify({ field: "cpf", issue: "invalid" }));
+    });
+
+    it("cai para o campo 'error' (string) quando não há 'message' utilizável", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ error: "Conflito" }, { status: 409 }));
+      const result = await apiService.getAllProducts();
+      expect(result.message).toBe("Conflito");
+    });
+
+    it("cai para o campo 'error' (array) quando não há 'message' utilizável", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ error: ["primeiro erro", "segundo erro"] }, { status: 409 }),
+      );
+      const result = await apiService.getAllProducts();
+      expect(result.message).toBe("primeiro erro");
+    });
+
+    it("serializa message quando ele é um objeto (não string, não array)", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ message: { code: "X1" } }, { status: 400 }),
+      );
+      const result = await apiService.getAllProducts();
+      expect(result.message).toBe(JSON.stringify({ code: "X1" }));
+    });
+
+    it("ignora message string vazia/só espaço e cai no fallback genérico", async () => {
+      vi.mocked(fetch).mockResolvedValue(
+        jsonResponse({ message: "   " }, { status: 500, statusText: "Internal Server Error" }),
+      );
+      const result = await apiService.getAllProducts();
+      expect(result.message).toBe("Erro 500: Internal Server Error");
+    });
+
+    it("sem corpo de erro (204/sem conteúdo) usa 'Erro {status}: {statusText}'", async () => {
+      vi.mocked(fetch).mockResolvedValue(noContentResponse(500));
+      const result = await apiService.getAllProducts();
+      expect(result).toEqual({ success: false, message: "Erro 500: " });
+    });
+  });
+
+  it("204 No Content bem-sucedido devolve success:true com data null", async () => {
+    vi.mocked(fetch).mockResolvedValue(noContentResponse(204));
+    const result = await apiService.getAllProducts();
+    expect(result).toEqual({ success: true, data: null, status: 204 });
+  });
+
+  it("resposta sem content-type JSON (bem-sucedida) também vira data:null, sem tentar parsear", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "",
+      headers: { get: () => "text/plain" },
+      json: () => Promise.reject(new Error("não deveria ser chamado")),
+    } as unknown as Response);
+
+    const result = await apiService.getAllProducts();
+    expect(result).toEqual({ success: true, data: null, status: 200 });
+  });
+
+  it("JSON malformado (content-type diz JSON, mas o parse falha) devolve erro descritivo", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "",
+      headers: { get: () => "application/json" },
+      json: () => Promise.reject(new SyntaxError("Unexpected token")),
+    } as unknown as Response);
+
+    const result = await apiService.getAllProducts();
+    expect(result).toEqual({
+      success: false,
+      message: "Erro ao processar resposta do servidor (Status 200)",
+    });
+  });
+
+  it("falha de rede (fetch rejeita) devolve a mensagem genérica de conexão", async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError("Failed to fetch"));
+    const result = await apiService.getAllProducts();
+    expect(result).toEqual({
+      success: false,
+      message: "Erro de conexão. Verifique sua internet.",
+    });
+  });
+
+  it("AbortError não é convertido em {success:false} - é repropagado pro caller", async () => {
+    const abortError = new DOMException("aborted", "AbortError");
+    vi.mocked(fetch).mockRejectedValue(abortError);
+
+    await expect(
+      apiService.orderItems.removeProductFromCart("cust-1", "order-1", "prod-1", 1),
+    ).rejects.toBe(abortError);
+  });
+
+  describe("orderItems.addProductToCart - montagem do corpo da requisição", () => {
+    async function captureBody(
+      extras?: Parameters<typeof apiService.orderItems.addProductToCart>[4],
+    ) {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "order-1" }));
+      await apiService.orderItems.addProductToCart(
+        "order-1",
+        "product-1",
+        "customer-1",
+        2,
+        extras,
+      );
+      const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
+      return JSON.parse(config!.body as string);
+    }
+
+    it("sem extras, o corpo só tem orderId/productId/quantity", async () => {
+      const body = await captureBody();
+      expect(body).toEqual({ orderId: "order-1", productId: "product-1", quantity: 2 });
+    });
+
+    it("inclui addOns só quando a lista não é vazia", async () => {
+      expect(await captureBody({ addOns: [] })).not.toHaveProperty("addOns");
+      expect(
+        await captureBody({ addOns: [{ productAddOnsId: "a1", quantity: 1 }] }),
+      ).toHaveProperty("addOns", [{ productAddOnsId: "a1", quantity: 1 }]);
+    });
+
+    it("inclui variations só quando a lista não é vazia", async () => {
+      expect(await captureBody({ variations: [] })).not.toHaveProperty("variations");
+      expect(
+        await captureBody({ variations: [{ productVariationId: "v1" }] }),
+      ).toHaveProperty("variations", [{ productVariationId: "v1" }]);
+    });
+
+    it("remove espaços da observação e omite quando fica vazia", async () => {
+      expect(await captureBody({ observations: "   " })).not.toHaveProperty("observations");
+      expect(await captureBody({ observations: "  sem cebola  " })).toHaveProperty(
+        "observations",
+        "sem cebola",
+      );
+    });
+  });
+});
