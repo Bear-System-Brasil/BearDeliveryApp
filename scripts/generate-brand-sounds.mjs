@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ─────────────────────────────────────────────────────────────────────────────
-// Gerador da identidade sonora do Like Delivery
+// Gerador da identidade sonora do BearDelivery
 //
 // Sintetiza todos os sons da marca do zero (sem samples, sem libs de DSP) e
 // grava em public/sounds. Rodar de novo com o mesmo código produz bytes
@@ -552,7 +552,7 @@ async function main() {
   if (!Mp3Encoder) {
     console.warn(
       "! Nenhum encoder lamejs encontrado — gravando WAV (arquivos ~8x maiores).\n" +
-        "  Para MP3: npm i -D @breezystack/lamejs\n",
+      "  Para MP3: npm i -D @breezystack/lamejs\n",
     );
   }
 

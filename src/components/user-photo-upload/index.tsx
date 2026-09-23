@@ -105,9 +105,9 @@ export function UserPhotoUpload({
     return (
       <div className="space-y-4">
         <div className="relative w-40 h-40 mx-auto">
-          <div className="w-full h-full bg-linear-to-br from-orange-50 to-orange-100 rounded-full flex flex-col items-center justify-center border-2 border-dashed border-orange-300 dark:border-orange-700">
-            <Upload className="w-10 h-10 text-orange-400 mb-2" />
-            <span className="text-sm text-orange-600 dark:text-orange-400 font-medium">
+          <div className="w-full h-full bg-linear-to-br from-brand-50 to-brand-100 rounded-full flex flex-col items-center justify-center border-2 border-dashed border-brand-300 dark:border-brand-700">
+            <Upload className="w-10 h-10 text-brand-400 mb-2" />
+            <span className="text-sm text-brand-600 dark:text-brand-400 font-medium">
               Carregando...
             </span>
           </div>
@@ -132,7 +132,7 @@ export function UserPhotoUpload({
         {uploading ? (
           // Upload skeleton loading
           <div className="w-full h-full rounded-full overflow-hidden relative">
-            <div className="absolute inset-0 bg-linear-to-br from-orange-200 to-orange-200 animate-pulse" />
+            <div className="absolute inset-0 bg-linear-to-br from-brand-200 to-brand-200 animate-pulse" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
               <span className="mt-3 text-xs font-medium text-white drop-shadow-lg">
@@ -143,7 +143,7 @@ export function UserPhotoUpload({
         ) : preview ? (
           <div
             onClick={() => !uploading && fileInputRef.current?.click()}
-            className="relative w-full h-full rounded-full bg-card border-4 border-orange-200 dark:border-orange-800 hover:border-orange-400 transition-all overflow-hidden cursor-pointer group"
+            className="relative w-full h-full rounded-full bg-card border-4 border-brand-200 dark:border-brand-800 hover:border-brand-400 transition-all overflow-hidden cursor-pointer group"
           >
             {/* Image Container */}
             <div
@@ -208,10 +208,10 @@ export function UserPhotoUpload({
         ) : (
           <div
             onClick={() => !uploading && fileInputRef.current?.click()}
-            className="w-full h-full bg-linear-to-br from-orange-50 to-orange-100 rounded-full flex flex-col items-center justify-center border-2 border-dashed border-orange-300 dark:border-orange-700 hover:border-orange-500 hover:from-orange-100 hover:to-orange-200 transition-all cursor-pointer"
+            className="w-full h-full bg-linear-to-br from-brand-50 to-brand-100 rounded-full flex flex-col items-center justify-center border-2 border-dashed border-brand-300 dark:border-brand-700 hover:border-brand-500 hover:from-brand-100 hover:to-brand-200 transition-all cursor-pointer"
           >
-            <Upload className="w-10 h-10 text-orange-400 transition-colors mb-2" />
-            <span className="text-sm text-orange-600 dark:text-orange-400 font-medium">
+            <Upload className="w-10 h-10 text-brand-400 transition-colors mb-2" />
+            <span className="text-sm text-brand-600 dark:text-brand-400 font-medium">
               {uploading ? "Enviando..." : "Adicionar Foto"}
             </span>
           </div>

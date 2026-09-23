@@ -143,7 +143,7 @@ export default function CartPage() {
         <main className="px-3 pb-16 pt-24 sm:px-5">
           <div className="mx-auto flex min-h-[70vh] max-w-[1160px] items-center justify-center">
             <Card className="w-full max-w-md border-border bg-card p-8 text-center shadow-sm">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 dark:bg-orange-950/40 text-orange-500">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 dark:bg-brand-950/40 text-brand-500">
                 <ShoppingBag className="h-8 w-8" />
               </div>
               <h1 className="mt-5 text-xl font-extrabold text-foreground">
@@ -155,7 +155,7 @@ export default function CartPage() {
               <Button
                 type="button"
                 onClick={() => router.push("/")}
-                className="mt-5 h-10 rounded-lg bg-orange-500 px-5 font-bold hover:bg-orange-600"
+                className="mt-5 h-10 rounded-lg bg-brand-500 px-5 font-bold hover:bg-brand-600"
               >
                 Explorar restaurantes
               </Button>
@@ -230,7 +230,7 @@ export default function CartPage() {
                   <button
                     type="button"
                     onClick={() => router.push("/#lojas")}
-                    className="shrink-0 text-xs font-bold text-orange-500 hover:text-orange-600 dark:hover:text-orange-400"
+                    className="shrink-0 text-xs font-bold text-brand-500 hover:text-brand-600 dark:hover:text-brand-400"
                   >
                     Ver lojas
                   </button>
@@ -275,7 +275,7 @@ export default function CartPage() {
                       </div>
 
                       {extrasLabel && (
-                        <p className="mt-1 truncate text-xs font-bold text-orange-600 dark:text-orange-400">
+                        <p className="mt-1 truncate text-xs font-bold text-brand-600 dark:text-brand-400">
                           {extrasLabel}
                         </p>
                       )}
@@ -402,7 +402,7 @@ export default function CartPage() {
                 <Button
                   type="button"
                   onClick={handleGoToCheckout}
-                  className="mt-4 h-11 w-full rounded-lg bg-orange-500 text-sm font-extrabold hover:bg-orange-600"
+                  className="mt-4 h-11 w-full rounded-lg bg-brand-500 text-sm font-extrabold hover:bg-brand-600"
                 >
                   Finalizar pedido
                 </Button>

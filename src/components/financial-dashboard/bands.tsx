@@ -246,7 +246,7 @@ export function LeaksBand({ dashboard }: { dashboard: Dashboard }) {
                     </div>
                     <div className="mt-[5px] h-[5px] overflow-hidden rounded-full bg-muted">
                       <div
-                        className="h-full rounded-full bg-[#FF6B00]"
+                        className="h-full rounded-full bg-brand-500"
                         style={{ width: `${Math.min(slice.share * 100, 100)}%` }}
                       />
                     </div>
@@ -326,7 +326,7 @@ export function TrendsBand({ dashboard }: { dashboard: Dashboard }) {
                     <Line
                       type="monotone"
                       dataKey="totalRevenue"
-                      stroke="#FF6B00"
+                      stroke="var(--color-brand-500)"
                       strokeWidth={2}
                       dot={false}
                       activeDot={{ r: 4 }}

@@ -189,7 +189,7 @@ export function PersonalInformation({
             <Input
               type="date"
               {...profileForm.register("birthDate")}
-              className="pl-10 rounded-xl border-2 border-border focus:border-orange-400"
+              className="pl-10 rounded-xl border-2 border-border focus:border-brand-400"
             />
           ) : (
             <Input

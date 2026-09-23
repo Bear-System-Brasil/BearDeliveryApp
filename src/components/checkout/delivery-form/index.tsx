@@ -70,7 +70,7 @@ type FieldProps = {
 
 const fieldLabelClass = "text-[11px] font-bold text-foreground";
 const inputClass =
-  "h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-orange-400 focus-visible:ring-orange-200";
+  "h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200";
 
 function Field({ htmlFor, label, optional, className, children }: FieldProps) {
   return (
@@ -219,7 +219,7 @@ export function DeliveryForm({
 
       <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400">
             <User className="h-4 w-4" />
           </div>
           <h2 className="text-sm font-extrabold text-foreground">
@@ -260,7 +260,7 @@ export function DeliveryForm({
         <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400">
                 <MapPin className="h-4 w-4" />
               </div>
               <h2 className="text-sm font-extrabold text-foreground">
@@ -274,7 +274,7 @@ export function DeliveryForm({
                 variant="ghost"
                 size="sm"
                 onClick={handleUseLocation}
-                className="h-8 px-2 text-xs font-bold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40 hover:text-orange-700 dark:hover:text-orange-400"
+                className="h-8 px-2 text-xs font-bold text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:text-brand-700 dark:hover:text-brand-400"
               >
                 <LocateFixed className="h-4 w-4" />
                 Usar localização
@@ -286,7 +286,7 @@ export function DeliveryForm({
                   variant="outline"
                   size="sm"
                   onClick={handleNewAddress}
-                  className="h-8 rounded-lg border-border px-2 text-xs font-bold text-foreground hover:border-orange-300 dark:hover:border-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950/40 hover:text-orange-700 dark:hover:text-orange-400"
+                  className="h-8 rounded-lg border-border px-2 text-xs font-bold text-foreground hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:text-brand-700 dark:hover:text-brand-400"
                 >
                   <Plus className="h-4 w-4" />
                   {addressMode === "select"
@@ -319,15 +319,15 @@ export function DeliveryForm({
                       className={cn(
                         "flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors",
                         isSelected
-                          ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40"
-                          : "border-border bg-muted hover:border-orange-300 dark:hover:border-orange-700 hover:bg-card",
+                          ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40"
+                          : "border-border bg-muted hover:border-brand-300 dark:hover:border-brand-700 hover:bg-card",
                       )}
                     >
                       <span
                         className={cn(
                           "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
                           isSelected
-                            ? "border-orange-500 bg-orange-500 text-white"
+                            ? "border-brand-500 bg-brand-500 text-white"
                             : "border-border bg-card text-transparent",
                         )}
                       >
@@ -506,7 +506,7 @@ export function DeliveryForm({
                   onCheckedChange={(checked) =>
                     setSaveAddress(Boolean(checked))
                   }
-                  className="rounded-md border-border data-[state=checked]:bg-orange-500"
+                  className="rounded-md border-border data-[state=checked]:bg-brand-500"
                 />
                 <Label
                   htmlFor="saveAddress"
@@ -523,7 +523,7 @@ export function DeliveryForm({
       {orderType === "pickup" && (
         <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
           <div className="mb-3 flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400">
               <Store className="h-4 w-4" />
             </div>
             <h2 className="text-sm font-extrabold text-foreground">
@@ -531,16 +531,16 @@ export function DeliveryForm({
             </h2>
           </div>
 
-          <div className="flex items-start gap-3 rounded-lg bg-orange-50 dark:bg-orange-950/40 p-3">
-            <Store className="mt-0.5 h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
+          <div className="flex items-start gap-3 rounded-lg bg-brand-50 dark:bg-brand-950/40 p-3">
+            <Store className="mt-0.5 h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" />
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-orange-900 dark:text-orange-300">
+              <p className="truncate text-sm font-bold text-brand-900 dark:text-brand-300">
                 {restaurant?.name || "Restaurante"}
               </p>
-              <p className="mt-0.5 text-xs font-semibold text-orange-700 dark:text-orange-400">
+              <p className="mt-0.5 text-xs font-semibold text-brand-700 dark:text-brand-400">
                 {restaurant?.address || "Endereço disponível apos confirmação"}
               </p>
-              <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-orange-600 dark:text-orange-400">
+              <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-brand-600 dark:text-brand-400">
                 <Clock className="h-3.5 w-3.5" />
                 Pronto em cerca de 20-30 min
               </p>
@@ -556,7 +556,7 @@ export function DeliveryForm({
             placeholder="Ex: entregar na portaria"
             value={deliveryInfo.observations}
             onChange={(e) => handleInputChange("observations", e.target.value)}
-            className="min-h-[72px] resize-none rounded-lg border-border bg-muted text-sm shadow-none focus-visible:border-orange-400 focus-visible:ring-orange-200"
+            className="min-h-[72px] resize-none rounded-lg border-border bg-muted text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
           />
         </Field>
       </section>

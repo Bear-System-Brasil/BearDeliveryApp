@@ -77,7 +77,7 @@ export interface GlassCardProps {
 const variantClasses = {
   glass: "bg-card/80 backdrop-blur-sm",
   solid: "bg-card",
-  gradient: "bg-gradient-to-r from-orange-500 to-orange-500 text-white",
+  gradient: "bg-gradient-to-r from-brand-500 to-brand-500 text-white",
 };
 
 const shadowClasses = {
@@ -92,7 +92,7 @@ const shadowClasses = {
 const borderClasses = {
   default: "border",
   none: "border-0",
-  accent: "border-2 border-orange-300 dark:border-orange-700",
+  accent: "border-2 border-brand-300 dark:border-brand-700",
 };
 
 /**
@@ -206,7 +206,7 @@ export const GlassCardTitle = React.memo<{
   <CardTitle
     className={cn(
       gradient &&
-        "bg-linear-to-r from-orange-500 to-orange-500 bg-clip-text text-transparent",
+        "bg-linear-to-r from-brand-500 to-brand-500 bg-clip-text text-transparent",
       className,
     )}
   >

@@ -329,7 +329,7 @@ export default function RestaurantPage() {
                           className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-extrabold ${
                             isOpen
                               ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                              : "bg-orange-50 dark:bg-orange-950/40 text-[#e05a00]"
+                              : "bg-brand-50 dark:bg-brand-950/40 text-brand-600"
                           }`}
                         >
                           {isOpen ? "Aberto" : "Fechado"}
@@ -481,7 +481,7 @@ export default function RestaurantPage() {
                                       event.stopPropagation();
                                       handleOpenModal(item);
                                     }}
-                                    className="absolute -bottom-1 -right-1 h-7 w-7 rounded-lg border-2 border-white bg-orange-500 text-white shadow-md hover:bg-orange-600"
+                                    className="absolute -bottom-1 -right-1 h-7 w-7 rounded-lg border-2 border-white bg-brand-500 text-white shadow-md hover:bg-brand-600"
                                   >
                                     <Plus className="h-4 w-4" />
                                   </Button>
@@ -513,7 +513,7 @@ export default function RestaurantPage() {
           <div className="mx-auto max-w-[1160px] rounded-xl bg-zinc-900 px-3 py-3 text-white shadow-xl sm:px-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
-                <ShoppingBag className="h-4 w-4 shrink-0 text-orange-400" />
+                <ShoppingBag className="h-4 w-4 shrink-0 text-brand-400" />
                 <div className="min-w-0">
                   <p className="truncate text-xs font-bold sm:text-sm">
                     {totalItems} {totalItems === 1 ? "item" : "itens"} no
@@ -527,7 +527,7 @@ export default function RestaurantPage() {
               <Button
                 type="button"
                 onClick={() => router.push("/cart")}
-                className="h-9 shrink-0 rounded-lg bg-card px-3 text-xs font-bold text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40 sm:px-4"
+                className="h-9 shrink-0 rounded-lg bg-card px-3 text-xs font-bold text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 sm:px-4"
               >
                 Ver carrinho
               </Button>

@@ -132,6 +132,11 @@ export const useCartActions = () => {
   // Debounce timers para atualizações de quantidade
   const updateTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
+  // Quantidade que o backend conhece de cada item enquanto há um debounce
+  // pendente. A diferença enviada é "final - base", não "final - valor do
+  // clique anterior" - senão cliques rápidos mandam só o último incremento.
+  const debounceBaseQuantities = useRef<Map<string, number>>(new Map());
+
   /**
    * Busca carrinho do backend e atualiza estado local
    * IMPORTANTE: Erro 404 é ESPERADO quando o usuário não tem carrinho ativo
@@ -415,19 +420,25 @@ export const useCartActions = () => {
 
       // Verificar se essa MESMA combinação (produto + tamanho + complementos)
       // já existe no carrinho - combinações diferentes viram linhas separadas
-      const existingItemIndex = items.findIndex((i) => i.id === cartItemKey);
+      // Lê do store, não do `items` da renderização: se o carrinho acabou de
+      // ser limpo (troca de restaurante), o `items` do closure ainda tem os
+      // itens antigos.
+      const currentCartItems = useCartStore.getState().items;
+      const existingItemIndex = currentCartItems.findIndex(
+        (i) => i.id === cartItemKey,
+      );
       let newItems;
 
       if (existingItemIndex >= 0) {
         // Item já existe, aumentar quantidade
-        newItems = [...items];
+        newItems = [...currentCartItems];
         newItems[existingItemIndex] = {
           ...newItems[existingItemIndex],
           quantity: newItems[existingItemIndex].quantity + (item.quantity || 1),
         };
       } else {
         // Novo item
-        newItems = [...items, optimisticItem];
+        newItems = [...currentCartItems, optimisticItem];
       }
 
       // Atualizar estado local imediatamente
@@ -577,6 +588,7 @@ export const useCartActions = () => {
       clearTimeout(updateTimers.current.get(itemId)!);
       updateTimers.current.delete(itemId);
     }
+    debounceBaseQuantities.current.delete(itemId);
 
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
@@ -624,6 +636,11 @@ export const useCartActions = () => {
       return;
     }
 
+    // Primeiro clique da rajada: guarda a quantidade antes dela
+    if (!debounceBaseQuantities.current.has(itemId)) {
+      debounceBaseQuantities.current.set(itemId, item.quantity);
+    }
+
     // ===== OPTIMISTIC UPDATE IMEDIATO =====
     const newItems = items.map((i) =>
       i.id === itemId ? { ...i, quantity: newQuantity } : i,
@@ -638,6 +655,9 @@ export const useCartActions = () => {
 
     const timer = setTimeout(() => {
       updateTimers.current.delete(itemId);
+      const baseQuantity =
+        debounceBaseQuantities.current.get(itemId) ?? item.quantity;
+      debounceBaseQuantities.current.delete(itemId);
 
       // Calcular diferença com base no estado atual do store
       const currentItems = useCartStore.getState().items;
@@ -645,7 +665,7 @@ export const useCartActions = () => {
 
       if (!currentItem) return; // Item foi removido
 
-      const diff = currentItem.quantity - item.quantity;
+      const diff = currentItem.quantity - baseQuantity;
       if (diff === 0) return; // Sem mudanças
 
       // CONTRAMEDIDA: Cancelar requisição anterior se houver
@@ -822,6 +842,7 @@ export const useCartActions = () => {
       // Limpar todos timers de debounce
       updateTimers.current.forEach((timer) => clearTimeout(timer));
       updateTimers.current.clear();
+      debounceBaseQuantities.current.clear();
     };
   }, []);
 

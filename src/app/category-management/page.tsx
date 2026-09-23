@@ -76,7 +76,7 @@ function CategoryManagementContent() {
       actions={
         <Button
           onClick={handleOpenCreateModal}
-          className="h-[34px] w-full cursor-pointer rounded-xl bg-[#FF6B00] px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] hover:bg-[#E05F00] sm:w-auto"
+          className="h-[34px] w-full cursor-pointer rounded-xl bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] hover:bg-brand-600 sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Adicionar Categoria
@@ -225,7 +225,7 @@ function CategoryManagementContent() {
 
             {filteredCategories.length === 0 && !loading && (
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-5 py-10 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[8px] bg-orange-50 dark:bg-orange-950/40 text-[#FF6B00]">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[8px] bg-brand-50 dark:bg-brand-950/40 text-brand-500">
                   <LayoutGrid className="h-6 w-6" />
                 </div>
                 <p className="mt-3 text-sm font-bold text-foreground">
@@ -303,7 +303,7 @@ function CategoryManagementContent() {
                   onChange={(e) => updateFormField("name", e.target.value)}
                   placeholder="Ex: Pizza, Sobremesas, Bebidas"
                   maxLength={50}
-                  className="h-10 rounded-xl border-border text-xs focus-visible:ring-orange-200"
+                  className="h-10 rounded-xl border-border text-xs focus-visible:ring-brand-200"
                 />
               </div>
 
@@ -320,7 +320,7 @@ function CategoryManagementContent() {
                   placeholder="Descreva a categoria..."
                   rows={3}
                   maxLength={200}
-                  className="resize-none rounded-xl border-border text-xs focus-visible:ring-orange-200"
+                  className="resize-none rounded-xl border-border text-xs focus-visible:ring-brand-200"
                 />
               </div>
             </div>
@@ -337,7 +337,7 @@ function CategoryManagementContent() {
             <Button
               onClick={handleSaveCategory}
               disabled={isSaving}
-              className="cursor-pointer rounded-[8px] bg-[#FF6B00] text-xs font-bold text-white hover:bg-[#E05F00]"
+              className="cursor-pointer rounded-[8px] bg-brand-500 text-xs font-bold text-white hover:bg-brand-600"
             >
               {isSaving ? (
                 <>

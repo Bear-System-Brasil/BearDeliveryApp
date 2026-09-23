@@ -103,7 +103,7 @@ export function OrderCard({
       <CardContent className="space-y-4 p-4">
         {/* Cliente */}
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-100 font-bold text-orange-600">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-100 font-bold text-brand-600">
             {customerName.charAt(0)}
           </div>
 
@@ -244,7 +244,7 @@ export function OrderCard({
 
             {action && (
               <Button
-                className="flex-1 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700"
+                className="flex-1 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 text-white hover:from-brand-600 hover:to-brand-700"
                 onClick={() => onAction?.(order)}
                 disabled={isUpdating}
               >

@@ -36,7 +36,7 @@ export function BackButton({
         "h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center",
         "border-2 border-border bg-card shadow-sm hover:shadow-md",
         "transition-all cursor-pointer",
-        "hover:border-orange-300 dark:hover:border-orange-700 hover:bg-linear-to-br hover:from-orange-50 hover:to-orange-50",
+        "hover:border-brand-300 dark:hover:border-brand-700 hover:bg-linear-to-br hover:from-brand-50 hover:to-brand-50",
         sticky && "fixed top-24 left-4 z-50",
         className,
       )}

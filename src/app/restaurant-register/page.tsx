@@ -59,20 +59,20 @@ export default function RestaurantRegisterPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="gap-2 hover:bg-orange-50 dark:hover:bg-orange-950/40 cursor-pointer"
+                    className="gap-2 hover:bg-brand-50 dark:hover:bg-brand-950/40 cursor-pointer"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Voltar
                   </Button>
                 </Link>
-                <Badge className="gap-1 bg-gradient-to-r from-orange-100 to-orange-100 text-orange-700 dark:text-orange-400 border-0">
+                <Badge className="gap-1 bg-gradient-to-r from-brand-100 to-brand-100 text-brand-700 dark:text-brand-400 border-0">
                   <Store className="h-3 w-3" />
                   Restaurante
                 </Badge>
               </div>
               <div className="space-y-2">
                 <GlassCardTitle className="text-3xl font-bold text-foreground flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-orange-500 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-brand-500 to-brand-500 flex items-center justify-center">
                     <Building2 className="h-6 w-6 text-white" />
                   </div>
                   Cadastro de Restaurante
@@ -84,9 +84,9 @@ export default function RestaurantRegisterPage() {
             </GlassCardHeader>
 
             <GlassCardContent>
-              <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-orange-50 border border-orange-200 dark:border-orange-800/50 rounded-xl">
+              <div className="mb-6 p-4 bg-gradient-to-r from-brand-50 to-brand-50 border border-brand-200 dark:border-brand-800/50 rounded-xl">
                 <p className="text-sm text-foreground">
-                  <strong className="text-orange-600 dark:text-orange-400">
+                  <strong className="text-brand-600 dark:text-brand-400">
                     Processo de cadastro:
                   </strong>{" "}
                   Preencha os dados abaixo para criar sua conta e cadastrar seu
@@ -101,7 +101,7 @@ export default function RestaurantRegisterPage() {
                     htmlFor="tradeName"
                     className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
                   >
-                    <Store className="h-4 w-4 text-orange-500" />
+                    <Store className="h-4 w-4 text-brand-500" />
                     Nome Fantasia
                   </Label>
                   <Input
@@ -112,7 +112,7 @@ export default function RestaurantRegisterPage() {
                     onChange={(e) =>
                       handleInputChange("tradeName", e.target.value)
                     }
-                    className="h-12 rounded-xl border-2 border-border focus:border-orange-400 transition-colors"
+                    className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
                     required
                   />
                 </div>
@@ -122,7 +122,7 @@ export default function RestaurantRegisterPage() {
                     htmlFor="legalName"
                     className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
                   >
-                    <Building2 className="h-4 w-4 text-orange-500" />
+                    <Building2 className="h-4 w-4 text-brand-500" />
                     Razão Social
                   </Label>
                   <Input
@@ -133,7 +133,7 @@ export default function RestaurantRegisterPage() {
                     onChange={(e) =>
                       handleInputChange("legalName", e.target.value)
                     }
-                    className="h-12 rounded-xl border-2 border-border focus:border-orange-400 transition-colors"
+                    className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
                     required
                   />
                 </div>
@@ -143,7 +143,7 @@ export default function RestaurantRegisterPage() {
                     htmlFor="cnpj"
                     className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
                   >
-                    <Building2 className="h-4 w-4 text-orange-500" />
+                    <Building2 className="h-4 w-4 text-brand-500" />
                     CNPJ
                   </Label>
                   <Input
@@ -155,7 +155,7 @@ export default function RestaurantRegisterPage() {
                       handleInputChange("cnpj", formatCnpj(e.target.value))
                     }
                     maxLength={18}
-                    className="h-12 rounded-xl border-2 border-border focus:border-orange-400 transition-colors"
+                    className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
                     required
                   />
                 </div>
@@ -166,7 +166,7 @@ export default function RestaurantRegisterPage() {
                     htmlFor="description"
                     className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
                   >
-                    <Store className="h-4 w-4 text-orange-500" />
+                    <Store className="h-4 w-4 text-brand-500" />
                     Descrição do Restaurante
                   </Label>
                   <Input
@@ -177,7 +177,7 @@ export default function RestaurantRegisterPage() {
                     onChange={(e) =>
                       handleInputChange("description", e.target.value)
                     }
-                    className="h-12 rounded-xl border-2 border-border focus:border-orange-400 transition-colors"
+                    className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
                     required
                   />
                 </div>
@@ -188,7 +188,7 @@ export default function RestaurantRegisterPage() {
                       htmlFor="email"
                       className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
                     >
-                      <Mail className="h-4 w-4 text-orange-500" />
+                      <Mail className="h-4 w-4 text-brand-500" />
                       E-mail
                     </Label>
                     <Input
@@ -199,7 +199,7 @@ export default function RestaurantRegisterPage() {
                       onChange={(e) =>
                         handleInputChange("email", e.target.value)
                       }
-                      className="h-12 rounded-xl border-2 border-border focus:border-orange-400 transition-colors"
+                      className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
                       required
                     />
                   </div>
@@ -209,7 +209,7 @@ export default function RestaurantRegisterPage() {
                       htmlFor="phone"
                       className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
                     >
-                      <Phone className="h-4 w-4 text-orange-500" />
+                      <Phone className="h-4 w-4 text-brand-500" />
                       Telefone
                     </Label>
                     <Input
@@ -224,7 +224,7 @@ export default function RestaurantRegisterPage() {
                         )
                       }
                       maxLength={15}
-                      className="h-12 rounded-xl border-2 border-border focus:border-orange-400 transition-colors"
+                      className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
                       required
                     />
                   </div>
@@ -235,7 +235,7 @@ export default function RestaurantRegisterPage() {
                     htmlFor="password"
                     className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
                   >
-                    <Lock className="h-4 w-4 text-orange-500" />
+                    <Lock className="h-4 w-4 text-brand-500" />
                     Senha
                   </Label>
                   <Input
@@ -246,7 +246,7 @@ export default function RestaurantRegisterPage() {
                     onChange={(e) =>
                       handleInputChange("password", e.target.value)
                     }
-                    className="h-12 rounded-xl border-2 border-border focus:border-orange-400 transition-colors"
+                    className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
                     required
                   />
                   {registerData.password && (
@@ -275,7 +275,7 @@ export default function RestaurantRegisterPage() {
                     htmlFor="confirmPassword"
                     className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
                   >
-                    <Lock className="h-4 w-4 text-orange-500" />
+                    <Lock className="h-4 w-4 text-brand-500" />
                     Confirmar Senha
                   </Label>
                   <Input
@@ -286,7 +286,7 @@ export default function RestaurantRegisterPage() {
                     onChange={(e) =>
                       handleInputChange("confirmPassword", e.target.value)
                     }
-                    className="h-12 rounded-xl border-2 border-border focus:border-orange-400 transition-colors"
+                    className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
                     required
                   />
                   {registerData.confirmPassword && (
@@ -333,7 +333,7 @@ export default function RestaurantRegisterPage() {
                   Já possui cadastro?{" "}
                   <Link
                     href="/?auth=required"
-                    className="text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-400 font-semibold transition-colors cursor-pointer"
+                    className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-400 font-semibold transition-colors cursor-pointer"
                   >
                     Fazer login
                   </Link>

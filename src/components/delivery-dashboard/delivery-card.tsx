@@ -189,7 +189,7 @@ export function DeliveryCard({
 
       <div className="space-y-3 px-4 py-4">
         <div className="flex items-start gap-2.5">
-          <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
+          <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-brand-500" />
           <div className="min-w-0">
             <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
               Entregar em
@@ -294,7 +294,7 @@ export function DeliveryCard({
             type="button"
             onClick={() => onAccept(delivery.id)}
             disabled={busy}
-            className="h-14 w-full rounded-xl bg-orange-500 text-[16px] font-extrabold text-white hover:bg-orange-600"
+            className="h-14 w-full rounded-xl bg-brand-500 text-[16px] font-extrabold text-white hover:bg-brand-600"
           >
             <Package className="mr-2 h-5 w-5" />
             {busy ? "Aceitando..." : "Aceitar entrega"}

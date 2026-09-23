@@ -5,8 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAuthStore } from "@/stores/auth-store";
 import { useCartStore, type CartItem } from "@/stores/cart-store";
 import { useCartActions } from "./use-cart-actions";
-import { apiService } from "@/services/api";
+import { apiService, type Order } from "@/services/api";
 import { toast } from "sonner";
+
+// Os testes só leem o id do pedido; o resto do Order não importa aqui.
+const orderStub = (id: string) => ({ id }) as Order;
 
 const { pushMock, confirmMock, playMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
@@ -118,11 +121,11 @@ describe("useCartActions", () => {
       login();
       vi.mocked(apiService.orders.openCart).mockResolvedValue({
         success: true,
-        data: { id: "order-99" },
+        data: orderStub("order-99"),
       });
       vi.mocked(apiService.orderItems.addProductToCart).mockResolvedValue({
         success: true,
-        data: { id: "order-99" },
+        data: orderStub("order-99"),
       });
 
       const { result } = renderCartActions();
@@ -286,7 +289,7 @@ describe("useCartActions", () => {
       vi.mocked(apiService.orders.clearCart).mockResolvedValue({ success: true });
       vi.mocked(apiService.orders.openCart).mockResolvedValue({
         success: true,
-        data: { id: "order-2" },
+        data: orderStub("order-2"),
       });
       vi.mocked(apiService.orderItems.addProductToCart).mockResolvedValue({ success: true });
 
@@ -345,7 +348,7 @@ describe("useCartActions", () => {
         .mockResolvedValueOnce({ success: true });
       vi.mocked(apiService.orders.openCart).mockResolvedValue({
         success: true,
-        data: { id: "order-novo" },
+        data: orderStub("order-novo"),
       });
 
       const { result } = renderCartActions();

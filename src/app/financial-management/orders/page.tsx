@@ -28,7 +28,7 @@ const STATUS_COLORS: Record<string, string> = {
   CART: "bg-muted text-foreground",
   ORDERED: "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-400",
   AWAITING_PAYMENT: "bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-400",
-  IN_PRODUCTION: "bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-400",
+  IN_PRODUCTION: "bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-400",
   READY_FOR_PICKUP: "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-400",
   COMPLETED: "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400",
   CANCELED: "bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-400",
@@ -113,7 +113,7 @@ export default function OrdersPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: "Total", value: counts.total, color: "text-foreground" },
-              { label: "Em andamento", value: counts.pending, color: "text-orange-600 dark:text-orange-400" },
+              { label: "Em andamento", value: counts.pending, color: "text-brand-600 dark:text-brand-400" },
               { label: "Concluídos", value: counts.completed, color: "text-green-600 dark:text-green-400" },
               { label: "Cancelados", value: counts.canceled, color: "text-red-600 dark:text-red-400" },
             ].map(({ label, value, color }) => (

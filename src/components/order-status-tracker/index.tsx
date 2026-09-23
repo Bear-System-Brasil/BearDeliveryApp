@@ -132,7 +132,7 @@ export function OrderStatusTracker({ data }: Props) {
         </StepperNav>
       </Stepper>
 
-      <div className="mt-4 rounded-[10px] bg-orange-50 dark:bg-orange-950/40 px-[13px] py-[11px]">
+      <div className="mt-4 rounded-[10px] bg-brand-50 dark:bg-brand-950/40 px-[13px] py-[11px]">
         <p className="text-[12.5px] font-bold text-amber-700 dark:text-amber-400">
           {data.getStatusMessage(order.status)}
         </p>

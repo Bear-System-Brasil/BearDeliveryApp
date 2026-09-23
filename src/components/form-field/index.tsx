@@ -45,7 +45,7 @@ export function FormField({
           <Input
             id={id}
             className={cn(
-              "rounded-xl border-2 border-border focus:border-orange-400",
+              "rounded-xl border-2 border-border focus:border-brand-400",
               icon && "pl-10",
               error && "border-red-500 focus:border-red-500",
             )}

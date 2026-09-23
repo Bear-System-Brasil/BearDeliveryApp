@@ -22,7 +22,7 @@ export function ScreenHeader({ title, subtitle, actions }: Props) {
     <header className="sticky top-0 z-10 border-b border-border bg-card pt-[env(safe-area-inset-top,0px)]">
       <div className="mx-auto flex max-w-md items-center justify-between gap-2 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-500 text-white">
             <Bike className="h-5 w-5" />
           </span>
           <div className="min-w-0">

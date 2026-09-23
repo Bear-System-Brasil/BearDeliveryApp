@@ -110,7 +110,7 @@ export function getOrderStatusLabel(order: OrderLike) {
 export function getOrderStatusBadgeClass(order: OrderLike) {
   if (isCanceledOrder(order)) return "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400";
   if (isInertOrder(order)) return "bg-gray-100 text-gray-500";
-  if (isActiveOrder(order)) return "bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400";
+  if (isActiveOrder(order)) return "bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400";
 
   return "bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400";
 }

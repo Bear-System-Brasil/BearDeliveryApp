@@ -121,7 +121,7 @@ export const STATUS_LABEL: Record<DeliveryStatus, string> = {
  */
 export const STATUS_TONE: Record<DeliveryStatus, string> = {
   PENDING:
-    "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300",
+    "bg-brand-100 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300",
   ACCEPTED:
     "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
   PICKED_UP:

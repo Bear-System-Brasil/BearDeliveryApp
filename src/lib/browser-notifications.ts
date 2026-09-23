@@ -44,8 +44,8 @@ export function showBrowserNotification(
 
   const notification = new Notification(title, {
     body: options.body,
-    icon: '/like_delivery.png',
-    badge: '/like_delivery.png',
+    icon: '/apple-touch-icon.png',
+    badge: '/apple-touch-icon.png',
     tag: 'like-delivery-notification',
   })
 

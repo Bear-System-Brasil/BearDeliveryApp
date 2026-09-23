@@ -466,7 +466,7 @@ export function CustomizeOrder({
             <button
               type="button"
               onClick={() => setNotesOpen((prev) => !prev)}
-              className="text-[11.5px] font-bold text-orange-500"
+              className="text-[11.5px] font-bold text-brand-500"
             >
               + Observações
             </button>
@@ -482,7 +482,7 @@ export function CustomizeOrder({
                   }))
                 }
                 rows={2}
-                className="mt-2 resize-none rounded-[9px] border border-border bg-muted text-[12.5px] shadow-none focus-visible:ring-orange-400"
+                className="mt-2 resize-none rounded-[9px] border border-border bg-muted text-[12.5px] shadow-none focus-visible:ring-brand-400"
               />
             )}
           </div>
@@ -518,7 +518,7 @@ export function CustomizeOrder({
             disabled={
               isAddingToCart || isCustomizationLoading || !!pendingRequiredGroup
             }
-            className="h-10 flex-1 rounded-[10px] bg-orange-500 text-[13.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,.3)] hover:bg-orange-600 disabled:opacity-60"
+            className="h-10 flex-1 rounded-[10px] bg-brand-500 text-[13.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,.3)] hover:bg-brand-600 disabled:opacity-60"
           >
             {isCustomizationLoading ? (
               <span className="flex items-center justify-center gap-2">

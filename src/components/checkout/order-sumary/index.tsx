@@ -56,7 +56,7 @@ export function OrderSummary({
                   <span className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">
                     {item.name}
                     {extrasParts.length > 0 && (
-                      <span className="ml-1 truncate text-xs font-bold text-orange-600 dark:text-orange-400">
+                      <span className="ml-1 truncate text-xs font-bold text-brand-600 dark:text-brand-400">
                         {extrasParts.join(" · ")}
                       </span>
                     )}
@@ -81,7 +81,7 @@ export function OrderSummary({
 
             <div className="flex items-center justify-between text-sm">
               <span className="inline-flex items-center gap-1 font-semibold text-muted-foreground">
-                <Bike className="h-4 w-4 text-orange-500" />
+                <Bike className="h-4 w-4 text-brand-500" />
                 Taxa de entrega
               </span>
               <span className="font-extrabold text-emerald-700 dark:text-emerald-400">
@@ -114,7 +114,7 @@ export function OrderSummary({
           <button
             type="button"
             onClick={onToggleDetails}
-            className="inline-flex items-center gap-0.5 text-xs font-bold text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-400"
+            className="inline-flex items-center gap-0.5 text-xs font-bold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-400"
           >
             {detailsOpen ? "Ocultar detalhes" : "Ver detalhes"}
             {detailsOpen ? (
@@ -132,10 +132,10 @@ export function OrderSummary({
           onClick={step === 1 ? onContinue : handleSubmitOrder}
           disabled={step === 2 && isProcessing}
           className={cn(
-            "flex h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-orange-500 px-5 text-sm font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,.28)] transition-colors sm:flex-none",
+            "flex h-11 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-500 px-5 text-sm font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,.28)] transition-colors sm:flex-none",
             step === 2 && isProcessing
               ? "cursor-not-allowed opacity-60"
-              : "hover:bg-orange-600",
+              : "hover:bg-brand-600",
           )}
         >
           {step === 2 && isProcessing ? (
