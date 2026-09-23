@@ -708,7 +708,7 @@ export function MainHeader({
                           <button
                             type="button"
                             onClick={handleLogout}
-                            className="flex h-[38px] w-full items-center gap-[11px] rounded-[14px] bg-brand-500 px-3 text-[13px] font-semibold text-white shadow-[0_6px_14px_rgba(255,107,0,0.35)] transition-colors hover:bg-brand-400 cursor-pointer"
+                            className="flex h-[38px] w-full items-center gap-[11px] rounded-[14px] bg-brand-500 px-3 text-[13px] font-semibold text-white shadow-[0_6px_14px_var(--tw-shadow-color)] shadow-brand-500/35 transition-colors hover:bg-brand-400 cursor-pointer"
                           >
                             <LogOut className="h-4 w-4 shrink-0" />
                             <span className="truncate">Sair da conta</span>

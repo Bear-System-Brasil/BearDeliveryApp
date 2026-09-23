@@ -76,7 +76,7 @@ function CategoryManagementContent() {
       actions={
         <Button
           onClick={handleOpenCreateModal}
-          className="h-[34px] w-full cursor-pointer rounded-xl bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] hover:bg-brand-600 sm:w-auto"
+          className="h-[34px] w-full cursor-pointer rounded-xl bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/25 hover:bg-brand-600 sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           Adicionar Categoria
