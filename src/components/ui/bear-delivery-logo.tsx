@@ -98,13 +98,25 @@ export function BearMascot({ className = "w-6 h-6" }: { className?: string }) {
     );
 }
 
+// Classes estáticas pro Tailwind enxergar (não montar "max-${bp}:hidden")
+const HIDE_WORDMARK_BELOW = {
+    sm: "max-sm:hidden",
+    lg: "max-lg:hidden",
+} as const;
+
 /** Logo horizontal: header, sidebar, footer. */
 export function BearDeliveryLogo({
     small = false,
+    iconOnlyBelow,
     dark = false,
     className = "",
 }: {
     small?: boolean;
+    /**
+     * Esconde o texto abaixo desse breakpoint (header apertado). No mobile o
+     * ícone também cai pra 36px, o tamanho dos botões do header.
+     */
+    iconOnlyBelow?: keyof typeof HIDE_WORDMARK_BELOW;
     /** Força texto branco (ex.: sobre fundo da marca). Sem ele, segue o tema. */
     dark?: boolean;
     className?: string;
@@ -117,15 +129,15 @@ export function BearDeliveryLogo({
                 className={`${small
                     ? "h-7 w-7 rounded-[10px]"
                     : "h-10 w-10 rounded-[12px]"
-                    } ${ICON_BG} flex shrink-0 items-center justify-center shadow-[0_1px_10px_var(--tw-shadow-color)] shadow-brand-900/20`}
+                    } ${iconOnlyBelow ? "max-sm:h-9 max-sm:w-9 max-sm:rounded-[11px]" : ""} ${ICON_BG} flex shrink-0 items-center justify-center shadow-[0_1px_10px_var(--tw-shadow-color)] shadow-brand-900/20`}
             >
                 <BearMascot
-                    className={small ? "h-[18px] w-[18px]" : "h-[26px] w-[26px]"}
+                    className={`${small ? "h-[18px] w-[18px]" : "h-[26px] w-[26px]"} ${iconOnlyBelow ? "max-sm:h-[23px] max-sm:w-[23px]" : ""}`}
                 />
             </div>
 
             <div
-                className={`leading-none tracking-tight ${dark ? "text-white" : "text-foreground"}`}
+                className={`leading-none tracking-tight ${iconOnlyBelow ? HIDE_WORDMARK_BELOW[iconOnlyBelow] : ""} ${dark ? "text-white" : "text-foreground"}`}
             >
                 <span
                     className={`font-black ${small ? "text-[13px]" : "text-[17px]"}`}
