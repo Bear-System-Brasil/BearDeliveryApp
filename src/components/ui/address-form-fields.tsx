@@ -135,7 +135,7 @@ export const AddressFormFields = React.memo<AddressFormFieldsProps>(
               value={data.zipCode}
               onChange={(e) => onChange("zipCode", e.target.value)}
               disabled={disabled}
-              className="rounded-xl border-2 border-border focus:border-orange-400"
+              className="rounded-xl border-2 border-border focus:border-brand-400"
               maxLength={9}
             />
           </div>
@@ -155,7 +155,7 @@ export const AddressFormFields = React.memo<AddressFormFieldsProps>(
               value={data.state}
               onChange={(e) => onChange("state", e.target.value)}
               disabled={disabled}
-              className="rounded-xl border-2 border-border focus:border-orange-400"
+              className="rounded-xl border-2 border-border focus:border-brand-400"
               maxLength={2}
             />
           </div>
@@ -175,7 +175,7 @@ export const AddressFormFields = React.memo<AddressFormFieldsProps>(
               value={data.city}
               onChange={(e) => onChange("city", e.target.value)}
               disabled={disabled}
-              className="rounded-xl border-2 border-border focus:border-orange-400"
+              className="rounded-xl border-2 border-border focus:border-brand-400"
             />
           </div>
 
@@ -194,7 +194,7 @@ export const AddressFormFields = React.memo<AddressFormFieldsProps>(
               value={data.neighborhood}
               onChange={(e) => onChange("neighborhood", e.target.value)}
               disabled={disabled}
-              className="rounded-xl border-2 border-border focus:border-orange-400"
+              className="rounded-xl border-2 border-border focus:border-brand-400"
             />
           </div>
 
@@ -213,7 +213,7 @@ export const AddressFormFields = React.memo<AddressFormFieldsProps>(
               value={data.street}
               onChange={(e) => onChange("street", e.target.value)}
               disabled={disabled}
-              className="rounded-xl border-2 border-border focus:border-orange-400"
+              className="rounded-xl border-2 border-border focus:border-brand-400"
             />
           </div>
 
@@ -232,7 +232,7 @@ export const AddressFormFields = React.memo<AddressFormFieldsProps>(
               value={data.number}
               onChange={(e) => onChange("number", e.target.value)}
               disabled={disabled}
-              className="rounded-xl border-2 border-border focus:border-orange-400"
+              className="rounded-xl border-2 border-border focus:border-brand-400"
             />
           </div>
 
@@ -251,7 +251,7 @@ export const AddressFormFields = React.memo<AddressFormFieldsProps>(
               value={data.complement || ""}
               onChange={(e) => onChange("complement", e.target.value)}
               disabled={disabled}
-              className="rounded-xl border-2 border-border focus:border-orange-400"
+              className="rounded-xl border-2 border-border focus:border-brand-400"
             />
           </div>
 
@@ -270,7 +270,7 @@ export const AddressFormFields = React.memo<AddressFormFieldsProps>(
               value={data.reference || ""}
               onChange={(e) => onChange("reference", e.target.value)}
               disabled={disabled}
-              className="rounded-xl border-2 border-border focus:border-orange-400"
+              className="rounded-xl border-2 border-border focus:border-brand-400"
             />
           </div>
         </div>

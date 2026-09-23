@@ -31,7 +31,7 @@ export function DataCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center space-x-2">
-            {icon && <span className="text-orange-500">{icon}</span>}
+            {icon && <span className="text-brand-500">{icon}</span>}
             <span>{title}</span>
           </CardTitle>
 

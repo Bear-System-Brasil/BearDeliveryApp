@@ -63,7 +63,7 @@ export function KitchenOrderCard({
       className={cn(
         "rounded-2xl border bg-card shadow-sm transition-shadow",
         isNew
-          ? "border-orange-400 ring-2 ring-orange-300 animate-pulse"
+          ? "border-brand-400 ring-2 ring-brand-300 animate-pulse"
           : "border-border",
         !hasActions && "opacity-80",
       )}
@@ -167,7 +167,7 @@ export function KitchenOrderCard({
       {hasActions && (
         <footer className="flex gap-2 border-t p-3">
           <Button
-            className="h-14 flex-1 cursor-pointer rounded-xl bg-orange-500 text-lg font-bold text-white hover:bg-orange-600"
+            className="h-14 flex-1 cursor-pointer rounded-xl bg-brand-500 text-lg font-bold text-white hover:bg-brand-600"
             onClick={() => onAdvance(order)}
             disabled={isAdvancing}
           >

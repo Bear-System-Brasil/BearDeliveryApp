@@ -116,7 +116,7 @@ function CustomerAvatar({
 
   return (
     <span
-      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-100 font-bold text-orange-700 dark:bg-orange-900 dark:text-orange-400 ${className}`}
+      className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-100 font-bold text-brand-700 dark:bg-brand-900 dark:text-brand-400 ${className}`}
     >
       {showPhoto ? (
         // eslint-disable-next-line @next/next/no-img-element

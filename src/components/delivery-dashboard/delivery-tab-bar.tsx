@@ -46,7 +46,7 @@ export function DeliveryTabBar() {
               aria-current={isActive ? "page" : undefined}
               className={`flex h-[4.5rem] flex-col items-center justify-center gap-1 transition-colors ${
                 isActive
-                  ? "text-orange-500"
+                  ? "text-brand-500"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >

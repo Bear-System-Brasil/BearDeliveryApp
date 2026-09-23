@@ -172,7 +172,7 @@ function PrintArea({ order }: { order: CompanyOrder | null }) {
   return (
     <div className="print-area hidden print:block print:w-[80mm] print:mx-auto print:text-xs print:font-mono print:bg-card print:text-black">
       <div className="text-center mb-2">
-        <h2 className="text-base font-bold">LIKE DELIVERY</h2>
+        <h2 className="text-base font-bold">BEARDELIVERY</h2>
         <p>───────────────────────</p>
       </div>
 

@@ -48,7 +48,7 @@ export function AdminPageLayout({
 
               <div className="flex min-w-0 items-center gap-2">
                 <Icon className="h-5 w-5 shrink-0 text-primary" />
-                <h1 className="truncate bg-linear-to-r from-orange-500 to-orange-500 bg-clip-text text-lg font-bold text-transparent">
+                <h1 className="truncate bg-linear-to-r from-brand-500 to-brand-500 bg-clip-text text-lg font-bold text-transparent">
                   {title}
                 </h1>
               </div>

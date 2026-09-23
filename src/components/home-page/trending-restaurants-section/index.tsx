@@ -182,8 +182,8 @@ function StoreCategoriesFilter({
               className={cn(
                 "shrink-0 flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded-full border px-3 sm:px-4 text-xs sm:text-sm font-medium whitespace-nowrap shadow-sm transition-all",
                 selectedValue === category.id
-                  ? "bg-orange-500 text-white border-orange-500"
-                  : "bg-card border-border text-foreground hover:border-orange-200 dark:hover:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-950/40",
+                  ? "bg-brand-500 text-white border-brand-500"
+                  : "bg-card border-border text-foreground hover:border-brand-200 dark:hover:border-brand-800 hover:bg-brand-50 dark:hover:bg-brand-950/40",
               )}
             >
               {category.icon && (

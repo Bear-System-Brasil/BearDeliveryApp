@@ -72,7 +72,7 @@ export function AcceptConfirmDialog({
             </div>
 
             <div className="flex items-start gap-2.5">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
               <div className="min-w-0">
                 {addressLines.length > 0 ? (
                   addressLines.map((line, index) => (
@@ -150,7 +150,7 @@ export function AcceptConfirmDialog({
               <span
                 className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-white transition ${
                   skipNext
-                    ? "border-orange-500 bg-orange-500"
+                    ? "border-brand-500 bg-brand-500"
                     : "border-border bg-transparent"
                 }`}
                 aria-hidden="true"
@@ -188,7 +188,7 @@ export function AcceptConfirmDialog({
             type="button"
             onClick={() => onConfirm(skipNext)}
             disabled={isAccepting}
-            className="h-12 rounded-xl bg-orange-500 text-[15px] font-bold text-white hover:bg-orange-600"
+            className="h-12 rounded-xl bg-brand-500 text-[15px] font-bold text-white hover:bg-brand-600"
           >
             {isAccepting ? "Aceitando..." : "Aceitar entrega"}
           </Button>

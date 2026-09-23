@@ -1,4 +1,4 @@
-# Like Delivery App
+# BearDelivery App
 
 > A modern, full-featured food delivery platform built with Next.js 15 and React 19
 
@@ -21,7 +21,7 @@
 
 ## Overview
 
-Like Delivery is a comprehensive food delivery platform that connects customers with restaurants. The application provides a seamless experience for browsing restaurants, managing orders, and tracking deliveries in real-time.
+BearDelivery is a comprehensive food delivery platform that connects customers with restaurants. The application provides a seamless experience for browsing restaurants, managing orders, and tracking deliveries in real-time.
 
 **Key Roles** (enforced via `middleware.ts` route protection):
 - **client** - Browse restaurants, place orders, track deliveries
@@ -496,7 +496,7 @@ useEffect(() => {
 #### Utility-First Approach
 ```tsx
 // Good - Utility classes
-<button className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg">
+<button className="px-4 py-2 bg-brand-500 hover:bg-brand-600 rounded-lg">
   Order Now
 </button>
 ```
@@ -509,7 +509,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-orange-500 hover:bg-orange-600",
+        primary: "bg-brand-500 hover:bg-brand-600",
         secondary: "bg-gray-200 hover:bg-gray-300",
       }
     }

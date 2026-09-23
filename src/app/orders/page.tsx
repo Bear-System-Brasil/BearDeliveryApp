@@ -96,7 +96,7 @@ function OrderStatusBadge({
 /** Logo da loja com fallback para o icone generico. */
 function RestaurantLogo({
   brand,
-  fallbackTone = "bg-orange-50 dark:bg-orange-950/40 text-orange-500",
+  fallbackTone = "bg-brand-50 dark:bg-brand-950/40 text-brand-500",
 }: {
   brand: RestaurantBrand;
   fallbackTone?: string;
@@ -260,7 +260,7 @@ function OrderHistoryContent() {
             <Button
               type="button"
               onClick={refreshHistory}
-              className="mt-5 h-10 rounded-lg bg-orange-500 px-5 font-bold hover:bg-orange-600"
+              className="mt-5 h-10 rounded-lg bg-brand-500 px-5 font-bold hover:bg-brand-600"
             >
               Tentar novamente
             </Button>
@@ -449,7 +449,7 @@ function ActiveOrderCard({
           <Button
             type="button"
             onClick={onTrack}
-            className="h-9 rounded-lg bg-orange-500 px-3 text-xs font-bold hover:bg-orange-600"
+            className="h-9 rounded-lg bg-brand-500 px-3 text-xs font-bold hover:bg-brand-600"
           >
             Acompanhar pedido
             <ChevronRight className="ml-1 h-3.5 w-3.5" />
@@ -496,7 +496,7 @@ function CompletedOrderCard({
           onView();
         }
       }}
-      className="cursor-pointer border-border bg-card p-3 shadow-sm transition-colors hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 sm:p-4"
+      className="cursor-pointer border-border bg-card p-3 shadow-sm transition-colors hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 sm:p-4"
     >
       <div className="flex items-start gap-3">
         <RestaurantLogo brand={brand} fallbackTone={fallbackTone} />
@@ -527,7 +527,7 @@ function CompletedOrderCard({
                   onRepeat();
                 }}
                 disabled={isRepeating}
-                className="h-8 shrink-0 rounded-lg bg-orange-500 px-3 text-xs font-bold hover:bg-orange-600"
+                className="h-8 shrink-0 rounded-lg bg-brand-500 px-3 text-xs font-bold hover:bg-brand-600"
               >
                 {isRepeating ? (
                   <LoaderCircle className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -548,7 +548,7 @@ function EmptyOrdersState({ onExplore }: { onExplore: () => void }) {
   return (
     <div className="flex min-h-[55vh] items-center justify-center">
       <Card className="w-full max-w-md border-border bg-card p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-50 dark:bg-orange-950/40 text-orange-500">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 dark:bg-brand-950/40 text-brand-500">
           <Package className="h-8 w-8" />
         </div>
         <h2 className="mt-5 text-xl font-extrabold text-foreground">
@@ -560,7 +560,7 @@ function EmptyOrdersState({ onExplore }: { onExplore: () => void }) {
         <Button
           type="button"
           onClick={onExplore}
-          className="mt-5 h-10 rounded-lg bg-orange-500 px-5 font-bold hover:bg-orange-600"
+          className="mt-5 h-10 rounded-lg bg-brand-500 px-5 font-bold hover:bg-brand-600"
         >
           Explorar restaurantes
         </Button>

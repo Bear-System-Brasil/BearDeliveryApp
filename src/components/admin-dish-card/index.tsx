@@ -40,7 +40,7 @@ export function AdminDishCard({
     <article
       className={cn(
         "group flex h-full min-w-0 gap-3 rounded-[13px] border border-border bg-card p-2.5 text-foreground transition-all",
-        "hover:-translate-y-0.5 hover:border-orange-200 dark:hover:border-orange-800 hover:shadow-[0_8px_20px_rgba(20,22,26,0.06)]",
+        "hover:-translate-y-0.5 hover:border-brand-200 dark:hover:border-brand-800 hover:shadow-[0_8px_20px_rgba(20,22,26,0.06)]",
         !isAvailable && "bg-card/80",
       )}
     >
@@ -56,7 +56,7 @@ export function AdminDishCard({
           )}
         />
         {dish.isPopular && (
-          <span className="absolute right-1 top-1 rounded-md bg-[#FF6B00] px-1.5 py-0.5 text-[9px] font-extrabold text-white">
+          <span className="absolute right-1 top-1 rounded-md bg-brand-500 px-1.5 py-0.5 text-[9px] font-extrabold text-white">
             Popular
           </span>
         )}

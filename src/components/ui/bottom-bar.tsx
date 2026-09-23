@@ -188,13 +188,13 @@ export function BottomBar({ activeTab }: BottomBarProps) {
               key={tab.id}
               type="button"
               onClick={() => handleNavigate(tab)}
-              className={`relative flex flex-col items-center justify-center gap-1 transition-all ${isActive ? "text-orange-500" : "text-muted-foreground"
+              className={`relative flex flex-col items-center justify-center gap-1 transition-all ${isActive ? "text-brand-500" : "text-muted-foreground"
                 }`}
               aria-label={tab.label}
               aria-current={isActive ? "page" : undefined}
             >
               {tab.badge && (
-                <span className="absolute right-1/4 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
+                <span className="absolute right-1/4 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-[10px] font-bold text-white">
                   {totalItems}
                 </span>
               )}
@@ -212,7 +212,7 @@ export function BottomBar({ activeTab }: BottomBarProps) {
               </span>
 
               {isActive && (
-                <div className="absolute left-1/2 top-0 h-1 w-12 -translate-x-1/2 rounded-b-full bg-orange-500" />
+                <div className="absolute left-1/2 top-0 h-1 w-12 -translate-x-1/2 rounded-b-full bg-brand-500" />
               )}
             </button>
           );

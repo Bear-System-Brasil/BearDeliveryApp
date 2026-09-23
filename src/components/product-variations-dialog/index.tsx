@@ -63,7 +63,7 @@ const emptyForm: FormState = {
 const roundToCents = (value: number) => Math.round(value * 100) / 100;
 
 const fieldClassName =
-  "h-9 rounded-[10px] border-border bg-card text-xs shadow-none focus-visible:ring-1 focus-visible:ring-[#FF6B00]";
+  "h-9 rounded-[10px] border-border bg-card text-xs shadow-none focus-visible:ring-1 focus-visible:ring-brand-500";
 
 export function ProductVariationsDialog({
   productId,
@@ -251,7 +251,7 @@ export function ProductVariationsDialog({
                       isAvailable: e.target.checked,
                     }))
                   }
-                  className="h-3.5 w-3.5 cursor-pointer accent-[#FF6B00]"
+                  className="h-3.5 w-3.5 cursor-pointer accent-brand-500"
                 />
                 Disponível
               </label>
@@ -278,7 +278,7 @@ export function ProductVariationsDialog({
                     isDuplicateName ||
                     isBelowBasePrice
                   }
-                  className="h-8 cursor-pointer rounded-[8px] bg-[#FF6B00] px-2.5 text-[11.5px] font-extrabold text-white hover:bg-[#E05A00]"
+                  className="h-8 cursor-pointer rounded-[8px] bg-brand-500 px-2.5 text-[11.5px] font-extrabold text-white hover:bg-brand-600"
                 >
                   {isSaving ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -306,7 +306,7 @@ export function ProductVariationsDialog({
 
             {!isLoading && variations.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-[10px] bg-muted text-[#FF6B00]">
+                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-[10px] bg-muted text-brand-500">
                   <Ruler className="h-5 w-5" />
                 </div>
                 <p className="text-[12.5px] font-bold text-foreground">

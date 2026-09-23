@@ -97,7 +97,7 @@ export function BannerCarousel() {
               <CarouselItem key={banner.id}>
                 <div className="relative overflow-hidden rounded-xl sm:rounded-2xl shadow-md">
                   {banner.variant === "promo" ? (
-                    <div className="relative h-40 overflow-hidden bg-gradient-to-r from-[#FF6B00] via-[#FF8A2B] to-[#FFA94D] sm:h-52 md:h-60">
+                    <div className="relative h-40 overflow-hidden bg-gradient-to-r from-brand-500 via-brand-400 to-brand-300 sm:h-52 md:h-60">
                       <div className="absolute -right-10 -top-16 h-52 w-52 rounded-full bg-card/10 sm:-right-8 sm:-top-20 sm:h-64 sm:w-64 md:h-72 md:w-72" />
                       <div className="absolute -bottom-24 right-12 h-44 w-44 rounded-full bg-card/10 sm:right-24 sm:h-52 sm:w-52 md:right-32 md:h-60 md:w-60" />
 
@@ -116,7 +116,7 @@ export function BannerCarousel() {
                           </p>
                         </div>
 
-                        <button className="mt-3 h-9 w-fit rounded-lg bg-card px-5 text-xs font-extrabold text-[#E05A00] transition-colors hover:bg-orange-50 dark:hover:bg-orange-950/40 sm:mt-0 sm:h-10 sm:flex-shrink-0 sm:px-6 sm:text-sm">
+                        <button className="mt-3 h-9 w-fit rounded-lg bg-card px-5 text-xs font-extrabold text-brand-600 transition-colors hover:bg-brand-50 dark:hover:bg-brand-950/40 sm:mt-0 sm:h-10 sm:flex-shrink-0 sm:px-6 sm:text-sm">
                           {banner.buttonLabel}
                         </button>
                       </div>
@@ -134,7 +134,7 @@ export function BannerCarousel() {
                       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
 
                       <div className="absolute inset-0 flex flex-col justify-center px-4 sm:px-5 md:px-8">
-                        <span className="mb-1.5 sm:mb-2 w-fit rounded-full bg-orange-500 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white">
+                        <span className="mb-1.5 sm:mb-2 w-fit rounded-full bg-brand-500 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-semibold text-white">
                           {banner.badge}
                         </span>
 
@@ -146,7 +146,7 @@ export function BannerCarousel() {
                           {banner.subtitle}
                         </p>
 
-                        <button className="w-fit rounded-full bg-card px-4 py-1.5 text-xs font-semibold text-orange-500 transition-colors hover:bg-orange-50 dark:hover:bg-orange-950/40 sm:px-5 sm:py-2 sm:text-sm">
+                        <button className="w-fit rounded-full bg-card px-4 py-1.5 text-xs font-semibold text-brand-500 transition-colors hover:bg-brand-50 dark:hover:bg-brand-950/40 sm:px-5 sm:py-2 sm:text-sm">
                           Pedir Agora
                         </button>
                       </div>

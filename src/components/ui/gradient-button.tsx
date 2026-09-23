@@ -40,13 +40,13 @@ const sizeClasses = {
 
 const variantClasses = {
   primary:
-    "bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0 shadow-lg hover:shadow-xl",
+    "bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white border-0 shadow-lg hover:shadow-xl",
 
   secondary:
-    "bg-orange-50 dark:bg-orange-950/40 hover:bg-orange-100 dark:hover:bg-orange-900 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800 hover:border-orange-300 dark:hover:border-orange-700",
+    "bg-brand-50 dark:bg-brand-950/40 hover:bg-brand-100 dark:hover:bg-brand-900 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-800 hover:border-brand-300 dark:hover:border-brand-700",
 
   outline:
-    "border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/40 hover:border-orange-400",
+    "border border-brand-300 dark:border-brand-700 text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 hover:border-brand-400",
 };
 /**
  * GradientButton - A themed button with gradient background
@@ -94,7 +94,7 @@ export const GradientButton = forwardRef<
           // Base styles
           "relative inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all group overflow-hidden cursor-pointer",
           "disabled:opacity-50 disabled:cursor-not-allowed",
-          "focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2",
+          "focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2",
 
           // Size
           sizeClasses[size],

@@ -172,7 +172,7 @@ export function PaymentMethod({
   return (
     <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400">
           <CreditCard className="h-4 w-4" />
         </div>
         <h2 className="text-sm font-extrabold text-foreground">
@@ -192,8 +192,8 @@ export function PaymentMethod({
               className={cn(
                 "flex min-h-[52px] flex-col justify-center rounded-lg border px-3 text-left transition-colors",
                 isActive
-                  ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400"
-                  : "border-border bg-card text-foreground hover:border-orange-300 dark:hover:border-orange-700",
+                  ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400"
+                  : "border-border bg-card text-foreground hover:border-brand-300 dark:hover:border-brand-700",
               )}
             >
               <span className="text-sm font-extrabold">{moment.label}</span>
@@ -218,8 +218,8 @@ export function PaymentMethod({
               className={cn(
                 "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm font-bold transition-colors",
                 isActive
-                  ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400"
-                  : "border-border bg-card text-foreground hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-700 dark:hover:text-orange-400",
+                  ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400"
+                  : "border-border bg-card text-foreground hover:border-brand-300 dark:hover:border-brand-700 hover:text-brand-700 dark:hover:text-brand-400",
               )}
               title={option.description}
             >
@@ -254,7 +254,7 @@ export function PaymentMethod({
                 onChange={(e) =>
                   handleCardInputChange("number", e.target.value)
                 }
-                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-orange-400 focus-visible:ring-orange-200"
+                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
               />
             </div>
 
@@ -272,7 +272,7 @@ export function PaymentMethod({
                 onChange={(e) =>
                   handleCardInputChange("expiry", e.target.value)
                 }
-                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-orange-400 focus-visible:ring-orange-200"
+                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
               />
             </div>
 
@@ -289,7 +289,7 @@ export function PaymentMethod({
                 placeholder="123"
                 value={cardInfo.cvv}
                 onChange={(e) => handleCardInputChange("cvv", e.target.value)}
-                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-orange-400 focus-visible:ring-orange-200"
+                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
               />
             </div>
 
@@ -307,7 +307,7 @@ export function PaymentMethod({
                 onChange={(e) =>
                   handleCardInputChange("name", e.target.value)
                 }
-                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-orange-400 focus-visible:ring-orange-200"
+                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
               />
             </div>
           </div>
@@ -420,7 +420,7 @@ export function PaymentMethod({
                   placeholder="100,00"
                   value={changeAmount}
                   onChange={(e) => setChangeAmount(e.target.value)}
-                  className="h-9 rounded-lg border-border bg-card pl-9 text-sm shadow-none focus-visible:border-orange-400 focus-visible:ring-orange-200"
+                  className="h-9 rounded-lg border-border bg-card pl-9 text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
                 />
               </div>
 
