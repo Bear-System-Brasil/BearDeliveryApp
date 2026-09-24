@@ -565,9 +565,15 @@ async function apiRequest<T>(
         endpoint.includes("/order-item/cart") &&
         method === "POST";
 
+      // GET /product/recent ainda não existe no backend (ver RecentProduct):
+      // a home tenta uma vez por sessão e cai na agregação por loja.
+      const is404OnRecentProducts =
+        response.status === 404 && endpoint.startsWith("/product/recent");
+
       if (
         !is404OnViewOrder &&
         !is404OnAddToCart &&
+        !is404OnRecentProducts &&
         process.env.NODE_ENV !== "production"
       ) {
         // `serverMessage` e o corpo bruto do erro: sem eles o log so diz "400"
@@ -646,6 +652,36 @@ export interface Product {
   updated_at?: string;
 }
 
+/**
+ * Contrato proposto para GET /product/recent (TODO(backend): a rota ainda
+ * não existe - hoje responde 404 e a home cai na agregação por loja, ver
+ * services/products/new-dishes.ts). Devolve os pratos cadastrados mais
+ * recentemente, do mais novo pro mais antigo, já com o resumo da loja -
+ * é o que a seção "Novidades" precisa e a listagem por loja não traz
+ * (`created_at`, preço promocional, frete e tempo de entrega).
+ */
+export interface RecentProduct extends Product {
+  created_at: string;
+  /** Preço promocional vigente; `salePrice` segue sendo o preço cheio. */
+  promotionalPrice?: number | null;
+  company: {
+    id: string;
+    tradeName: string;
+    logo_url?: string | null;
+    deliveryFee?: string | number | null;
+    /** Tempo estimado de entrega, ex: "35-45 min". */
+    time?: string | null;
+    isOpen?: boolean;
+  };
+}
+
+export interface RecentProductsParams {
+  /** Com lat/lng o backend limita ao raio de atuação das lojas. */
+  lat?: number;
+  lng?: number;
+  limit?: number;
+}
+
 // Product types
 export interface CreateProductRequest {
   name: string;
@@ -719,8 +755,8 @@ export interface Category {
   updated_at: string;
 }
 
-// Speciality types (restaurant types)
-export interface Speciality {
+// Specialty types (restaurant types)
+export interface Specialty {
   id: string;
   name: string;
   description: string;
@@ -756,7 +792,7 @@ export interface Company {
   /** Se a loja está aceitando pedidos agora (não confundir com `status`). */
   isOpen?: boolean;
   categories?: Category[];
-  speciality?: Speciality[];
+  specialty?: Specialty[];
   created_at: string;
   updated_at: string;
 }
@@ -1332,6 +1368,19 @@ export const apiService = {
 
   getProduct: (id: string) => apiRequest<Product>("GET", `/product/${id}`),
 
+  // Ver RecentProduct - rota ainda não implementada no backend.
+  getRecentProducts: (params?: RecentProductsParams) => {
+    const qs = new URLSearchParams();
+    if (params?.lat !== undefined) qs.set("lat", String(params.lat));
+    if (params?.lng !== undefined) qs.set("lng", String(params.lng));
+    if (params?.limit) qs.set("limit", String(params.limit));
+    const query = qs.toString();
+    return apiRequest<RecentProduct[] | PaginatedResponse<RecentProduct>>(
+      "GET",
+      `/product/recent${query ? `?${query}` : ""}`,
+    );
+  },
+
   getProductsByCompany: (companyId: string, params?: PaginationParams) =>
     apiRequest<PaginatedResponse<Product>>(
       "GET",
@@ -1570,29 +1619,29 @@ export const apiService = {
       true,
     ),
 
-  // Speciality endpoints (restaurant types)
+  // Specialty endpoints (restaurant types)
   // Apesar do doc dizer que é rota pública, o backend real exige token aqui
   // (confirmado: 401 "Token inválido ou ausente." mesmo sem nenhum guard
   // documentado). Único caller hoje é /company-profile (owner/admin, sempre
   // autenticado), então é seguro exigir auth.
-  getAllSpecialities: () =>
-    apiRequest<Speciality[]>("GET", "/specialities", undefined, true),
+  getAllSpecialties: () =>
+    apiRequest<Specialty[]>("GET", "/specialties", undefined, true),
 
-  getCompaniesBySpeciality: (specialityId: string) =>
-    apiRequest<Company[]>("GET", `/specialities/${specialityId}/companies`),
+  getCompaniesBySpecialty: (specialtyId: string) =>
+    apiRequest<Company[]>("GET", `/specialties/${specialtyId}/companies`),
 
-  assignSpecialityToCompany: (specialityId: string) =>
+  assignSpecialtyToCompany: (specialtyId: string) =>
     apiRequest<Company>(
       "POST",
-      `/specialities/${specialityId}`,
+      `/specialties/${specialtyId}`,
       undefined,
       true,
     ),
 
-  removeSpecialityFromCompany: (specialityId: string) =>
+  removeSpecialtyFromCompany: (specialtyId: string) =>
     apiRequest<Company>(
       "DELETE",
-      `/specialities/${specialityId}`,
+      `/specialties/${specialtyId}`,
       undefined,
       true,
     ),

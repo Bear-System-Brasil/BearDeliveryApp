@@ -1,31 +1,16 @@
 "use client";
 
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
+import { Dispatch, SetStateAction } from "react";
 
 import { formatCurrency } from "@/utils";
 
-import {
-  AlertCircle,
-  Banknote,
-  Building2,
-  Check,
-  CreditCard,
-  Shield,
-  Smartphone,
-} from "lucide-react";
+import { AlertCircle, Banknote, Check, CreditCard, Shield, Smartphone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { cn } from "@/lib/utils";
-
-type CardInfo = {
-  number: string;
-  name: string;
-  expiry: string;
-  cvv: string;
-};
 
 type Props = {
   setPaymentMethod: Dispatch<SetStateAction<string>>;
@@ -35,11 +20,7 @@ type Props = {
   paymentMethod: string;
   changeAmount: string;
   needsChange: boolean;
-  cardInfo: CardInfo;
-  handleCardInputChange: (field: string, value: string) => void;
 };
-
-type PaymentMoment = "now" | "delivery";
 
 type PaymentOption = {
   value: string;
@@ -48,41 +29,8 @@ type PaymentOption = {
   icon: typeof Smartphone;
 };
 
-const momentOptions = [
-  {
-    value: "now" as const,
-    label: "Pagar agora",
-    description: "Online, na confirmação",
-  },
-  {
-    value: "delivery" as const,
-    label: "Pagar na entrega",
-    description: "Ao receber o pedido",
-  },
-];
-
-const nowOptions: PaymentOption[] = [
-  {
-    value: "pix",
-    label: "Pix",
-    description: "Instantâneo",
-    icon: Smartphone,
-  },
-  {
-    value: "credit",
-    label: "Cartão de crédito",
-    description: "Online seguro",
-    icon: CreditCard,
-  },
-  {
-    value: "debit",
-    label: "Cartão de débito",
-    description: "Online seguro",
-    icon: CreditCard,
-  },
-];
-
-const deliveryOptions: PaymentOption[] = [
+// Só pagamento na entrega: o pagamento online foi removido do checkout.
+const paymentOptions: PaymentOption[] = [
   {
     value: "cash",
     label: "Dinheiro",
@@ -111,32 +59,7 @@ export function PaymentMethod({
   paymentMethod,
   changeAmount,
   needsChange,
-  cardInfo,
-  handleCardInputChange,
 }: Props) {
-  const [paymentMoment, setPaymentMoment] = useState<PaymentMoment>(
-    paymentMethod === "cash" ||
-      paymentMethod === "card_machine" ||
-      paymentMethod === "pix_on_delivery"
-      ? "delivery"
-      : "now",
-  );
-
-  useEffect(() => {
-    if (
-      paymentMethod === "cash" ||
-      paymentMethod === "card_machine" ||
-      paymentMethod === "pix_on_delivery"
-    ) {
-      setPaymentMoment("delivery");
-    }
-  }, [paymentMethod]);
-
-  const currentOptions = useMemo(
-    () => (paymentMoment === "now" ? nowOptions : deliveryOptions),
-    [paymentMoment],
-  );
-
   const normalizedChangeAmount = Number.parseFloat(
     changeAmount.replace(",", "."),
   );
@@ -148,13 +71,6 @@ export function PaymentMethod({
     hasChangeAmount &&
     (Number.isNaN(normalizedChangeAmount) || normalizedChangeAmount < total);
 
-  const handleMomentSelect = (moment: PaymentMoment) => {
-    setPaymentMoment(moment);
-    setNeedsChange(false);
-    setChangeAmount("");
-    setPaymentMethod(moment === "now" ? "pix" : "cash");
-  };
-
   const handleMethodSelect = (method: string) => {
     setPaymentMethod(method);
 
@@ -163,11 +79,6 @@ export function PaymentMethod({
       setChangeAmount("");
     }
   };
-
-  const paymentNote =
-    paymentMoment === "delivery"
-      ? "Voce paga direto ao entregador no recebimento do pedido."
-      : "Pagamento processado com criptografia. Nao armazenamos dados do cartão.";
 
   return (
     <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -180,33 +91,8 @@ export function PaymentMethod({
         </h2>
       </div>
 
-      <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {momentOptions.map((moment) => {
-          const isActive = paymentMoment === moment.value;
-
-          return (
-            <button
-              key={moment.value}
-              type="button"
-              onClick={() => handleMomentSelect(moment.value)}
-              className={cn(
-                "flex min-h-[52px] flex-col justify-center rounded-lg border px-3 text-left transition-colors",
-                isActive
-                  ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-400"
-                  : "border-border bg-card text-foreground hover:border-brand-300 dark:hover:border-brand-700",
-              )}
-            >
-              <span className="text-sm font-extrabold">{moment.label}</span>
-              <span className="mt-0.5 text-xs font-semibold opacity-75">
-                {moment.description}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
       <div className="flex flex-wrap justify-around gap-2">
-        {currentOptions.map((option) => {
+        {paymentOptions.map((option) => {
           const Icon = option.icon;
           const isActive = paymentMethod === option.value;
 
@@ -233,119 +119,10 @@ export function PaymentMethod({
 
       <div className="mt-3 flex items-start gap-2 rounded-lg border border-border bg-muted p-3 text-xs font-semibold text-muted-foreground">
         <Shield className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-        <p>{paymentNote}</p>
+        <p>Voce paga direto ao entregador no recebimento do pedido.</p>
       </div>
 
-      {(paymentMethod === "credit" || paymentMethod === "debit") &&
-        paymentMoment === "now" && (
-          <div className="mt-3 grid grid-cols-1 gap-2.5 rounded-lg border border-border bg-muted p-3 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label
-                htmlFor="cardNumber"
-                className="text-[11px] font-bold text-foreground"
-              >
-                Número do cartão
-              </Label>
-              <Input
-                id="cardNumber"
-                inputMode="numeric"
-                placeholder="0000 0000 0000 0000"
-                value={cardInfo.number}
-                onChange={(e) =>
-                  handleCardInputChange("number", e.target.value)
-                }
-                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="cardExpiry"
-                className="text-[11px] font-bold text-foreground"
-              >
-                Validade
-              </Label>
-              <Input
-                id="cardExpiry"
-                placeholder="MM/AA"
-                value={cardInfo.expiry}
-                onChange={(e) =>
-                  handleCardInputChange("expiry", e.target.value)
-                }
-                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="cardCvv"
-                className="text-[11px] font-bold text-foreground"
-              >
-                CVV
-              </Label>
-              <Input
-                id="cardCvv"
-                inputMode="numeric"
-                placeholder="123"
-                value={cardInfo.cvv}
-                onChange={(e) => handleCardInputChange("cvv", e.target.value)}
-                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label
-                htmlFor="cardName"
-                className="text-[11px] font-bold text-foreground"
-              >
-                Nome impresso no cartão
-              </Label>
-              <Input
-                id="cardName"
-                placeholder="está no cartão"
-                value={cardInfo.name}
-                onChange={(e) =>
-                  handleCardInputChange("name", e.target.value)
-                }
-                className="h-9 rounded-lg border-border bg-card text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
-              />
-            </div>
-          </div>
-        )}
-
-      {paymentMethod === "pix" && paymentMoment === "now" && (
-        <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 dark:bg-emerald-950/40 p-3">
-          <div className="flex items-start gap-2">
-            <Smartphone className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            <div>
-              <p className="text-sm font-bold text-emerald-900 dark:text-emerald-300">
-                Pagamento via Pix
-              </p>
-              <p className="mt-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                O código Pix fica disponível apos a confirmação do pedido.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {paymentMethod === "bank_transfer" && (
-        <div className="mt-3 rounded-lg border border-indigo-100 bg-indigo-50 dark:bg-indigo-950/40 p-3">
-          <div className="flex items-start gap-2">
-            <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
-            <div>
-              <p className="text-sm font-bold text-indigo-900 dark:text-indigo-300">
-                Transferência bancaria
-              </p>
-              <p className="mt-1 text-xs font-semibold text-indigo-700 dark:text-indigo-400">
-                Envie o comprovante para confirmação do pagamento.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {paymentMoment === "delivery" && paymentMethod !== "cash" && (
+      {paymentMethod !== "cash" && (
         <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 dark:bg-amber-950/40 p-3">
           <div className="flex items-start gap-2">
             <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
@@ -397,7 +174,7 @@ export function PaymentMethod({
                     : "border-border bg-card text-foreground",
                 )}
               >
-                Nao
+                Não
               </Button>
             </div>
           </div>

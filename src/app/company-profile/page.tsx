@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RESTAURANT_CATEGORIES } from "@/constants";
-import { useCompanyProfileManagement, useSpecialities } from "@/hooks";
+import { useCompanyProfileManagement, useSpecialties } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { formatCnpj, formatPhoneDisplay } from "@/utils";
 import {
@@ -48,70 +48,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
+import {
+  DEFAULT_OPENING_HOURS,
+  type DayHours,
+} from "@/constants/opening-hours";
 import { toast } from "sonner";
-
-interface DayHours {
-  day: string;
-  label: string;
-  isOpen: boolean;
-  openTime: string;
-  closeTime: string;
-}
-
-// TODO(backend): mock local - o campo `openingHours` já existe na resposta
-// de GET /company/:id, mas ainda não confirmei o contrato de escrita (o
-// PATCH /company/:id usa multipart/form-data, formato de horário incerto).
-const DEFAULT_HOURS: DayHours[] = [
-  {
-    day: "mon",
-    label: "Segunda",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:00",
-  },
-  {
-    day: "tue",
-    label: "Terça",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:00",
-  },
-  {
-    day: "wed",
-    label: "Quarta",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:00",
-  },
-  {
-    day: "thu",
-    label: "Quinta",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:00",
-  },
-  {
-    day: "fri",
-    label: "Sexta",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:30",
-  },
-  {
-    day: "sat",
-    label: "Sábado",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:30",
-  },
-  {
-    day: "sun",
-    label: "Domingo",
-    isOpen: false,
-    openTime: "18:00",
-    closeTime: "22:00",
-  },
-];
 
 export default function CompanyProfilePage() {
   return (
@@ -195,9 +136,9 @@ function CompanyProfileContent() {
     isSaving,
     isOpen,
     selectedCategory,
-    isSavingSpeciality,
+    isSavingSpecialty,
     handleSaveProfile,
-    handleSaveSpeciality,
+    handleSaveSpecialty,
     handleCancelEdit,
     setIsEditing,
     updateFormField,
@@ -223,7 +164,7 @@ function CompanyProfileContent() {
     resetPasswordForm,
   } = useCompanyProfileManagement();
 
-  const [openingHours, setOpeningHours] = useState<DayHours[]>(DEFAULT_HOURS);
+  const [openingHours, setOpeningHours] = useState<DayHours[]>(DEFAULT_OPENING_HOURS);
   const [isSavingHours, setIsSavingHours] = useState(false);
 
   const updateDayHours = (day: string, patch: Partial<DayHours>) => {
@@ -242,13 +183,13 @@ function CompanyProfileContent() {
     }, 400);
   };
 
-  const { data: specialities } = useSpecialities();
-  const specialityOptions =
-    specialities && specialities.length > 0
-      ? specialities.map((s) => ({ id: s.id, name: s.name }))
+  const { data: specialties } = useSpecialties();
+  const specialtyOptions =
+    specialties && specialties.length > 0
+      ? specialties.map((s) => ({ id: s.id, name: s.name }))
       : RESTAURANT_CATEGORIES.map((c) => ({ id: c.id, name: c.name }));
 
-  const selectedSpecialityName = specialityOptions.find(
+  const selectedSpecialtyName = specialtyOptions.find(
     (s) => s.id === selectedCategory,
   )?.name;
 
@@ -362,9 +303,9 @@ function CompanyProfileContent() {
                         </span>
                       </div>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1.5 text-[11.5px] font-semibold text-muted-foreground">
-                        {selectedSpecialityName && (
+                        {selectedSpecialtyName && (
                           <span className="whitespace-nowrap">
-                            {selectedSpecialityName}
+                            {selectedSpecialtyName}
                           </span>
                         )}
                         <span className="whitespace-nowrap">
@@ -502,24 +443,24 @@ function CompanyProfileContent() {
                       value={selectedCategory}
                       onValueChange={(value) => {
                         setSelectedCategory(value);
-                        if (specialities && specialities.length > 0) {
-                          handleSaveSpeciality(value);
+                        if (specialties && specialties.length > 0) {
+                          handleSaveSpecialty(value);
                         }
                       }}
-                      disabled={!isEditing || isSavingSpeciality}
+                      disabled={!isEditing || isSavingSpecialty}
                     >
                       <SelectTrigger className="h-[37px] rounded-[9px] border-border bg-background text-[12.5px] font-semibold">
                         <SelectValue placeholder="Selecione o tipo de restaurante" />
                       </SelectTrigger>
                       <SelectContent>
-                        {specialityOptions.map((item) => (
+                        {specialtyOptions.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
                             {item.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    {(!specialities || specialities.length === 0) && (
+                    {(!specialties || specialties.length === 0) && (
                       <p className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
                         ⚠️ Especialidades não encontradas no servidor - usando
                         lista local

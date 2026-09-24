@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { RestaurantListCard } from "@/components/ui/restaurant-row";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -54,5 +55,40 @@ export function RestaurantGridSkeleton({ count = 6 }: { count?: number }) {
         <RestaurantCardSkeleton key={index} />
       ))}
     </div>
+  );
+}
+
+/**
+ * Skeleton da linha compacta de loja (mesmas medidas do `RestaurantRow`)
+ */
+export function RestaurantRowSkeleton() {
+  return (
+    <div className="flex items-center gap-[11px] px-3 py-[9px]">
+      <Skeleton className="h-[52px] w-[52px] shrink-0 rounded-[13px]" />
+
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <Skeleton className="h-3.5 w-3/5" />
+        <Skeleton className="h-3 w-2/5" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+
+      <div className="flex shrink-0 flex-col items-end gap-[5px]">
+        <Skeleton className="h-3 w-8" />
+        <Skeleton className="h-[34px] w-[34px] rounded-full" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Lista de skeletons no card compacto de lojas
+ */
+export function RestaurantListSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <RestaurantListCard>
+      {Array.from({ length: count }).map((_, index) => (
+        <RestaurantRowSkeleton key={index} />
+      ))}
+    </RestaurantListCard>
   );
 }

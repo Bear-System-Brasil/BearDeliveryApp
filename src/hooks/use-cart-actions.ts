@@ -125,7 +125,7 @@ export const useCartActions = () => {
     getTotalPrice,
   } = useCartStore();
 
-  // ==== CONTRAMEDIÇAS CONTRA RACE CONDITIONS ====
+  // ==== CONTRAMEDIDAS CONTRA RACE CONDITIONS ====
   // Map para rastrear requisições pendentes por itemId
   const pendingRequests = useRef<Map<string, AbortController>>(new Map());
 
@@ -476,10 +476,10 @@ export const useCartActions = () => {
         const revertedItems =
           existing && existing.quantity > addedQuantity
             ? currentItems.map((i) =>
-                i.id === cartItemKey
-                  ? { ...i, quantity: i.quantity - addedQuantity }
-                  : i,
-              )
+              i.id === cartItemKey
+                ? { ...i, quantity: i.quantity - addedQuantity }
+                : i,
+            )
             : currentItems.filter((i) => i.id !== cartItemKey);
         setItems(revertedItems);
         toast.error(message || "Erro ao adicionar item. Tente novamente.");
@@ -687,20 +687,20 @@ export const useCartActions = () => {
       const apiCall =
         diff > 0
           ? apiService.orderItems.addProductToCart(
-              orderId,
-              item.productId,
-              user.id,
-              diff,
-              { addOns: item.addOns, variations: item.variations },
-              abortController.signal,
-            )
+            orderId,
+            item.productId,
+            user.id,
+            diff,
+            { addOns: item.addOns, variations: item.variations },
+            abortController.signal,
+          )
           : apiService.orderItems.removeProductFromCart(
-              user.id,
-              orderId,
-              item.productId,
-              Math.abs(diff),
-              abortController.signal,
-            );
+            user.id,
+            orderId,
+            item.productId,
+            Math.abs(diff),
+            abortController.signal,
+          );
 
       // Reverte subtraindo o `diff` que ESSA chamada tentou aplicar, do
       // valor atual - não pulando pro snapshot antigo (`item.quantity`), que
@@ -829,7 +829,7 @@ export const useCartActions = () => {
         // Ignore errors - doesn't block UX
       });
     });
-  }, [user?.id]);
+  }, [syncCartFromBackend, user?.id]);
 
   // CLEANUP: apenas os timers de debounce, ao desmontar.
   // NÃO abortar `pendingRequests` aqui: esses AbortControllers são de
