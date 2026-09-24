@@ -719,8 +719,8 @@ export interface Category {
   updated_at: string;
 }
 
-// Speciality types (restaurant types)
-export interface Speciality {
+// Specialty types (restaurant types)
+export interface Specialty {
   id: string;
   name: string;
   description: string;
@@ -756,7 +756,7 @@ export interface Company {
   /** Se a loja está aceitando pedidos agora (não confundir com `status`). */
   isOpen?: boolean;
   categories?: Category[];
-  speciality?: Speciality[];
+  specialty?: Specialty[];
   created_at: string;
   updated_at: string;
 }
@@ -1570,29 +1570,29 @@ export const apiService = {
       true,
     ),
 
-  // Speciality endpoints (restaurant types)
+  // Specialty endpoints (restaurant types)
   // Apesar do doc dizer que é rota pública, o backend real exige token aqui
   // (confirmado: 401 "Token inválido ou ausente." mesmo sem nenhum guard
   // documentado). Único caller hoje é /company-profile (owner/admin, sempre
   // autenticado), então é seguro exigir auth.
-  getAllSpecialities: () =>
-    apiRequest<Speciality[]>("GET", "/specialities", undefined, true),
+  getAllSpecialties: () =>
+    apiRequest<Specialty[]>("GET", "/specialties", undefined, true),
 
-  getCompaniesBySpeciality: (specialityId: string) =>
-    apiRequest<Company[]>("GET", `/specialities/${specialityId}/companies`),
+  getCompaniesBySpecialty: (specialtyId: string) =>
+    apiRequest<Company[]>("GET", `/specialties/${specialtyId}/companies`),
 
-  assignSpecialityToCompany: (specialityId: string) =>
+  assignSpecialtyToCompany: (specialtyId: string) =>
     apiRequest<Company>(
       "POST",
-      `/specialities/${specialityId}`,
+      `/specialties/${specialtyId}`,
       undefined,
       true,
     ),
 
-  removeSpecialityFromCompany: (specialityId: string) =>
+  removeSpecialtyFromCompany: (specialtyId: string) =>
     apiRequest<Company>(
       "DELETE",
-      `/specialities/${specialityId}`,
+      `/specialties/${specialtyId}`,
       undefined,
       true,
     ),

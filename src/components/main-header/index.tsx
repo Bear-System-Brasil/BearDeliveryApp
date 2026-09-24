@@ -639,6 +639,8 @@ export function MainHeader({
                               <Image
                                 src={user.photoUrl}
                                 alt={user.name || "User"}
+                                width={20}
+                                height={20}
                                 className="h-5 w-5 rounded-full object-cover mr-2"
                               />
                             ) : (

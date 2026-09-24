@@ -34,7 +34,7 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("pt-BR");
@@ -85,7 +85,7 @@ function CategoryManagementContent() {
     >
       <div className="mx-auto max-w-7xl">
         <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex h-9 w-full max-w-[340px] items-center gap-2 rounded-[8px] border border-border bg-card px-3">
+          <div className="flex h-9 w-full max-w-[340px] items-center gap-2 rounded-xl border border-border bg-card px-3">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <Input
               placeholder="Buscar categorias..."
@@ -96,20 +96,20 @@ function CategoryManagementContent() {
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-[8px] border border-border bg-card px-2.5 py-1 text-[11.5px] font-bold text-foreground">
+            <span className="rounded-xl border border-border bg-card px-2.5 py-1 text-[11.5px] font-bold text-foreground">
               {allCategories.length} categorias
             </span>
-            <span className="rounded-[8px] border border-border bg-card px-2.5 py-1 text-[11.5px] font-bold text-foreground">
+            <span className="rounded-xl border border-border bg-card px-2.5 py-1 text-[11.5px] font-bold text-foreground">
               {filteredCategories.length} exibidas
             </span>
-            <span className="rounded-[8px] bg-muted px-2.5 py-1 text-[11.5px] font-bold text-muted-foreground">
+            <span className="rounded-xl bg-muted px-2.5 py-1 text-[11.5px] font-bold text-muted-foreground">
               {previewCategories.length} na prévia
             </span>
           </div>
         </div>
 
         <div className="grid min-h-0 items-start gap-3 md:h-[calc(100vh-165px)] xl:grid-cols-[minmax(0,1fr)_320px]">
-          <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[8px] border border-border bg-card md:h-full">
+          <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card md:h-full">
             <div className="hidden shrink-0 grid-cols-[44px_minmax(0,1fr)_112px_112px_92px_68px] items-center gap-2 border-b border-border bg-muted px-3.5 py-2.5 md:grid">
               <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
                 #
@@ -225,7 +225,7 @@ function CategoryManagementContent() {
 
             {filteredCategories.length === 0 && !loading && (
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-5 py-10 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[8px] bg-brand-50 dark:bg-brand-950/40 text-brand-500">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 dark:bg-brand-950/40 text-brand-500">
                   <LayoutGrid className="h-6 w-6" />
                 </div>
                 <p className="mt-3 text-sm font-bold text-foreground">
@@ -240,7 +240,7 @@ function CategoryManagementContent() {
             )}
           </section>
 
-          <aside className="rounded-[8px] border border-border bg-card p-3.5 md:max-h-full md:overflow-y-auto">
+          <aside className="rounded-xl border border-border bg-card p-3.5 md:max-h-full md:overflow-y-auto">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-[13px] font-extrabold text-foreground">
@@ -253,7 +253,7 @@ function CategoryManagementContent() {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </div>
 
-            <div className="mt-3 rounded-[8px] border border-border bg-muted p-3">
+            <div className="mt-3 rounded-xl border border-border bg-muted p-3">
               {previewCategories.length === 0 ? (
                 <div className="py-4 text-center text-[11.5px] font-semibold text-muted-foreground">
                   Nenhuma categoria cadastrada
@@ -279,7 +279,7 @@ function CategoryManagementContent() {
       </div>
 
       <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-h-[90vh] rounded-[8px] p-0 sm:max-w-[500px]">
+        <DialogContent className="max-h-[90vh] rounded-xl p-0 sm:max-w-[500px]">
           <DialogHeader className="border-b border-border px-4 pb-3 pt-4 sm:px-6">
             <DialogTitle className="text-lg font-extrabold text-foreground">
               {editingCategory
@@ -330,14 +330,14 @@ function CategoryManagementContent() {
             <Button
               variant="outline"
               onClick={handleCloseModal}
-              className="cursor-pointer rounded-[8px] border-border text-xs"
+              className="cursor-pointer rounded-xl border-border text-xs"
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSaveCategory}
               disabled={isSaving}
-              className="cursor-pointer rounded-[8px] bg-brand-500 text-xs font-bold text-white hover:bg-brand-600"
+              className="cursor-pointer rounded-xl bg-brand-500 text-xs font-bold text-white hover:bg-brand-600"
             >
               {isSaving ? (
                 <>
@@ -360,8 +360,8 @@ function CategoryManagementContent() {
           }
         }}
       >
-        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-[8px] bg-card text-center shadow-2xl sm:w-fit">
-          <div className="mx-auto mt-2 flex h-12 w-12 items-center justify-center rounded-[8px] bg-yellow-100 dark:bg-yellow-900">
+        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-xl bg-card text-center shadow-2xl sm:w-fit">
+          <div className="mx-auto mt-2 flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-100 dark:bg-yellow-900">
             <TriangleAlert className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
           </div>
 
@@ -388,14 +388,14 @@ function CategoryManagementContent() {
               variant="outline"
               onClick={handleCancelDelete}
               disabled={isDeleting}
-              className="h-10 flex-1 cursor-pointer rounded-[8px] border-border font-medium text-foreground hover:bg-muted"
+              className="h-10 flex-1 cursor-pointer rounded-xl border-border font-medium text-foreground hover:bg-muted"
             >
               Cancelar
             </Button>
             <Button
               onClick={handleConfirmDelete}
               disabled={isDeleting}
-              className="h-10 flex-1 cursor-pointer rounded-[8px] bg-red-600 font-medium text-white hover:bg-red-700"
+              className="h-10 flex-1 cursor-pointer rounded-xl bg-red-600 font-medium text-white hover:bg-red-700"
             >
               {isDeleting ? (
                 <>

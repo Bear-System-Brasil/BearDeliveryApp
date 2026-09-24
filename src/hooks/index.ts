@@ -8,7 +8,7 @@ export * from './use-product-variations'
 export * from './use-products'
 export * from './use-restaurants'
 export * from './use-synced-user-location'
-export * from './use-specialities'
+export * from './use-specialties'
 
 // Business logic hooks
 export * from './use-cash-movement'
