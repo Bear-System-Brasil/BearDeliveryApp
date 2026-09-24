@@ -47,11 +47,9 @@ export function DeliveryWrapper() {
     addressCoords,
     applyCoords,
     paymentMethod,
-    cardInfo,
     changeAmount,
     needsChange,
     handleInputChange,
-    handleCardInputChange,
     setPaymentMethod,
     setChangeAmount,
     setNeedsChange,
@@ -151,8 +149,8 @@ export function DeliveryWrapper() {
       <AnimatedBackground showBlobs={false}>
         <div className="flex min-h-screen items-center justify-center px-4">
           <div className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900">
-              <ThumbsUp className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900">
+              <ThumbsUp className="h-8 w-8 text-brand-600 dark:text-brand-400" />
             </div>
             <h2 className="mb-2 text-2xl font-bold text-foreground">
               Login necessario
@@ -174,8 +172,8 @@ export function DeliveryWrapper() {
       <AnimatedBackground showBlobs={false}>
         <div className="flex min-h-screen items-center justify-center px-4">
           <div className="text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900">
-              <Store className="h-8 w-8 animate-pulse text-orange-600 dark:text-orange-400" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900">
+              <Store className="h-8 w-8 animate-pulse text-brand-600 dark:text-brand-400" />
             </div>
             <h2 className="mb-2 text-2xl font-bold text-foreground">
               Carregando carrinho...
@@ -203,7 +201,7 @@ export function DeliveryWrapper() {
               type="button"
               aria-label="Voltar"
               onClick={handleBack}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-sm transition-colors hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-600 dark:hover:text-orange-400"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-foreground shadow-sm transition-colors hover:border-brand-300 dark:hover:border-brand-700 hover:text-brand-600 dark:hover:text-brand-400"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
@@ -277,8 +275,6 @@ export function DeliveryWrapper() {
               changeAmount={changeAmount}
               needsChange={needsChange}
               total={total}
-              cardInfo={cardInfo}
-              handleCardInputChange={handleCardInputChange}
             />
           )}
         </div>

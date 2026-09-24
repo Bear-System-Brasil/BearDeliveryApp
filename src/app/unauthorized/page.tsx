@@ -17,14 +17,14 @@ export default function UnauthorizedPage() {
     useUnauthorizedPage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-50 flex items-center justify-center p-4">
       <Card className="max-w-2xl w-full shadow-2xl">
         <CardHeader className="text-center">
-          <div className="mx-auto w-20 h-20 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center mb-4">
-            <Shield className="w-10 h-10 text-orange-600 dark:text-orange-400" />
+          <div className="mx-auto w-20 h-20 bg-brand-100 dark:bg-brand-900 rounded-full flex items-center justify-center mb-4">
+            <Shield className="w-10 h-10 text-brand-600 dark:text-brand-400" />
           </div>
           <CardTitle className="text-3xl font-bold text-foreground flex items-center justify-center gap-2">
-            <AlertTriangle className="w-8 h-8 text-orange-500" />
+            <AlertTriangle className="w-8 h-8 text-brand-500" />
             Acesso Negado
           </CardTitle>
           <CardDescription className="text-lg mt-2">
@@ -58,11 +58,11 @@ export default function UnauthorizedPage() {
                 </div>
               </div>
 
-              <div className="bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-                <h3 className="font-semibold text-orange-900 dark:text-orange-300 mb-2">
+              <div className="bg-brand-50 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800 rounded-lg p-4">
+                <h3 className="font-semibold text-brand-900 dark:text-brand-300 mb-2">
                   Por que não posso acessar?
                 </h3>
-                <p className="text-orange-800 dark:text-orange-300 text-sm">
+                <p className="text-brand-800 dark:text-brand-300 text-sm">
                   Esta página é restrita a determinados tipos de conta. Seu
                   perfil atual (<strong>{ROLE_LABELS[user.role]}</strong>) não
                   possui as permissões necessárias para acessar este conteúdo.
@@ -131,7 +131,7 @@ export default function UnauthorizedPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <Button
               onClick={handleGoHome}
-              className="flex-1 bg-gradient-to-r from-orange-500 to-orange-500 hover:from-orange-600 hover:to-orange-600 cursor-pointer"
+              className="flex-1 bg-gradient-to-r from-brand-500 to-brand-500 hover:from-brand-600 hover:to-brand-600 cursor-pointer"
             >
               <Home className="w-4 h-4 mr-2" />
               Voltar para Home

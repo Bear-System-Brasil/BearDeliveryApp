@@ -93,7 +93,7 @@ export default function SettingsPage() {
         {/* Segurança operacional */}
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400">
               <ShieldCheck className="h-4.5 w-4.5" />
             </div>
             <div>

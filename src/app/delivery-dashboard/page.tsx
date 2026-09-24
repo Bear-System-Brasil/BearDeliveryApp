@@ -165,7 +165,7 @@ export default function DeliveryDashboardPage() {
             <Button
               type="button"
               onClick={() => refetch()}
-              className="mt-4 h-12 rounded-xl bg-orange-500 px-6 text-[15px] font-bold hover:bg-orange-600"
+              className="mt-4 h-12 rounded-xl bg-brand-500 px-6 text-[15px] font-bold hover:bg-brand-600"
             >
               Tentar novamente
             </Button>

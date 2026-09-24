@@ -68,7 +68,7 @@ export function Restaurant({ restaurant, index }: Props) {
         }
       }}
       className={cn(
-        "flex cursor-pointer overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-shadow duration-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 sm:block",
+        "flex cursor-pointer overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-shadow duration-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 sm:block",
         "animate-in fade-in slide-in-from-bottom-4 duration-300",
       )}
       style={{ animationDelay: `${index * 50}ms` }}
@@ -119,7 +119,7 @@ export function Restaurant({ restaurant, index }: Props) {
       <div className="flex min-w-0 flex-1 flex-col justify-center p-2.5 sm:block sm:p-3">
         <div className="mb-1 flex items-start justify-between gap-2 sm:gap-3">
           <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-orange-50 dark:bg-orange-950/40 text-xs">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-brand-50 dark:bg-brand-950/40 text-xs">
               {categoryIcon}
             </span>
             <h3 className="truncate text-sm font-bold text-foreground">
@@ -128,7 +128,7 @@ export function Restaurant({ restaurant, index }: Props) {
           </div>
 
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 text-xs sm:text-sm font-bold text-foreground">
-            <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-orange-400 text-orange-400" />
+            <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-brand-400 text-brand-400" />
             <span>{rating}</span>
           </div>
         </div>
@@ -151,13 +151,13 @@ export function Restaurant({ restaurant, index }: Props) {
             >
               <span className="relative inline-flex h-3.5 w-4 shrink-0 items-center text-emerald-600 dark:text-emerald-400 sm:h-4 sm:w-4">
                 <Bike className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <Zap className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 fill-current text-orange-500" />
+                <Zap className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 fill-current text-brand-500" />
               </span>
               <span>Frete {deliveryFeeLabel}</span>
             </span>
           )}
           {distance && (
-            <span className="rounded-md bg-orange-50 dark:bg-orange-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium text-orange-600 dark:text-orange-400">
+            <span className="rounded-md bg-brand-50 dark:bg-brand-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[11px] sm:text-xs font-medium text-brand-600 dark:text-brand-400">
               {distance}
             </span>
           )}

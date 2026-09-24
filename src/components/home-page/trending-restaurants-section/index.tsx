@@ -124,50 +124,23 @@ function StoreCategoriesFilter({
           ref={scrollRef}
           className="flex gap-2 sm:gap-3 overflow-x-auto scroll-smooth scrollbar-hide py-1"
         >
-          {categories.map((category) => {
-            const isActive = selectedValue === category.id;
-            return (
-              <button
-                key={category.id}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => onSelect(isActive ? null : category.id)}
-                className="flex w-[68px] shrink-0 flex-col items-center gap-1.5 sm:w-[76px]"
-              >
-                <span
-                  className={cn(
-                    "flex h-14 w-14 items-center justify-center rounded-2xl border shadow-sm transition-all sm:h-16 sm:w-16",
-                    isActive
-                      ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40"
-                      : "border-border bg-card hover:border-orange-200 hover:bg-orange-50 dark:hover:border-orange-800 dark:hover:bg-orange-950/40",
-                  )}
-                >
-                  {category.iconImage ? (
-                    <Image
-                      src={category.iconImage}
-                      alt=""
-                      width={96}
-                      height={96}
-                      className="h-9 w-9 object-contain sm:h-11 sm:w-11"
-                    />
-                  ) : (
-                    category.icon && (
-                      <span className="text-2xl leading-none sm:text-[26px]">
-                        {category.icon}
-                      </span>
-                    )
-                  )}
-                </span>
-                <span
-                  className={cn(
-                    "w-full truncate text-center text-[11px] font-semibold sm:text-xs",
-                    isActive
-                      ? "text-orange-600 dark:text-orange-400"
-                      : "text-foreground",
-                  )}
-                  title={category.name}
-                >
-                  {category.name}
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() =>
+                onSelect(selectedValue === category.id ? null : category.id)
+              }
+              className={cn(
+                "shrink-0 flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded-full border px-3 sm:px-4 text-xs sm:text-sm font-medium whitespace-nowrap shadow-sm transition-all",
+                selectedValue === category.id
+                  ? "bg-brand-500 text-white border-brand-500"
+                  : "bg-card border-border text-foreground hover:border-brand-200 dark:hover:border-brand-800 hover:bg-brand-50 dark:hover:bg-brand-950/40",
+              )}
+            >
+              {category.icon && (
+                <span className="text-xs sm:text-sm leading-none">
+                  {category.icon}
                 </span>
               </button>
             );

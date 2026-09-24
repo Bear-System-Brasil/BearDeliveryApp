@@ -28,7 +28,7 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "acai",
     name: "Açaí",
     icon: "🍨",
-    color: "from-purple-500 to-orange-500",
+    color: "from-purple-500 to-brand-500",
   },
   {
     id: "americana",
@@ -40,7 +40,7 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "arabe",
     name: "Árabe",
     icon: "🥙",
-    color: "from-amber-500 to-orange-500",
+    color: "from-amber-500 to-brand-500",
   },
   {
     id: "bebidas",
@@ -52,7 +52,7 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "bolos",
     name: "Bolos",
     icon: "🎂",
-    color: "from-orange-400 to-rose-500",
+    color: "from-brand-400 to-rose-500",
   },
   {
     id: "brasileira",
@@ -70,7 +70,7 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "caldos",
     name: "Caldos",
     icon: "🍲",
-    color: "from-orange-400 to-red-500",
+    color: "from-brand-400 to-red-500",
   },
   {
     id: "chinesa",
@@ -88,13 +88,13 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "crepes",
     name: "Crepes",
     icon: "🥞",
-    color: "from-yellow-400 to-orange-400",
+    color: "from-yellow-400 to-brand-400",
   },
   {
     id: "doces",
     name: "Doces",
     icon: "🧁",
-    color: "from-orange-500 to-purple-500",
+    color: "from-brand-500 to-purple-500",
   },
   {
     id: "fitness",
@@ -112,13 +112,13 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "hamburguer",
     name: "Hambúrguer",
     icon: "🍔",
-    color: "from-yellow-500 to-orange-500",
+    color: "from-yellow-500 to-brand-500",
   },
   {
     id: "hot-dog",
     name: "Hot Dog",
     icon: "🌭",
-    color: "from-red-500 to-orange-600",
+    color: "from-red-500 to-brand-600",
   },
   {
     id: "italiana",
@@ -136,7 +136,7 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "lanches",
     name: "Lanches",
     icon: "🥪",
-    color: "from-orange-400 to-red-400",
+    color: "from-brand-400 to-red-400",
   },
   {
     id: "marmita",
@@ -154,19 +154,19 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "padaria",
     name: "Padaria",
     icon: "🥖",
-    color: "from-amber-600 to-orange-500",
+    color: "from-amber-600 to-brand-500",
   },
   {
     id: "pastel",
     name: "Pastel",
     icon: "🥟",
-    color: "from-yellow-500 to-orange-600",
+    color: "from-yellow-500 to-brand-600",
   },
   {
     id: "pizza",
     name: "Pizza",
     icon: "🍕",
-    color: "from-orange-500 to-red-500",
+    color: "from-brand-500 to-red-500",
   },
   { id: "poke", name: "Poke", icon: "🥙", color: "from-cyan-500 to-blue-500" },
   {
@@ -179,7 +179,7 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "salgados",
     name: "Salgados",
     icon: "🥐",
-    color: "from-yellow-600 to-orange-500",
+    color: "from-yellow-600 to-brand-500",
   },
   {
     id: "saudavel",
@@ -191,7 +191,7 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "sopas",
     name: "Sopas",
     icon: "🍜",
-    color: "from-orange-500 to-red-500",
+    color: "from-brand-500 to-red-500",
   },
   {
     id: "sorvetes",
@@ -203,7 +203,7 @@ export const RESTAURANT_CATEGORIES: RestaurantCategory[] = [
     id: "tailandesa",
     name: "Tailandesa",
     icon: "🍛",
-    color: "from-orange-600 to-red-600",
+    color: "from-brand-600 to-red-600",
   },
   {
     id: "tapiocas",
@@ -300,5 +300,5 @@ export const getCategoryStyle = (
   }
 
   // Retorna estilo padrão se não encontrado
-  return { icon: "🍽️", color: "from-orange-500 to-red-500" };
+  return { icon: "🍽️", color: "from-brand-500 to-red-500" };
 };

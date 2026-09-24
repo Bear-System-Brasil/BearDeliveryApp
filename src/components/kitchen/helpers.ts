@@ -26,7 +26,7 @@ export interface ElapsedInfo {
 const TIER_CLASSES: Record<ElapsedTier, string> = {
   fresh: "bg-slate-100 text-slate-600",
   warm: "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-300",
-  late: "bg-orange-200 dark:bg-orange-800 text-orange-900 dark:text-orange-300",
+  late: "bg-brand-200 dark:bg-brand-800 text-brand-900 dark:text-brand-300",
   critical: "bg-red-600 text-white",
   old: "bg-slate-200 text-slate-500",
 };

@@ -66,7 +66,7 @@ export default function AuthModal({
         <DialogHeader className="px-4 sm:px-6 pt-3 sm:pt-4 pb-2 sm:pb-3 border-b border-border shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-linear-to-r from-orange-500 to-orange-500 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-linear-to-r from-brand-500 to-brand-500 rounded-lg flex items-center justify-center">
                 <LogIn className="w-5 h-5 text-white" />
               </div>
               <DialogTitle className="text-lg sm:text-xl font-bold text-foreground">
@@ -87,16 +87,16 @@ export default function AuthModal({
                 <TabsList className="grid w-full grid-cols-2 gap-1 bg-muted rounded-xl">
                   <TabsTrigger
                     value="login"
-                    className="data-[state=active]:bg-card data-[state=active]:text-orange-600 dark:text-orange-400 data-[state=active]:shadow-sm
-                            data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-orange-500 data-[state=inactive]:hover:bg-muted 
+                    className="data-[state=active]:bg-card data-[state=active]:text-brand-600 dark:text-brand-400 data-[state=active]:shadow-sm
+                            data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-brand-500 data-[state=inactive]:hover:bg-muted 
                               transition-all duration-200 font-medium"
                   >
                     Entrar
                   </TabsTrigger>
                   <TabsTrigger
                     value="register"
-                    className="data-[state=active]:bg-card data-[state=active]:text-orange-600 dark:text-orange-400 
-                              data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-orange-500 
+                    className="data-[state=active]:bg-card data-[state=active]:text-brand-600 dark:text-brand-400 
+                              data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground data-[state=inactive]:hover:text-brand-500 
                             data-[state=inactive]:hover:bg-muted transition-all duration-200 font-medium"
                   >
                     Registrar
@@ -116,7 +116,7 @@ export default function AuthModal({
                         placeholder="email@email.com"
                         value={loginData.email}
                         onChange={(e) => handleInputChange("email", e.target.value)}
-                        className="pl-10 rounded-xl border-2 border-border focus:border-orange-400 h-9 sm:h-10 text-xs sm:text-sm"
+                        className="pl-10 rounded-xl border-2 border-border focus:border-brand-400 h-9 sm:h-10 text-xs sm:text-sm"
                       />
                     </div>
                   </div>
@@ -133,7 +133,7 @@ export default function AuthModal({
                         placeholder="Sua senha"
                         value={loginData.password}
                         onChange={(e) => handleInputChange("password", e.target.value)}
-                        className="pl-10 rounded-xl border-2 border-border focus:border-orange-400 h-9 sm:h-10 text-xs sm:text-sm"
+                        className="pl-10 rounded-xl border-2 border-border focus:border-brand-400 h-9 sm:h-10 text-xs sm:text-sm"
                       />
                     </div>
                   </div>
@@ -142,7 +142,7 @@ export default function AuthModal({
                     <button
                       type="button"
                       onClick={() => setStep("forgot-password")}
-                      className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-400 font-medium transition-colors cursor-pointer"
+                      className="text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-400 font-medium transition-colors cursor-pointer"
                     >
                       Esqueci minha senha
                     </button>
@@ -150,9 +150,9 @@ export default function AuthModal({
                 </TabsContent>
 
                 <TabsContent value="register" className="space-y-2.5 sm:space-y-3 mt-3 sm:mt-4">
-                  <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-linear-to-r from-orange-50 to-orange-50 dark:from-orange-950/40 dark:to-orange-950/40 border border-orange-200 dark:border-orange-800/50 rounded-xl">
+                  <div className="mb-2 sm:mb-3 p-2 sm:p-3 bg-linear-to-r from-brand-50 to-brand-50 dark:from-brand-950/40 dark:to-brand-950/40 border border-brand-200 dark:border-brand-800/50 rounded-xl">
                     <p className="text-[10px] sm:text-xs text-foreground">
-                      <strong className="text-orange-600 dark:text-orange-400">Cadastro:</strong>{" "}
+                      <strong className="text-brand-600 dark:text-brand-400">Cadastro:</strong>{" "}
                       Você receberá um código no WhatsApp. Use-o na tela de login.
                     </p>
                   </div>
@@ -167,7 +167,7 @@ export default function AuthModal({
                         placeholder="Nome completo"
                         value={registerData.name}
                         onChange={(e) => handleInputChange("name", e.target.value)}
-                        className="pl-10 rounded-xl border-2 border-border focus:border-orange-400 h-9 sm:h-10 text-xs sm:text-sm"
+                        className="pl-10 rounded-xl border-2 border-border focus:border-brand-400 h-9 sm:h-10 text-xs sm:text-sm"
                       />
                     </div>
                   </div>
@@ -185,7 +185,7 @@ export default function AuthModal({
                           placeholder="email@email.com"
                           value={registerData.email}
                           onChange={(e) => handleInputChange("email", e.target.value)}
-                          className="pl-10 rounded-xl border-2 border-border focus:border-orange-400 h-9 sm:h-10 text-xs sm:text-sm"
+                          className="pl-10 rounded-xl border-2 border-border focus:border-brand-400 h-9 sm:h-10 text-xs sm:text-sm"
                         />
                       </div>
                     </div>
@@ -202,7 +202,7 @@ export default function AuthModal({
                           value={registerData.cpf}
                           onChange={(e) => handleInputChange("cpf", e.target.value)}
                           maxLength={14}
-                          className="pl-10 rounded-xl border-2 border-border focus:border-orange-400 h-9 sm:h-10 text-xs sm:text-sm"
+                          className="pl-10 rounded-xl border-2 border-border focus:border-brand-400 h-9 sm:h-10 text-xs sm:text-sm"
                         />
                       </div>
                     </div>
@@ -221,7 +221,7 @@ export default function AuthModal({
                           value={registerData.phone}
                           onChange={(e) => handleInputChange("phone", e.target.value)}
                           maxLength={15}
-                          className="pl-10 rounded-xl border-2 border-border focus:border-orange-400 h-9 sm:h-10 text-xs sm:text-sm"
+                          className="pl-10 rounded-xl border-2 border-border focus:border-brand-400 h-9 sm:h-10 text-xs sm:text-sm"
                         />
                       </div>
                     </div>
@@ -238,7 +238,7 @@ export default function AuthModal({
                           value={registerData.birthDate}
                           onChange={(e) => handleInputChange("birthDate", e.target.value)}
                           maxLength={10}
-                          className="pl-10 rounded-xl border-2 border-border focus:border-orange-400 h-9 sm:h-10 text-xs sm:text-sm"
+                          className="pl-10 rounded-xl border-2 border-border focus:border-brand-400 h-9 sm:h-10 text-xs sm:text-sm"
                         />
                       </div>
                     </div>
@@ -259,7 +259,7 @@ export default function AuthModal({
                         className={`pl-10 rounded-xl border-2 h-9 sm:h-10 text-xs sm:text-sm ${
                           passwordErrors.length > 0 && registerData.password
                             ? "border-red-300 dark:border-red-700 focus:border-red-400"
-                            : "border-border focus:border-orange-400"
+                            : "border-border focus:border-brand-400"
                         }`}
                       />
                     </div>
@@ -288,7 +288,7 @@ export default function AuthModal({
                         className={`pl-10 rounded-xl border-2 h-9 sm:h-10 text-xs sm:text-sm ${
                           !passwordMatch && registerData.confirmPassword
                             ? "border-red-300 dark:border-red-700 focus:border-red-400"
-                            : "border-border focus:border-orange-400"
+                            : "border-border focus:border-brand-400"
                         }`}
                       />
                     </div>
@@ -317,7 +317,7 @@ export default function AuthModal({
               <Button
                 onClick={handleSubmit}
                 disabled={isLoading || !isFormValid()}
-                className="relative w-full h-10 sm:h-12 rounded-xl bg-linear-to-r from-orange-500 to-orange-500 text-white 
+                className="relative w-full h-10 sm:h-12 rounded-xl bg-linear-to-r from-brand-500 to-brand-500 text-white 
                         font-semibold shadow-lg hover:shadow-xl transition-all overflow-hidden group transform
                         disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm sm:text-base"
               >
@@ -352,7 +352,7 @@ export default function AuthModal({
                   placeholder="123456"
                   value={otpData.code}
                   onChange={(e) => setOtpData((prev) => ({ ...prev, code: e.target.value }))}
-                  className="text-center text-2xl font-mono rounded-xl border-2 border-border focus:border-orange-400"
+                  className="text-center text-2xl font-mono rounded-xl border-2 border-border focus:border-brand-400"
                   maxLength={6}
                 />
               </div>
@@ -366,7 +366,7 @@ export default function AuthModal({
               <Button
                 onClick={handleOTPSubmit}
                 disabled={isLoading || otpData.code.length !== 6}
-                className="w-full h-12 rounded-xl bg-linear-to-r from-orange-500 to-orange-500 hover:from-orange-600 hover:to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
+                className="w-full h-12 rounded-xl bg-linear-to-r from-brand-500 to-brand-500 hover:from-brand-600 hover:to-brand-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
               >
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
@@ -406,7 +406,7 @@ export default function AuthModal({
                     value={formatPhone(forgotPasswordData.phone)}
                     onChange={(e) => setForgotPasswordData({ phone: e.target.value.replace(/\D/g, "") })}
                     maxLength={15}
-                    className="pl-10 rounded-xl border-2 border-border focus:border-orange-400"
+                    className="pl-10 rounded-xl border-2 border-border focus:border-brand-400"
                   />
                 </div>
               </div>
@@ -420,7 +420,7 @@ export default function AuthModal({
               <Button
                 onClick={handleForgotPasswordSubmit}
                 disabled={isLoading || forgotPasswordData.phone.length !== 11}
-                className="w-full h-12 rounded-xl bg-linear-to-r from-orange-500 to-orange-500 hover:from-orange-600 hover:to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
+                className="w-full h-12 rounded-xl bg-linear-to-r from-brand-500 to-brand-500 hover:from-brand-600 hover:to-brand-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
               >
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
@@ -462,7 +462,7 @@ export default function AuthModal({
                     inputMode="numeric"
                     value={resetPasswordData.code}
                     onChange={(e) => setResetPasswordData((prev) => ({ ...prev, code: e.target.value.replace(/\D/g, "") }))}
-                    className="text-center text-xl font-mono rounded-xl border-2 border-border focus:border-orange-400"
+                    className="text-center text-xl font-mono rounded-xl border-2 border-border focus:border-brand-400"
                     maxLength={6}
                   />
                 </div>
@@ -477,7 +477,7 @@ export default function AuthModal({
                       placeholder="Nova senha"
                       value={resetPasswordData.newPassword}
                       onChange={(e) => setResetPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
-                      className="pl-10 rounded-xl border-2 border-border focus:border-orange-400"
+                      className="pl-10 rounded-xl border-2 border-border focus:border-brand-400"
                     />
                   </div>
                 </div>
@@ -492,7 +492,7 @@ export default function AuthModal({
                       placeholder="Confirme a nova senha"
                       value={resetPasswordData.confirmPassword}
                       onChange={(e) => setResetPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                      className="pl-10 rounded-xl border-2 border-border focus:border-orange-400"
+                      className="pl-10 rounded-xl border-2 border-border focus:border-brand-400"
                     />
                   </div>
                 </div>
@@ -517,7 +517,7 @@ export default function AuthModal({
               <Button
                 onClick={handleResetPasswordSubmit}
                 disabled={isLoading || !resetPasswordData.code || !resetPasswordData.newPassword || !resetPasswordData.confirmPassword || resetPasswordData.code.length !== 6}
-                className="w-full h-12 rounded-xl bg-linear-to-r from-orange-500 to-orange-500 hover:from-orange-600 hover:to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
+                className="w-full h-12 rounded-xl bg-linear-to-r from-brand-500 to-brand-500 hover:from-brand-600 hover:to-brand-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
               >
                 {isLoading ? (
                   <div className="flex items-center space-x-2">

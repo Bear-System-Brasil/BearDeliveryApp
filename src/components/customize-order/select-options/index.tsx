@@ -20,7 +20,7 @@ type Props = {
 function RequirementBadge({ required }: { required?: boolean }) {
   if (required) {
     return (
-      <span className="rounded-md bg-orange-50 dark:bg-orange-950/40 px-[7px] py-[1px] text-[9.5px] font-extrabold tracking-wide text-orange-600 dark:text-orange-400">
+      <span className="rounded-md bg-brand-50 dark:bg-brand-950/40 px-[7px] py-[1px] text-[9.5px] font-extrabold tracking-wide text-brand-600 dark:text-brand-400">
         OBRIGATÓRIO
       </span>
     );
@@ -74,14 +74,14 @@ export function SelectOptions({
                 className={cn(
                   "flex h-[50px] flex-col items-center justify-center gap-0.5 rounded-[10px] border bg-card transition-colors",
                   isSelected
-                    ? "border-orange-500 bg-orange-50 dark:bg-orange-950/40"
+                    ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40"
                     : "border-border hover:border-muted-foreground",
                 )}
               >
                 <span
                   className={cn(
                     "truncate px-1 text-[12.5px] font-bold",
-                    isSelected ? "text-orange-600 dark:text-orange-400" : "text-foreground",
+                    isSelected ? "text-brand-600 dark:text-brand-400" : "text-foreground",
                   )}
                 >
                   {option.label}
@@ -89,7 +89,7 @@ export function SelectOptions({
                 <span
                   className={cn(
                     "text-[10.5px] font-semibold",
-                    isSelected ? "text-orange-500/90" : "text-muted-foreground",
+                    isSelected ? "text-brand-500/90" : "text-muted-foreground",
                   )}
                 >
                   {group.basePrice !== undefined
@@ -129,7 +129,7 @@ export function SelectOptions({
               className={cn(
                 "flex h-[42px] min-w-0 items-center gap-2 rounded-[9px] border bg-card py-1 pl-2.5 pr-1 transition-colors",
                 isSelected
-                  ? "border-orange-500 bg-orange-50/70 dark:bg-orange-950/40"
+                  ? "border-brand-500 bg-brand-50/70 dark:bg-brand-950/40"
                   : "border-border",
               )}
             >

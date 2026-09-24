@@ -141,11 +141,11 @@ export function ImageUpload({
             variant="outline"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="w-full h-20 sm:h-24 border-2 border-dashed border-border hover:border-orange-400 hover:bg-linear-to-br hover:from-orange-50 hover:to-orange-50 transition-all cursor-pointer flex-col gap-2"
+            className="w-full h-20 sm:h-24 border-2 border-dashed border-border hover:border-brand-400 hover:bg-linear-to-br hover:from-brand-50 hover:to-brand-50 transition-all cursor-pointer flex-col gap-2"
           >
             {uploading ? (
               <>
-                <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
                 <span className="text-xs text-muted-foreground">Enviando...</span>
               </>
             ) : (

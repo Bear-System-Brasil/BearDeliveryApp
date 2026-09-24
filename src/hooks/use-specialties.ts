@@ -5,11 +5,11 @@ import { toast } from 'sonner'
 /**
  * Hook para buscar todas as especialidades (tipos de restaurante)
  */
-export const useSpecialities = () => {
+export const useSpecialties = () => {
   return useQuery({
-    queryKey: ['specialities'],
+    queryKey: ['specialties'],
     queryFn: async () => {
-      const response = await apiService.getAllSpecialities()
+      const response = await apiService.getAllSpecialties()
       if (!response.success || !response.data) {
         throw new Error('Falha ao carregar especialidades')
       }
@@ -22,18 +22,18 @@ export const useSpecialities = () => {
 /**
  * Hook para buscar empresas por especialidade
  */
-export const useCompaniesBySpeciality = (specialityId: string | null) => {
+export const useCompaniesBySpecialty = (specialtyId: string | null) => {
   return useQuery({
-    queryKey: ['speciality', specialityId, 'companies'],
+    queryKey: ['specialty', specialtyId, 'companies'],
     queryFn: async () => {
-      if (!specialityId) throw new Error('Speciality ID is required')
-      const response = await apiService.getCompaniesBySpeciality(specialityId)
+      if (!specialtyId) throw new Error('Specialty ID is required')
+      const response = await apiService.getCompaniesBySpecialty(specialtyId)
       if (!response.success || !response.data) {
         throw new Error('Falha ao carregar empresas')
       }
       return response.data
     },
-    enabled: !!specialityId,
+    enabled: !!specialtyId,
     staleTime: 1000 * 60 * 5,
   })
 }
@@ -41,12 +41,12 @@ export const useCompaniesBySpeciality = (specialityId: string | null) => {
 /**
  * Hook para vincular especialidade à empresa autenticada
  */
-export const useAssignSpeciality = () => {
+export const useAssignSpecialty = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (specialityId: string) => {
-      const response = await apiService.assignSpecialityToCompany(specialityId)
+    mutationFn: async (specialtyId: string) => {
+      const response = await apiService.assignSpecialtyToCompany(specialtyId)
       if (!response.success) {
         throw new Error('Falha ao vincular especialidade')
       }
@@ -54,7 +54,7 @@ export const useAssignSpeciality = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['restaurant'] })
-      queryClient.invalidateQueries({ queryKey: ['specialities'] })
+      queryClient.invalidateQueries({ queryKey: ['specialties'] })
       toast.success('Especialidade vinculada com sucesso!')
     },
     onError: (error: Error) => {
@@ -66,12 +66,12 @@ export const useAssignSpeciality = () => {
 /**
  * Hook para remover especialidade da empresa autenticada
  */
-export const useRemoveSpeciality = () => {
+export const useRemoveSpecialty = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (specialityId: string) => {
-      const response = await apiService.removeSpecialityFromCompany(specialityId)
+    mutationFn: async (specialtyId: string) => {
+      const response = await apiService.removeSpecialtyFromCompany(specialtyId)
       if (!response.success) {
         throw new Error('Falha ao remover especialidade')
       }
@@ -79,7 +79,7 @@ export const useRemoveSpeciality = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['restaurant'] })
-      queryClient.invalidateQueries({ queryKey: ['specialities'] })
+      queryClient.invalidateQueries({ queryKey: ['specialties'] })
       toast.success('Especialidade removida com sucesso!')
     },
     onError: (error: Error) => {

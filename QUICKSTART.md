@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get up and running with Like Delivery in 5 minutes!
+Get up and running with BearDelivery in 5 minutes!
 
 ## Prerequisites Check
 

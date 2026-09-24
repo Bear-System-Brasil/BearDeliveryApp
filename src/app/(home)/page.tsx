@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 
-import { LikeDeliveryAppPage } from "@/components/home-page/home-page-wrapper";
+import { BearDeliveryAppPage } from "@/components/home-page/home-page-wrapper";
 
-export default async function LikeDeliveryApp() {
+export default async function BearDeliveryApp() {
   const cookieStore = await cookies();
   const raw = cookieStore.get("userLocation")?.value;
 
@@ -14,5 +14,5 @@ export default async function LikeDeliveryApp() {
     console.log("Erro ao parsear cookie: ", err);
   }
 
-  return <LikeDeliveryAppPage initialLocation={userLocation} />;
+  return <BearDeliveryAppPage initialLocation={userLocation} />;
 }

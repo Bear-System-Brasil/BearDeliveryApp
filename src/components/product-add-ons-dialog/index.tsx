@@ -28,6 +28,7 @@ import { useState } from "react";
 interface Props {
   productId: string | null;
   productName?: string;
+  companyId?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -45,16 +46,20 @@ const emptyForm: FormState = {
 };
 
 const fieldClassName =
-  "h-9 rounded-[10px] border-border bg-card text-xs shadow-none focus-visible:ring-1 focus-visible:ring-[#FF6B00]";
+  "h-9 rounded-[10px] border-border bg-card text-xs shadow-none focus-visible:ring-1 focus-visible:ring-brand-500";
 
 export function ProductAddOnsDialog({
   productId,
   productName,
+  companyId,
   open,
   onOpenChange,
 }: Props) {
   const { confirm } = useConfirm();
-  const { data: addOns = [], isLoading } = useProductAddOns(productId);
+  const { data: addOns = [], isLoading } = useProductAddOns(
+    productId,
+    companyId,
+  );
   const createAddOn = useCreateProductAddOn();
   const updateAddOn = useUpdateProductAddOn();
   const deleteAddOn = useDeleteProductAddOn();
@@ -192,7 +197,7 @@ export function ProductAddOnsDialog({
                       isAvailable: e.target.checked,
                     }))
                   }
-                  className="h-3.5 w-3.5 cursor-pointer accent-[#FF6B00]"
+                  className="h-3.5 w-3.5 cursor-pointer accent-brand-500"
                 />
                 Disponível
               </label>
@@ -217,7 +222,7 @@ export function ProductAddOnsDialog({
                     form.priceModifier === undefined ||
                     isDuplicateName
                   }
-                  className="h-8 cursor-pointer rounded-[8px] bg-[#FF6B00] px-2.5 text-[11.5px] font-extrabold text-white hover:bg-[#E05A00]"
+                  className="h-8 cursor-pointer rounded-[8px] bg-brand-500 px-2.5 text-[11.5px] font-extrabold text-white hover:bg-brand-600"
                 >
                   {isSaving ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -245,7 +250,7 @@ export function ProductAddOnsDialog({
 
             {!isLoading && addOns.length === 0 && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-[10px] bg-muted text-[#FF6B00]">
+                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-[10px] bg-muted text-brand-500">
                   <Sandwich className="h-5 w-5" />
                 </div>
                 <p className="text-[12.5px] font-bold text-foreground">

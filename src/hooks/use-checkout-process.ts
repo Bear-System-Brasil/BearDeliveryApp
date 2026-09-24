@@ -2,7 +2,6 @@ import { useSound } from "@/hooks/use-sound";
 import {
   apiService,
   PaymentMethod,
-  PaymentStatus,
   type Address,
   type CreateOrderRequest,
 } from "@/services/api";
@@ -53,13 +52,6 @@ const ADDRESS_TEXT_FIELDS = new Set([
   "state",
 ]);
 
-interface CardInfo {
-  number: string;
-  name: string;
-  expiry: string;
-  cvv: string;
-}
-
 /** Chave do carrinho no Redis: `cart:<customerId>`. Nao e um id de pedido. */
 const CART_KEY_PREFIX = "cart:";
 
@@ -74,10 +66,10 @@ function isPersistedOrderId(value: unknown): value is string {
 /**
  * Descobre o id do pedido gravado no banco depois do finishOrder.
  *
- * O carrinho vive no Redis sob `cart:<customerId>` e o pedido concluido ganha
- * UUID proprio. Pagamento e entrega validam UUID, entao mandar a chave do
+ * O carrinho vive no Redis sob `cart:<customerId>` e o pedido concluído ganha
+ * UUID próprio. Pagamento e entrega validam UUID, então mandar a chave do
  * carrinho faz o backend responder 400/403. Quando a resposta do finishOrder
- * vem com a chave do carrinho, buscamos o pedido recem-gravado na listagem
+ * vem com a chave do carrinho, buscamos o pedido recém-gravado na listagem
  * do cliente.
  */
 async function resolveFinalOrderId(
@@ -175,13 +167,8 @@ export const useCheckoutProcess = () => {
     null,
   );
 
-  const [paymentMethod, setPaymentMethod] = useState("credit");
-  const [cardInfo, setCardInfo] = useState<CardInfo>({
-    number: "",
-    name: "",
-    expiry: "",
-    cvv: "",
-  });
+  // Pagamento online foi removido: todo pedido é pago na entrega.
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [changeAmount, setChangeAmount] = useState(""); // Troco para dinheiro
   const [needsChange, setNeedsChange] = useState(false);
   const [paymentGatewayUrl, setPaymentGatewayUrl] = useState<string | null>(
@@ -265,15 +252,8 @@ export const useCheckoutProcess = () => {
   };
 
   /**
-   * Atualiza campo de cartão
-   */
-  const handleCardInputChange = (field: string, value: string) => {
-    setCardInfo((prev) => ({ ...prev, [field]: value }));
-  };
-
-  /**
    * Coordenada definitiva do endereço digitado. Sem gesto explícito do
-   * cliente, geocodifica o que foi digitado - é isso que evita o endereço ir
+   * cliente, geocodificação o que foi digitado - é isso que evita o endereço ir
    * para o banco com a coordenada errada (ou sem nenhuma).
    */
   const resolveDeliveryCoords = async () => {
@@ -326,7 +306,7 @@ export const useCheckoutProcess = () => {
 
   /**
    * Valida os dados de entrega (etapa 1 do checkout)
-   * Endereço so e obrigatorio quando o pedido e para entrega
+   * Endereço so e obrigatório quando o pedido e para entrega
    */
   const isDeliveryValid = () => {
     const contactValid = Boolean(deliveryInfo.name && deliveryInfo.phone);
@@ -352,33 +332,23 @@ export const useCheckoutProcess = () => {
   const isFormValid = () => {
     const requiredFields = isDeliveryValid();
 
-    // Pagamentos que não precisam de dados adicionais no checkout
+    // Só pagamento na entrega é aceito
     const paymentValid =
       paymentMethod === "cash" ||
-      paymentMethod === "pix" ||
-      paymentMethod === "credit" ||
-      paymentMethod === "debit" ||
-      paymentMethod === "bank_transfer" ||
       paymentMethod === "card_machine" ||
       paymentMethod === "pix_on_delivery";
 
-    // Se e cartão online, validar dados do cartão
-    const cardValid =
-      (paymentMethod !== "credit" && paymentMethod !== "debit") ||
-      Boolean(
-        cardInfo.number.trim() &&
-        cardInfo.expiry.trim() &&
-        cardInfo.cvv.trim() &&
-        cardInfo.name.trim(),
-      );
-
-    // Se é dinheiro e precisa de troco, validar valor
+    // Se é dinheiro e precisa de troco, validar valor. `>=` e não `>`:
+    // pagar exatamente o total é válido (troco zero), e a mensagem da tela
+    // diz "menor que o total" - com `>` ela aparecia no valor exato, que
+    // não é menor que nada.
     const changeValid =
       paymentMethod !== "cash" ||
       !needsChange ||
-      (changeAmount && parseFloat(changeAmount) > total);
+      (changeAmount.trim().length > 0 &&
+        Number.parseFloat(changeAmount.replace(",", ".")) >= total);
 
-    return requiredFields && paymentValid && cardValid && changeValid;
+    return requiredFields && paymentValid && changeValid;
   };
 
   /**
@@ -433,7 +403,7 @@ export const useCheckoutProcess = () => {
 
       if (orderType === "delivery") {
         // Uma resolução só para os dois caminhos de criação abaixo: o segundo
-        // é fallback do primeiro, e geocodificar de novo seria uma ida à rede
+        // é fallback do primeiro, e geocodificação de novo seria uma ida à rede
         // repetida bem no clique de finalizar o pedido.
         const coords = deliveryAddressId ? null : await resolveDeliveryCoords();
 
@@ -463,6 +433,43 @@ export const useCheckoutProcess = () => {
             deliveryAddressId = addressResponse.data.id;
           } else {
             throw new Error("Erro ao criar endereço de entrega");
+          }
+        }
+
+        // O backend monta a entrega a partir do endereço PADRÃO do cliente
+        // (order.md, POST /order/:id), não do que foi escolhido aqui - o
+        // fechamento nem envia `deliveryAddressId`. E nenhum endereço criado
+        // pelo checkout nasce padrão: os dois pontos de criação acima usam
+        // `isDefault: false`. Resultado: quem só cadastrou endereço por aqui
+        // não tem padrão nenhum, o backend não acha, e o finalizar falha com
+        // "Pedido não encontrado" - mensagem que fala de pedido para um
+        // problema de endereço.
+        //
+        // Promove o endereço deste pedido a padrão APENAS quando não existe
+        // nenhum. Quem já escolheu um padrão no perfil não tem a preferência
+        // sobrescrita a cada compra. E, por agir só no caso "nenhum", não
+        // precisa desmarcar outro - o backend não faz isso sozinho, é o
+        // perfil que desmarca na mão (ver use-profile-management).
+        //
+        // Remover quando POST /order/:id aceitar `deliveryAddressId`: aí o
+        // endereço do pedido passa a ser o escolhido, e não o padrão.
+        const hasDefaultAddress = userAddresses.some(
+          (address: Address) => address.isDefault,
+        );
+
+        if (!hasDefaultAddress && deliveryAddressId) {
+          const promoteResponse = await apiService.address.updateUserAddress(
+            deliveryAddressId,
+            { isDefault: true },
+          );
+
+          // Sem padrão o finalizar falharia logo abaixo, com a mensagem
+          // enganosa. Falhar aqui, dizendo o que de fato aconteceu, poupa
+          // o cliente de um erro que não explica nada.
+          if (!promoteResponse.success) {
+            throw new Error(
+              "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
+            );
           }
         }
       }
@@ -495,9 +502,27 @@ export const useCheckoutProcess = () => {
         setOrderId(currentOrderId);
       }
 
+      // `changeFor` é o que o cliente entrega em dinheiro, não o troco:
+      // R$ 35,90 com changeFor 50 são R$ 14,10 de volta. Só acompanha
+      // pagamento em dinheiro com troco pedido - em qualquer outro caso o
+      // campo é omitido, e não enviado como 0, que o backend leria como
+      // "paga exatamente o valor".
+      const parsedChangeFor = Number.parseFloat(changeAmount.replace(",", "."));
+      const changeFor =
+        paymentMethod === "cash" &&
+          needsChange &&
+          Number.isFinite(parsedChangeFor) &&
+          parsedChangeFor >= total
+          ? parsedChangeFor
+          : undefined;
+
       const finishOrderResponse = await apiService.orders.finishOrder(
         user.id,
         currentOrderId,
+        {
+          fulfillmentType: orderType === "delivery" ? "DELIVERY" : "PICKUP",
+          ...(changeFor !== undefined ? { changeFor } : {}),
+        },
       );
 
       if (!finishOrderResponse.success) {
@@ -536,19 +561,11 @@ export const useCheckoutProcess = () => {
             orderId: finalOrderId,
             // customerId: user.id,
             paymentMethod:
-              paymentMethod === "credit"
-                ? PaymentMethod.CREDIT_CARD
-                : paymentMethod === "debit"
-                  ? PaymentMethod.DEBIT_CARD
-                  : paymentMethod === "card_machine"
-                    ? PaymentMethod.DEBIT_CARD
-                    : paymentMethod === "pix"
-                      ? PaymentMethod.PIX
-                      : paymentMethod === "pix_on_delivery"
-                        ? PaymentMethod.PIX
-                        : paymentMethod === "cash"
-                          ? PaymentMethod.CASH
-                          : PaymentMethod.BANK_TRANSFER,
+              paymentMethod === "card_machine"
+                ? PaymentMethod.DEBIT_CARD
+                : paymentMethod === "pix_on_delivery"
+                  ? PaymentMethod.PIX
+                  : PaymentMethod.CASH,
             amount: total,
             // status: PaymentStatus.PENDING,
           };
@@ -573,43 +590,17 @@ export const useCheckoutProcess = () => {
         }
       };
 
-      const createDelivery = async () => {
-        if (!finalOrderId || orderType !== "delivery" || !deliveryAddressId) {
-          return;
-        }
+      // A entrega não é mais criada aqui: o backend a cria sozinho ao
+      // finalizar o pedido, a partir do fulfillmentType. O POST /delivery
+      // que existia aqui é proibido pra role client, então falhava sempre e
+      // disparava um toast de erro em todo pedido de entrega.
+      await createPayment();
 
-        try {
-          const deliveryData = {
-            orderId: finalOrderId,
-            deliveryAddressId: deliveryAddressId,
-            observations: deliveryInfo.observations || undefined,
-            estimatedTime: "30-40 min",
-          };
-
-          const deliveryResponse =
-            await apiService.deliveries.create(deliveryData);
-
-          // O pedido ja existe em "Meus pedidos" mesmo sem entrega registrada,
-          // mas sem ela não ha rastreio - a falha precisa aparecer.
-          if (!deliveryResponse.success) {
-            toast.error(
-              deliveryResponse.message ||
-              "Pedido criado, mas falhou ao registrar a entrega.",
-            );
-          }
-        } catch (error) {
-          console.error("Erro no delivery:", error);
-          toast.error("Pedido criado, mas falhou ao registrar a entrega.");
-        }
-      };
-
-      await Promise.all([createPayment(), createDelivery()]);
-
-      // O endereço precisa existir pra delivery referenciar deliveryAddressId
-      // - não dá pra pular a criação. Mas se o cliente desmarcou "Salvar este
-      // endereço para pedidos futuros", ele não pode sobrar em "meus
-      // endereços" depois - descarta (soft delete) o que acabou de ser criado
-      // só pra esse pedido.
+      // O endereço continua sendo criado antes de finalizar - um pedido de
+      // entrega precisa de um endereço do cliente gravado no backend. Mas se
+      // o cliente desmarcou "Salvar este endereço para pedidos futuros", ele
+      // não pode sobrar em "meus endereços" depois - descarta (soft delete) o
+      // que acabou de ser criado só pra esse pedido.
       if (!saveAddress && addressMode === "new" && deliveryAddressId) {
         try {
           await apiService.address.deleteUserAddress(deliveryAddressId);
@@ -694,12 +685,10 @@ export const useCheckoutProcess = () => {
     addressCoords,
     applyCoords,
     paymentMethod,
-    cardInfo,
     changeAmount,
     needsChange,
     paymentGatewayUrl,
     handleInputChange,
-    handleCardInputChange,
     setPaymentMethod,
     setChangeAmount,
     setNeedsChange,

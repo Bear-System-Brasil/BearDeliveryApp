@@ -12,13 +12,13 @@ import { MainHeader } from "@/components/main-header";
 import { Coords } from "@/types/restaurant";
 import { BannerCarousel } from "../banner-carousel";
 
-type LikeDeliveryAppPageProps = {
+type BearDeliveryAppPageProps = {
   initialLocation?: Coords | null;
 };
 
-export function LikeDeliveryAppPage({
+export function BearDeliveryAppPage({
   initialLocation = null,
-}: LikeDeliveryAppPageProps) {
+}: BearDeliveryAppPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showAuthModal } = useAuth();

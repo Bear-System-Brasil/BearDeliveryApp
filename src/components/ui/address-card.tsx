@@ -124,8 +124,8 @@ export const AddressCard = React.memo<AddressCardProps>(
           "transition-all",
           selectable && "cursor-pointer",
           selectable && isSelected
-            ? "border-2 border-orange-500 bg-linear-to-br from-orange-50 to-orange-50 dark:from-orange-950 dark:to-orange-950"
-            : selectable && "border-2 border-border hover:border-orange-300",
+            ? "border-2 border-brand-500 bg-linear-to-br from-brand-50 to-brand-50 dark:from-brand-950 dark:to-brand-950"
+            : selectable && "border-2 border-border hover:border-brand-300",
           className,
         )}
         onClick={handleClick}
@@ -145,7 +145,7 @@ export const AddressCard = React.memo<AddressCardProps>(
             <div className="shrink-0 mt-0.5">
               <MapPin
                 className={cn(
-                  "text-orange-500",
+                  "text-brand-500",
                   compact ? "h-4 w-4" : "h-5 w-5",
                 )}
               />
@@ -163,7 +163,7 @@ export const AddressCard = React.memo<AddressCardProps>(
                   {address.street}, {address.number}
                 </p>
                 {address.isDefault && (
-                  <Badge className="bg-linear-to-r from-orange-500 to-orange-500 text-white border-0 text-xs flex items-center gap-1 px-2 py-0.5 shrink-0">
+                  <Badge className="bg-linear-to-r from-brand-500 to-brand-500 text-white border-0 text-xs flex items-center gap-1 px-2 py-0.5 shrink-0">
                     <Star className="h-3 w-3 fill-current" />
                     Padrão
                   </Badge>

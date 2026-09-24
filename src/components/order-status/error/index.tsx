@@ -30,7 +30,7 @@ export function ErrorPage({ data }: Props) {
           </p>
           <Button
             onClick={() => router.push("/#lojas")}
-            className="bg-linear-to-r from-orange-500 to-orange-500 hover:from-orange-600 hover:to-orange-600 cursor-pointer"
+            className="bg-linear-to-r from-brand-500 to-brand-500 hover:from-brand-600 hover:to-brand-600 cursor-pointer"
           >
             Voltar para Restaurantes
           </Button>

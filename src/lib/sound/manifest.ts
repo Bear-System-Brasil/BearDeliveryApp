@@ -1,5 +1,5 @@
 /**
- * Identidade sonora do Like Delivery.
+ * Identidade sonora do BearDelivery.
  *
  * Os arquivos em `public/sounds` são gerados por
  * `scripts/generate-brand-sounds.mjs` — não são samples baixados, são

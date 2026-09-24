@@ -86,7 +86,7 @@ function TeamManagementContent() {
       actions={
         <Button
           onClick={handleOpenInviteModal}
-          className="h-[34px] w-full cursor-pointer rounded-xl bg-[#FF6B00] px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_rgba(255,107,0,0.25)] hover:bg-[#E05F00] sm:w-auto"
+          className="h-[34px] w-full cursor-pointer rounded-xl bg-brand-500 px-4 text-[12.5px] font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/25 hover:bg-brand-600 sm:w-auto"
         >
           <UserPlus className="h-4 w-4" />
           Convidar Membro
@@ -94,7 +94,7 @@ function TeamManagementContent() {
       }
     >
       <div className="mx-auto max-w-7xl">
-        <div className="mb-3 rounded-[10px] border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/40 px-3.5 py-2.5 text-[11.5px] font-semibold text-amber-700 dark:text-amber-400">
+        <div className="mb-3 rounded-[10px] border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-950/40 px-3.5 py-2.5 text-[11.5px] font-semibold text-amber-700 dark:text-amber-400">
           Os convites são enviados de verdade e chegam ao servidor. A lista
           abaixo, porém, ainda é provisória: enquanto o backend não expõe a
           listagem de equipe, ela mostra dados de exemplo e as remoções valem
@@ -210,7 +210,7 @@ function TeamManagementContent() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center px-5 py-10 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[8px] bg-orange-50 dark:bg-orange-950/40 text-[#FF6B00]">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[8px] bg-brand-50 dark:bg-brand-950/40 text-brand-500">
                 <UserCog className="h-6 w-6" />
               </div>
               <p className="mt-3 text-sm font-bold text-foreground">
@@ -248,7 +248,7 @@ function TeamManagementContent() {
                 value={formData.email}
                 onChange={(e) => updateFormField("email", e.target.value)}
                 placeholder="pessoa@email.com"
-                className="h-10 rounded-xl border-border text-xs focus-visible:ring-orange-200"
+                className="h-10 rounded-xl border-border text-xs focus-visible:ring-brand-200"
               />
             </div>
 
@@ -260,7 +260,7 @@ function TeamManagementContent() {
                 id="invite-role"
                 value={formData.role}
                 onChange={(e) => updateFormField("role", e.target.value)}
-                className="h-10 w-full rounded-xl border border-border bg-card px-3 text-xs font-medium text-foreground outline-none focus:border-orange-300 dark:focus:border-orange-700"
+                className="h-10 w-full rounded-xl border border-border bg-card px-3 text-xs font-medium text-foreground outline-none focus:border-brand-300 dark:focus:border-brand-700"
               >
                 {(Object.keys(ROLE_LABELS) as StaffRole[]).map((role) => (
                   <option key={role} value={role}>
@@ -283,7 +283,7 @@ function TeamManagementContent() {
             <Button
               onClick={handleSendInvite}
               disabled={isInviting}
-              className="cursor-pointer rounded-[8px] bg-[#FF6B00] text-xs font-bold text-white hover:bg-[#E05F00] disabled:cursor-not-allowed disabled:opacity-60"
+              className="cursor-pointer rounded-[8px] bg-brand-500 text-xs font-bold text-white hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isInviting ? "Enviando..." : "Enviar Convite"}
             </Button>

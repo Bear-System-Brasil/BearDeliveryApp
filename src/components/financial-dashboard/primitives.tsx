@@ -96,7 +96,7 @@ export function MetricCard({
   emphasis?: boolean;
 }) {
   return (
-    <div className={cn(cardClass, emphasis && "border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/40")}>
+    <div className={cn(cardClass, emphasis && "border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-950/40")}>
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[11.5px] font-semibold text-muted-foreground">
           {label}

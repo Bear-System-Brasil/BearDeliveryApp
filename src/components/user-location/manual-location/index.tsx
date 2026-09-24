@@ -67,7 +67,7 @@ export function ManualLocation({ location, setLocation }: LocationType) {
           }}
           onFocus={(e) => {
             e.currentTarget.style.backgroundImage =
-              "linear-gradient(white, white), linear-gradient(to right, #f97316, #ec4899)";
+              "linear-gradient(white, white), linear-gradient(to right, var(--color-brand-500), var(--color-brand-deep))";
             e.currentTarget.style.backgroundOrigin = "border-box";
             e.currentTarget.style.backgroundClip = "padding-box, border-box";
             e.currentTarget.style.borderColor = "transparent";

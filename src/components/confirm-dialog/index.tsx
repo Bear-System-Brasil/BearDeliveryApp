@@ -58,7 +58,7 @@ export function ConfirmDialog({
               className={`flex items-center justify-center w-12 h-12 rounded-full ${
                 variant === "danger"
                   ? "bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400"
-                  : "bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400"
+                  : "bg-brand-100 dark:bg-brand-900 text-brand-600 dark:text-brand-400"
               }`}
             >
               {variant === "danger" ? (
@@ -89,9 +89,9 @@ export function ConfirmDialog({
                   <strong className="text-red-600 dark:text-red-400">limpar o carrinho</strong> e
                   adicionar itens de:
                 </span>
-                <div className="bg-linear-to-r from-orange-50 to-orange-50 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
+                <div className="bg-linear-to-r from-brand-50 to-brand-50 rounded-lg p-3 border border-brand-200 dark:border-brand-800">
                   <div className="flex items-center gap-2 text-sm">
-                    <ShoppingCart className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                    <ShoppingCart className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                     <span className="font-semibold text-foreground">
                       {newRestaurant}
                     </span>

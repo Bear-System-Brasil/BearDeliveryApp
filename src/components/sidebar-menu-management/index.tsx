@@ -22,7 +22,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-provider";
-import { LikeDeliveryLogo } from "../ui/likedelivery-logo";
+import { BearDeliveryLogo } from "../ui/bear-delivery-logo";
+
 
 type SidebarProps = {
   isOpen: boolean;
@@ -165,10 +166,9 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex h-full flex-col bg-card text-foreground">
       <div className="flex shrink-0 items-center justify-between px-[18px] py-4">
-        <Link href="/" className="shrink-0">
-          <LikeDeliveryLogo>LikeDelivery</LikeDeliveryLogo>
+        <Link href="/" className="flex min-w-0 items-center shrink-0">
+          <BearDeliveryLogo />
         </Link>
-
         {onClose && (
           <button
             type="button"
@@ -199,7 +199,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
                     className={cn(
                       "flex h-[38px] items-center gap-[11px] rounded-[14px] px-3 text-[13px] font-semibold transition-colors",
                       active
-                        ? "bg-[#FF6B00] text-white shadow-[0_6px_14px_rgba(255,107,0,0.35)]"
+                        ? "bg-brand-500 text-white shadow-[0_6px_14px_var(--tw-shadow-color)] shadow-brand-500/35"
                         : "text-foreground/80 hover:bg-muted hover:text-foreground",
                     )}
                   >
@@ -222,7 +222,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex h-[38px] w-full items-center gap-[11px] rounded-[14px] bg-[#FF6B00] px-3 text-[13px] font-semibold text-white shadow-[0_6px_14px_rgba(255,107,0,0.35)] transition-colors hover:bg-[#FF8A33] cursor-pointer"
+          className="flex h-[38px] w-full items-center gap-[11px] rounded-[14px] bg-brand-500 px-3 text-[13px] font-semibold text-white shadow-[0_6px_14px_var(--tw-shadow-color)] shadow-brand-500/35 transition-colors hover:bg-brand-400 cursor-pointer"
         >
           <LogOut className="h-4 w-4 shrink-0" />
           <span className="truncate">Sair da conta</span>

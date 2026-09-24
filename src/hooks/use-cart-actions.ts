@@ -125,12 +125,17 @@ export const useCartActions = () => {
     getTotalPrice,
   } = useCartStore();
 
-  // ==== CONTRAMEDIÇAS CONTRA RACE CONDITIONS ====
+  // ==== CONTRAMEDIDAS CONTRA RACE CONDITIONS ====
   // Map para rastrear requisições pendentes por itemId
   const pendingRequests = useRef<Map<string, AbortController>>(new Map());
 
   // Debounce timers para atualizações de quantidade
   const updateTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Quantidade que o backend conhece de cada item enquanto há um debounce
+  // pendente. A diferença enviada é "final - base", não "final - valor do
+  // clique anterior" - senão cliques rápidos mandam só o último incremento.
+  const debounceBaseQuantities = useRef<Map<string, number>>(new Map());
 
   /**
    * Busca carrinho do backend e atualiza estado local
@@ -415,19 +420,25 @@ export const useCartActions = () => {
 
       // Verificar se essa MESMA combinação (produto + tamanho + complementos)
       // já existe no carrinho - combinações diferentes viram linhas separadas
-      const existingItemIndex = items.findIndex((i) => i.id === cartItemKey);
+      // Lê do store, não do `items` da renderização: se o carrinho acabou de
+      // ser limpo (troca de restaurante), o `items` do closure ainda tem os
+      // itens antigos.
+      const currentCartItems = useCartStore.getState().items;
+      const existingItemIndex = currentCartItems.findIndex(
+        (i) => i.id === cartItemKey,
+      );
       let newItems;
 
       if (existingItemIndex >= 0) {
         // Item já existe, aumentar quantidade
-        newItems = [...items];
+        newItems = [...currentCartItems];
         newItems[existingItemIndex] = {
           ...newItems[existingItemIndex],
           quantity: newItems[existingItemIndex].quantity + (item.quantity || 1),
         };
       } else {
         // Novo item
-        newItems = [...items, optimisticItem];
+        newItems = [...currentCartItems, optimisticItem];
       }
 
       // Atualizar estado local imediatamente
@@ -465,10 +476,10 @@ export const useCartActions = () => {
         const revertedItems =
           existing && existing.quantity > addedQuantity
             ? currentItems.map((i) =>
-                i.id === cartItemKey
-                  ? { ...i, quantity: i.quantity - addedQuantity }
-                  : i,
-              )
+              i.id === cartItemKey
+                ? { ...i, quantity: i.quantity - addedQuantity }
+                : i,
+            )
             : currentItems.filter((i) => i.id !== cartItemKey);
         setItems(revertedItems);
         toast.error(message || "Erro ao adicionar item. Tente novamente.");
@@ -577,6 +588,7 @@ export const useCartActions = () => {
       clearTimeout(updateTimers.current.get(itemId)!);
       updateTimers.current.delete(itemId);
     }
+    debounceBaseQuantities.current.delete(itemId);
 
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
@@ -624,6 +636,11 @@ export const useCartActions = () => {
       return;
     }
 
+    // Primeiro clique da rajada: guarda a quantidade antes dela
+    if (!debounceBaseQuantities.current.has(itemId)) {
+      debounceBaseQuantities.current.set(itemId, item.quantity);
+    }
+
     // ===== OPTIMISTIC UPDATE IMEDIATO =====
     const newItems = items.map((i) =>
       i.id === itemId ? { ...i, quantity: newQuantity } : i,
@@ -638,6 +655,9 @@ export const useCartActions = () => {
 
     const timer = setTimeout(() => {
       updateTimers.current.delete(itemId);
+      const baseQuantity =
+        debounceBaseQuantities.current.get(itemId) ?? item.quantity;
+      debounceBaseQuantities.current.delete(itemId);
 
       // Calcular diferença com base no estado atual do store
       const currentItems = useCartStore.getState().items;
@@ -645,7 +665,7 @@ export const useCartActions = () => {
 
       if (!currentItem) return; // Item foi removido
 
-      const diff = currentItem.quantity - item.quantity;
+      const diff = currentItem.quantity - baseQuantity;
       if (diff === 0) return; // Sem mudanças
 
       // CONTRAMEDIDA: Cancelar requisição anterior se houver
@@ -667,20 +687,20 @@ export const useCartActions = () => {
       const apiCall =
         diff > 0
           ? apiService.orderItems.addProductToCart(
-              orderId,
-              item.productId,
-              user.id,
-              diff,
-              { addOns: item.addOns, variations: item.variations },
-              abortController.signal,
-            )
+            orderId,
+            item.productId,
+            user.id,
+            diff,
+            { addOns: item.addOns, variations: item.variations },
+            abortController.signal,
+          )
           : apiService.orderItems.removeProductFromCart(
-              user.id,
-              orderId,
-              item.productId,
-              Math.abs(diff),
-              abortController.signal,
-            );
+            user.id,
+            orderId,
+            item.productId,
+            Math.abs(diff),
+            abortController.signal,
+          );
 
       // Reverte subtraindo o `diff` que ESSA chamada tentou aplicar, do
       // valor atual - não pulando pro snapshot antigo (`item.quantity`), que
@@ -809,19 +829,27 @@ export const useCartActions = () => {
         // Ignore errors - doesn't block UX
       });
     });
-  }, [user?.id]);
+  }, [syncCartFromBackend, user?.id]);
 
-  // CLEANUP: Cancelar todas requisições e timers ao desmontar
-  // CONTRAMEDIDA: Previne memory leaks e requisições órfãs
+  // CLEANUP: apenas os timers de debounce, ao desmontar.
+  // NÃO abortar `pendingRequests` aqui: esses AbortControllers são de
+  // chamadas que gravam no backend (Redis) + store global (Zustand), não
+  // estado local do componente - não há "setState em componente
+  // desmontado" a evitar. Abortar no unmount só derrubava o POST de
+  // handleAddToCart bem no meio do caminho sempre que o componente que
+  // iniciou a chamada desmontava antes dela terminar (ex: modal fecha e o
+  // usuário toca em "Ver carrinho" logo em seguida, navegando pra /cart e
+  // desmontando a página/modal) - o catch de AbortError ignora isso
+  // silenciosamente (nem reverte nem avisa), e o sync do backend na
+  // página seguinte lia o carrinho sem o item que acabou de ganhar o toast
+  // de sucesso. Isso sabotava o próprio mecanismo (`pendingAddPromises`/
+  // `waitForPendingAdds`) feito pra essas requisições sobreviverem à
+  // navegação.
   useEffect(() => {
     return () => {
-      // Abortar todas requisições pendentes
-      pendingRequests.current.forEach((controller) => controller.abort());
-      pendingRequests.current.clear();
-
-      // Limpar todos timers de debounce
       updateTimers.current.forEach((timer) => clearTimeout(timer));
       updateTimers.current.clear();
+      debounceBaseQuantities.current.clear();
     };
   }, []);
 
