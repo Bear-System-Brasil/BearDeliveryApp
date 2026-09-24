@@ -1,4 +1,4 @@
-import { apiService, type Address, type Speciality } from "@/services/api";
+import { apiService, type Address, type Specialty } from "@/services/api";
 import { geocodeAddress } from "@/lib/geocode";
 import { useAuthStore } from "@/stores";
 import { getErrorMessage, onlyNumbers } from "@/utils";
@@ -8,8 +8,8 @@ import { toast } from "sonner";
 
 /**
  * A busca por proximidade do catalogo descarta qualquer loja sem
- * latitude/longitude cadastrada. Por isso geocodificamos o endereço antes de
- * salvar - sem isso a loja fica invisivel para todo cliente com localização .
+ * latitude/longitude cadastrada. Por isso geocodificações o endereço antes de
+ * salvar - sem isso a loja fica invisível para todo cliente com localização .
  */
 async function withStoreCoordinates<T extends AddressFormData>(address: T) {
   const coords = await geocodeAddress(address);
@@ -81,10 +81,10 @@ export const useCompanyProfileManagement = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [companySpecialities, setCompanySpecialities] = useState<Speciality[]>(
+  const [companySpecialties, setCompanySpecialties] = useState<Specialty[]>(
     [],
   );
-  const [isSavingSpeciality, setIsSavingSpeciality] = useState(false);
+  const [isSavingSpecialty, setIsSavingSpecialty] = useState(false);
 
   const [formData, setFormData] = useState<CompanyFormData>({
     tradeName: "",
@@ -186,9 +186,9 @@ export const useCompanyProfileManagement = () => {
           setFormData(companyData);
           setOriginalFormData(companyData);
           setIsOpen(company.isOpen ?? true);
-          // Populate speciality from real company data
-          const specs = company.speciality || [];
-          setCompanySpecialities(specs);
+          // Populate specialty from real company data
+          const specs = company.specialty || [];
+          setCompanySpecialties(specs);
           if (specs.length > 0) {
             setSelectedCategory(specs[0].id);
           }
@@ -251,19 +251,19 @@ export const useCompanyProfileManagement = () => {
   /**
    * Salva a especialidade (tipo) do restaurante via API
    */
-  const handleSaveSpeciality = async (newSpecialityId: string) => {
-    if (!newSpecialityId || !user?.id) return;
+  const handleSaveSpecialty = async (newSpecialtyId: string) => {
+    if (!newSpecialtyId || !user?.id) return;
 
     try {
-      setIsSavingSpeciality(true);
+      setIsSavingSpecialty(true);
 
-      // Remove old speciality if exists
+      // Remove old specialty if exists
       let failedToRemoveOld = false;
-      if (companySpecialities.length > 0) {
-        for (const spec of companySpecialities) {
+      if (companySpecialties.length > 0) {
+        for (const spec of companySpecialties) {
           try {
             const removeResponse =
-              await apiService.removeSpecialityFromCompany(spec.id);
+              await apiService.removeSpecialtyFromCompany(spec.id);
             if (!removeResponse.success) failedToRemoveOld = true;
           } catch (e) {
             console.error("Erro ao remover especialidade antiga:", e);
@@ -272,18 +272,18 @@ export const useCompanyProfileManagement = () => {
         }
       }
 
-      // Assign new speciality
+      // Assign new specialty
       const response =
-        await apiService.assignSpecialityToCompany(newSpecialityId);
+        await apiService.assignSpecialtyToCompany(newSpecialtyId);
       if (response.success) {
-        setSelectedCategory(newSpecialityId);
-        // Refresh company specialities
+        setSelectedCategory(newSpecialtyId);
+        // Refresh company specialties
         const companyResponse = await apiService.companies.getById(
           user.companyId || user.id,
         );
         if (companyResponse.success && companyResponse.data) {
-          const specs = companyResponse.data.speciality || [];
-          setCompanySpecialities(specs);
+          const specs = companyResponse.data.specialty || [];
+          setCompanySpecialties(specs);
         }
         toast.success("Tipo de restaurante atualizado!");
         if (failedToRemoveOld) {
@@ -298,7 +298,7 @@ export const useCompanyProfileManagement = () => {
       console.error("Erro ao salvar especialidade:", error);
       toast.error("Erro ao atualizar tipo de restaurante");
     } finally {
-      setIsSavingSpeciality(false);
+      setIsSavingSpecialty(false);
     }
   };
 
@@ -876,13 +876,13 @@ export const useCompanyProfileManagement = () => {
     isSaving,
     isOpen,
     selectedCategory,
-    companySpecialities,
-    isSavingSpeciality,
+    companySpecialties,
+    isSavingSpecialty,
     setIsEditing,
     setSelectedCategory,
     handleCancelEdit,
     handleSaveProfile,
-    handleSaveSpeciality,
+    handleSaveSpecialty,
     updateFormField,
 
     // Addresses
