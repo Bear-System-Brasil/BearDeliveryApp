@@ -15,8 +15,54 @@ const finishOrder = vi.fn();
 const openCart = vi.fn();
 const paymentsCreate = vi.fn();
 const deleteUserAddress = vi.fn();
-const updateUserAddress = vi.fn();
 const toastError = vi.fn();
+
+/**
+ * Estado do "banco" de endereços. O hook lê a lista pelo mock de
+ * useUserAddresses (congelada, para não recriar referência a cada render);
+ * a checagem de estado dentro de default-address.ts lê daqui, que o PATCH
+ * altera. Sem isso a conferência veria sempre a lista de antes e reprovaria
+ * trocas que deram certo.
+ */
+let addressBook: { id: string; isDefault: boolean }[] = [];
+
+type PatchResult = { success: boolean; data?: object; message?: string };
+
+const patchAddress = async (
+  id: string,
+  body: { isDefault?: boolean },
+): Promise<PatchResult> => {
+  const address = addressBook.find((item) => item.id === id);
+  if (address && body.isDefault !== undefined) {
+    address.isDefault = body.isDefault;
+  }
+  return { success: true, data: {} };
+};
+
+const listAddresses = async () => ({
+  success: true,
+  data: addressBook.map((address) => ({ ...address })),
+});
+
+const updateUserAddress = vi.fn(patchAddress);
+const getUserAddresses = vi.fn(listAddresses);
+
+/**
+ * Repõe a implementação, e não só o histórico: um `mockResolvedValue` de um
+ * teste sobrevive ao `mockClear` e vazaria para o teste seguinte, que então
+ * rodaria contra um backend que não grava nada.
+ */
+const resetAddressMocks = () => {
+  updateUserAddress.mockReset();
+  updateUserAddress.mockImplementation(patchAddress);
+  getUserAddresses.mockReset();
+  getUserAddresses.mockImplementation(listAddresses);
+};
+
+/** Repõe o banco a partir da lista que o hook vai enxergar. */
+const seedAddressBook = (query: { data: { id: string; isDefault: boolean }[] }) => {
+  addressBook = query.data.map(({ id, isDefault }) => ({ id, isDefault }));
+};
 
 const CART_ITEMS = [
   { id: "line-1", productId: "p1", name: "xTudo", price: 35.9, quantity: 1 },
@@ -117,7 +163,12 @@ vi.mock("@/services/api", () => ({
   apiService: {
     orders: { finishOrder, openCart },
     payments: { create: paymentsCreate },
-    address: { deleteUserAddress, updateUserAddress, createUserAddress: vi.fn() },
+    address: {
+      deleteUserAddress,
+      updateUserAddress,
+      getUserAddresses,
+      createUserAddress: vi.fn(),
+    },
   },
   PaymentMethod: {
     CASH: "CASH",
@@ -180,9 +231,9 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
     paymentsCreate.mockReset();
     paymentsCreate.mockResolvedValue({ success: true, data: {} });
     deleteUserAddress.mockReset();
-    updateUserAddress.mockReset();
-    updateUserAddress.mockResolvedValue({ success: true, data: {} });
+    resetAddressMocks();
     addressesQuery = ADDRESSES_WITH_DEFAULT;
+    seedAddressBook(ADDRESSES_WITH_DEFAULT);
   });
 
   it("manda DELIVERY quando o pedido é entrega", async () => {
@@ -314,17 +365,18 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
     finishOrder.mockResolvedValue({ success: true, data: { id: "order-1" } });
     paymentsCreate.mockReset();
     paymentsCreate.mockResolvedValue({ success: true, data: {} });
-    updateUserAddress.mockReset();
-    updateUserAddress.mockResolvedValue({ success: true, data: {} });
+    resetAddressMocks();
     deleteUserAddress.mockReset();
     deleteUserAddress.mockResolvedValue({ success: true, data: {} });
     toastError.mockReset();
     addressesQuery = ADDRESSES_WITH_DEFAULT;
+    seedAddressBook(ADDRESSES_WITH_DEFAULT);
     localStorage.clear();
   });
 
   it("promove o endereço do pedido a padrão quando o cliente não tem nenhum", async () => {
     addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+    seedAddressBook(ADDRESSES_WITHOUT_DEFAULT);
 
     await submitWith((h) => {
       h.setOrderType("delivery");
@@ -337,6 +389,7 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
 
   it("não mexe em nada quando o endereço do pedido já é o padrão", async () => {
     addressesQuery = ADDRESSES_WITH_DEFAULT;
+    seedAddressBook(ADDRESSES_WITH_DEFAULT);
 
     await submitWith((h) => {
       h.setOrderType("delivery");
@@ -349,6 +402,7 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
 
   it("troca o padrão pelo endereço escolhido e devolve o anterior depois", async () => {
     addressesQuery = ADDRESSES_TWO;
+    seedAddressBook(ADDRESSES_TWO);
 
     const { result } = renderCheckout();
     await waitFor(() =>
@@ -378,6 +432,7 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
 
   it("devolve o padrão anterior quando o finalizar falha", async () => {
     addressesQuery = ADDRESSES_TWO;
+    seedAddressBook(ADDRESSES_TWO);
     finishOrder.mockResolvedValue({ success: false, message: "boom" });
 
     const { result } = renderCheckout();
@@ -406,6 +461,7 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
 
   it("não promove nada em retirada no local", async () => {
     addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+    seedAddressBook(ADDRESSES_WITHOUT_DEFAULT);
 
     await submitWith((h) => {
       h.setOrderType("pickup");
@@ -419,7 +475,10 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
 
   it("falha com mensagem própria se não conseguir definir o padrão", async () => {
     addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+    seedAddressBook(ADDRESSES_WITHOUT_DEFAULT);
     updateUserAddress.mockResolvedValue({ success: false, message: "boom" });
+    // mockResolvedValue substitui a implementação: nada é gravado, que é
+    // exatamente o cenário deste teste.
 
     await submitWith((h) => {
       h.setOrderType("delivery");
@@ -429,13 +488,16 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
     // Sem padrão o finalizar falharia com "Pedido não encontrado", que não
     // explica nada - então nem chega a ser chamado.
     expect(finishOrder).not.toHaveBeenCalled();
+    // A razão do backend chega à tela: é o que separa "a regra dele barrou"
+    // de "mandamos algo errado" sem precisar abrir o DevTools.
     expect(toastError).toHaveBeenCalledWith(
-      "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
+      "Não foi possível usar este endereço na entrega: boom",
     );
   });
 
   it("desmarca o endereço temporário antes de descartá-lo", async () => {
     addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+    seedAddressBook(ADDRESSES_WITHOUT_DEFAULT);
 
     await submitWith((h) => {
       h.setOrderType("delivery");
@@ -454,6 +516,11 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
   it("desfaz na montagem uma troca que ficou pela metade", async () => {
     // Aba fechada entre a promoção e a volta: o padrão do cliente ficou no
     // endereço de um pedido antigo.
+    seedAddressBook(ADDRESSES_TWO);
+    addressBook = [
+      { id: "addr-casa", isDefault: false },
+      { id: "addr-trabalho", isDefault: true },
+    ];
     localStorage.setItem(
       SWAP_KEY,
       JSON.stringify({

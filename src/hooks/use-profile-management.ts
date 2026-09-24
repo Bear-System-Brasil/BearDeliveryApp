@@ -542,13 +542,19 @@ export const useProfileManagement = () => {
     setSettingDefaultAddressId(addressId);
 
     try {
-      const { promoted, demotedAll } = await setDefaultAddress(
+      const { promoted, demotedAll, message } = await setDefaultAddress(
         rawAddresses,
         addressId,
       );
 
       if (!promoted) {
-        toast.error("Não foi possível definir este endereço como padrão.");
+        // A razão do backend vale mais que uma mensagem genérica: é ela que
+        // diz se o problema é a regra dele ou o que mandamos.
+        toast.error(
+          message
+            ? `Não foi possível definir este endereço como padrão: ${message}`
+            : "Não foi possível definir este endereço como padrão.",
+        );
         return;
       }
 
@@ -562,7 +568,9 @@ export const useProfileManagement = () => {
         // Dois padrões ao mesmo tempo fazem o backend escolher sozinho o
         // endereço da entrega - o cliente precisa saber que ficou assim.
         toast.warning(
-          "Endereço marcado como padrão, mas não conseguimos desmarcar o anterior. Confira sua lista de endereços.",
+          message
+            ? `Endereço marcado como padrão, mas não conseguimos desmarcar o anterior: ${message}`
+            : "Endereço marcado como padrão, mas não conseguimos desmarcar o anterior. Confira sua lista de endereços.",
         );
       }
     } finally {

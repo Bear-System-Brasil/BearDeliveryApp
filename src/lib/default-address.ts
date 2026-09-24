@@ -54,26 +54,120 @@ export function findDefaultAddress(addresses: Address[]): Address | null {
   return addresses.find((address) => address.isDefault) ?? null;
 }
 
-async function setIsDefault(addressId: string, isDefault: boolean) {
+type DefaultChange = { ok: boolean; message?: string };
+
+/**
+ * Corpo do PATCH que mexe só no padrão.
+ *
+ * Marcar como padrão vai com o corpo mínimo - é o que o checkout já faz em
+ * produção desde o PR #96. Desmarcar vai com os campos do endereço junto,
+ * como fazem os outros dois pontos do app que desmarcam padrão
+ * (use-company-profile-management e o formulário do perfil): nenhum deles
+ * manda `isDefault: false` sozinho, e essa é a única diferença entre eles e
+ * o que este arquivo fazia.
+ *
+ * `complement` e `reference` ficam de fora de propósito: no PATCH eles
+ * exigem no mínimo 5 caracteres quando preenchidos (ver adress.md), e
+ * endereços antigos criados via POST têm complementos curtos. Reenviá-los
+ * faria a mudança de padrão falhar por um motivo que não tem nada a ver
+ * com padrão.
+ */
+function defaultOnlyPayload(address: Address | null, isDefault: boolean) {
+  if (!address || isDefault) return { isDefault };
+
+  return {
+    isDefault,
+    zipCode: address.zipCode,
+    state: address.state,
+    city: address.city,
+    neighborhood: address.neighborhood,
+    street: address.street,
+    number: address.number,
+    latitude: address.latitude ?? undefined,
+    longitude: address.longitude ?? undefined,
+  };
+}
+
+async function setIsDefault(
+  address: Address | string,
+  isDefault: boolean,
+): Promise<DefaultChange> {
+  const full = typeof address === "string" ? null : address;
+  const addressId = typeof address === "string" ? address : address.id;
+
   try {
-    const response = await apiService.address.updateUserAddress(addressId, {
-      isDefault,
-    });
-    return response.success === true;
+    const response = await apiService.address.updateUserAddress(
+      addressId,
+      defaultOnlyPayload(full, isDefault),
+    );
+
+    return { ok: response.success === true, message: response.message };
   } catch (error) {
     console.error(
       `Erro ao ${isDefault ? "definir" : "desmarcar"} endereço padrão:`,
       error,
     );
-    return false;
+    return { ok: false };
   }
+}
+
+/**
+ * Confere no backend quem é o padrão agora.
+ *
+ * O status HTTP de cada PATCH diz o que o backend respondeu, não em que
+ * estado o cliente ficou - e é o estado que decide se a entrega sai no
+ * endereço certo. `undefined` quando não deu para saber (a leitura falhou):
+ * aí o chamador volta a confiar no que os PATCHes disseram.
+ */
+async function readUserAddresses(): Promise<Address[] | undefined> {
+  try {
+    const response = await apiService.address.getUserAddresses();
+
+    if (!response.success || !Array.isArray(response.data)) return undefined;
+
+    // DELETE é soft delete (isActive: false) - um endereço apagado não conta
+    // como padrão de ninguém.
+    return response.data.filter((address) => address.isActive !== false);
+  } catch (error) {
+    console.error("Erro ao ler os endereços do cliente:", error);
+    return undefined;
+  }
+}
+
+/** Ids de todos os endereços marcados como padrão agora. */
+async function readDefaultAddressIds(): Promise<string[] | undefined> {
+  const addresses = await readUserAddresses();
+
+  return addresses
+    ?.filter((address) => address.isDefault)
+    .map((address) => address.id);
+}
+
+/** O alvo está marcado como padrão? `undefined` = não deu para saber. */
+async function isDefaultNow(addressId: string): Promise<boolean | undefined> {
+  const ids = await readDefaultAddressIds();
+
+  return ids && ids.includes(addressId);
+}
+
+/**
+ * O alvo é o ÚNICO padrão?
+ *
+ * Diferente de `isDefaultNow` de propósito: com dois padrões marcados, quem
+ * escolhe o endereço da entrega é o backend, e "o alvo está entre eles" não
+ * garante nada. Antes de finalizar um pedido, só a exclusividade serve.
+ */
+async function isOnlyDefault(addressId: string): Promise<boolean | undefined> {
+  const ids = await readDefaultAddressIds();
+
+  return ids && ids.length === 1 && ids[0] === addressId;
 }
 
 /**
  * Deixa `addressId` como o único endereço padrão do cliente.
  *
  * Promove primeiro e só depois desmarca os outros: se a promoção falhar,
- * nada mudou: é o que se espera de um salvamento que deu errado. A ordem
+ * nada mudou - é o que se espera de um salvamento que deu errado. A ordem
  * inversa (desmarcar antes) deixava o cliente sem padrão nenhum quando o
  * segundo passo falhava, e sem padrão o finalizar de entrega quebra.
  *
@@ -83,9 +177,22 @@ async function setIsDefault(addressId: string, isDefault: boolean) {
 export async function setDefaultAddress(
   addresses: Address[],
   addressId: string,
-): Promise<{ promoted: boolean; demotedAll: boolean }> {
-  const promoted = await setIsDefault(addressId, true);
-  if (!promoted) return { promoted: false, demotedAll: false };
+): Promise<{ promoted: boolean; demotedAll: boolean; message?: string }> {
+  const target = addresses.find((address) => address.id === addressId) ?? null;
+  const promotion = await setIsDefault(target ?? addressId, true);
+
+  if (!promotion.ok) {
+    // O PATCH pode ter respondido erro e mesmo assim ter gravado, ou o
+    // backend pode desmarcar o anterior sozinho e responder de um jeito que
+    // não reconhecemos. Quem decide é o estado, não o status.
+    //
+    // Aqui basta o alvo estar marcado: desmarcar os outros é o passo
+    // seguinte. Não deu para ler o estado (`undefined`) conta como falha -
+    // o único sinal que temos é o erro que o backend devolveu.
+    if ((await isDefaultNow(addressId)) !== true) {
+      return { promoted: false, demotedAll: false, message: promotion.message };
+    }
+  }
 
   // O backend não desmarca o padrão anterior sozinho (ver adress.md): dois
   // endereços padrão ao mesmo tempo deixariam o backend escolher qual usar
@@ -95,10 +202,22 @@ export async function setDefaultAddress(
   );
 
   const results = await Promise.all(
-    previousDefaults.map((address) => setIsDefault(address.id, false)),
+    previousDefaults.map((address) => setIsDefault(address, false)),
   );
 
-  return { promoted: true, demotedAll: results.every(Boolean) };
+  return {
+    promoted: true,
+    demotedAll: results.every((result) => result.ok),
+    message: results.find((result) => !result.ok)?.message,
+  };
+}
+
+function deliveryAddressError(message?: string) {
+  return new Error(
+    message
+      ? `Não foi possível usar este endereço na entrega: ${message}`
+      : "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
+  );
 }
 
 /**
@@ -126,16 +245,15 @@ export async function takeOverDefaultAddress({
   userId: string;
 }): Promise<PendingDefaultSwap | null> {
   const previousDefault = findDefaultAddress(addresses);
+  const target = addresses.find((address) => address.id === addressId) ?? null;
 
   if (previousDefault?.id === addressId) return null;
 
   if (!previousDefault) {
-    const promoted = await setIsDefault(addressId, true);
+    const promotion = await setIsDefault(target ?? addressId, true);
 
-    if (!promoted) {
-      throw new Error(
-        "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
-      );
+    if (!promotion.ok && (await isOnlyDefault(addressId)) !== true) {
+      throw deliveryAddressError(promotion.message);
     }
 
     return null;
@@ -151,22 +269,19 @@ export async function takeOverDefaultAddress({
   // aba fechar no meio do caminho.
   savePendingDefaultSwap(swap);
 
-  const demoted = await setIsDefault(previousDefault.id, false);
+  const demotion = await setIsDefault(previousDefault, false);
+  const promotion = await setIsDefault(target ?? addressId, true);
 
-  if (!demoted) {
-    clearPendingDefaultSwap();
-    throw new Error(
-      "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
-    );
-  }
+  // Nenhum dos dois status decide sozinho: o que importa é quem ficou como
+  // padrão no fim. Só assim a entrega sai no endereço que o cliente
+  // escolheu, e não no que um 200 enganoso sugeriu.
+  const exclusive = await isOnlyDefault(addressId);
+  const succeeded =
+    exclusive === undefined ? demotion.ok && promotion.ok : exclusive;
 
-  const promoted = await setIsDefault(addressId, true);
-
-  if (!promoted) {
+  if (!succeeded) {
     await restoreDefaultAddress(swap);
-    throw new Error(
-      "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
-    );
+    throw deliveryAddressError(promotion.message ?? demotion.message);
   }
 
   return swap;
@@ -183,15 +298,31 @@ export async function takeOverDefaultAddress({
 export async function restoreDefaultAddress(
   swap: PendingDefaultSwap,
 ): Promise<boolean> {
-  const demoted = await setIsDefault(swap.promotedId, false);
+  // Uma leitura só, que serve para dois fins: montar o corpo do PATCH que
+  // desmarca (que vai com os campos do endereço junto) e, no fim, conferir
+  // em que estado o cliente ficou.
+  const before = await readUserAddresses();
+  const promotedAddress =
+    before?.find((address) => address.id === swap.promotedId) ?? null;
+
+  const demoted = await setIsDefault(
+    promotedAddress ?? swap.promotedId,
+    false,
+  );
   const promoted = await setIsDefault(swap.previousDefaultId, true);
 
-  // A troca só sai do storage quando o padrão anterior está de volta. Se a
-  // promoção falhar, a próxima abertura do checkout ou do perfil tenta de
-  // novo, em vez de deixar o cliente com a preferência trocada.
-  if (promoted) clearPendingDefaultSwap();
+  // De novo, quem decide é o estado. Um PATCH que respondeu erro mas gravou
+  // deixaria a troca registrada para sempre, e toda abertura do checkout
+  // tentaria desfazer o que já está desfeito.
+  const exclusive = await isOnlyDefault(swap.previousDefaultId);
+  const back = exclusive === undefined ? promoted.ok : exclusive;
 
-  return demoted && promoted;
+  // A troca só sai do storage quando o padrão anterior está de volta. Se
+  // falhar, a próxima abertura do checkout ou do perfil tenta de novo, em
+  // vez de deixar o cliente com a preferência trocada.
+  if (back) clearPendingDefaultSwap();
+
+  return back && demoted.ok;
 }
 
 /**
