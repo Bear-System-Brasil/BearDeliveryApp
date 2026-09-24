@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body
-        className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}
+        className={`font-sans ${figtree.variable} ${GeistMono.variable} antialiased`}
       >
         <ThemeProvider>
           <ErrorBoundary>

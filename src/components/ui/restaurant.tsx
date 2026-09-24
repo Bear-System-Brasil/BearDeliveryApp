@@ -9,40 +9,12 @@ import { getCategoryStyle } from "@/constants";
 import { cn } from "@/lib/utils";
 import { useFavoritesStore } from "@/stores";
 import { Restaurant as RestaurantType } from "@/types/restaurant";
-import { formatCurrency } from "@/utils/format-currency";
+import { formatDeliveryFee } from "@/utils/format-delivery-fee";
 
 type Props = {
   index: number;
   restaurant: RestaurantType;
 };
-
-function formatDeliveryFee(value?: string | number | null) {
-  if (value === undefined || value === null || value === "") return null;
-
-  if (typeof value === "string") {
-    const normalizedValue = value.trim();
-    const lowerValue = normalizedValue.toLowerCase();
-
-    if (lowerValue.includes("grátis") || lowerValue.includes("gratis")) {
-      return "Grátis";
-    }
-
-    const numericValue = Number(
-      normalizedValue
-        .replace(/R\$\s?/g, "")
-        .replace(/\./g, "")
-        .replace(",", "."),
-    );
-
-    if (!Number.isFinite(numericValue)) {
-      return normalizedValue;
-    }
-
-    return numericValue > 0 ? formatCurrency(numericValue) : "Grátis";
-  }
-
-  return value > 0 ? formatCurrency(value) : "Grátis";
-}
 
 export function Restaurant({ restaurant, index }: Props) {
   const router = useRouter();

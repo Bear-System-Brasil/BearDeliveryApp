@@ -43,6 +43,13 @@ export type ExtraGroup = {
   multiple: boolean;
   required?: boolean;
   options: ExtraOption[];
+  /**
+   * Preço base do prato. Quando presente, cada opção exibe o valor cheio
+   * (base + opção) em vez do acréscimo - é como o tamanho é anunciado
+   * ("6 Pedaços R$ 60,00"), igual à gestão do cardápio. A conta do total
+   * não muda: `price` segue sendo o delta somado ao base.
+   */
+  basePrice?: number;
 };
 
 type CustomOrderType = {
@@ -66,7 +73,9 @@ export function CustomizeOrder({
 }: Props) {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  const [notesOpen, setNotesOpen] = useState(false);
+  // Observações já abertas ao abrir o prato: o cliente não precisa achar o
+  // "+" pra pedir sem cebola. O botão vira só um jeito de recolher.
+  const [notesOpen, setNotesOpen] = useState(true);
   // Tamanho é escolha única (ids); complemento agora carrega quantidade,
   // então mora em `addOnQuantities` (id -> quantidade, 0 = fora do pedido).
   const [selections, setSelections] = useState<Record<string, string[]>>({
@@ -153,6 +162,7 @@ export function CustomizeOrder({
         // "a partir de" (priceModifier nunca é negativo). Obrigatório
         // garante que o preço anunciado seja o que o cliente paga de fato.
         required: true,
+        basePrice: Number(productData.salePrice || 0),
         options: availableVariations.map((v) => ({
           id: v.id,
           label: v.name,
@@ -176,7 +186,7 @@ export function CustomizeOrder({
     }
 
     return groups;
-  }, [variations, addOns]);
+  }, [variations, addOns, productData.salePrice]);
 
   const handleSelectionChange = (groupId: string, selectedIds: string[]) => {
     setSelections((prev) => ({ ...prev, [groupId]: selectedIds }));
@@ -236,7 +246,7 @@ export function CustomizeOrder({
   const resetState = () => {
     setCustomOrder(initialCustomOrder());
     setQuantity(1);
-    setNotesOpen(false);
+    setNotesOpen(true);
     setSelections({ variation: [], addon: [] });
     setAddOnQuantities({});
     setAddAfterLogin(false);
@@ -421,20 +431,18 @@ export function CustomizeOrder({
 
         {/* Scrollable middle section - keeps header and footer always visible */}
         <div className="min-h-0 flex-1 overflow-y-auto px-[18px] pb-3 pt-3.5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="truncate text-[18px] font-extrabold tracking-[-0.02em] text-foreground">
-                {productData.name}
-              </h2>
-              {productData.description && (
-                <p className="mt-[3px] text-[12.5px] font-medium text-muted-foreground">
-                  {productData.description}
-                </p>
-              )}
-            </div>
-            <span className="shrink-0 text-[16px] font-extrabold text-foreground">
-              {formatCurrency(productData.salePrice || 0)}
-            </span>
+          {/* Sem preço aqui: o do tamanho aparece em cada opção e o total
+              fica no botão "Adicionar" - repetir o preço base confundia
+              (parecia que o prato saía por ele). */}
+          <div className="min-w-0">
+            <h2 className="truncate text-[18px] font-extrabold tracking-[-0.02em] text-foreground">
+              {productData.name}
+            </h2>
+            {productData.description && (
+              <p className="mt-[3px] text-[12.5px] font-medium text-muted-foreground">
+                {productData.description}
+              </p>
+            )}
           </div>
 
           <div className="mt-3.5 flex flex-col gap-3.5">
@@ -465,10 +473,11 @@ export function CustomizeOrder({
           <div className="mt-3">
             <button
               type="button"
+              aria-expanded={notesOpen}
               onClick={() => setNotesOpen((prev) => !prev)}
               className="text-[11.5px] font-bold text-brand-500"
             >
-              + Observações
+              {notesOpen ? "− Observações" : "+ Observações"}
             </button>
 
             {notesOpen && (

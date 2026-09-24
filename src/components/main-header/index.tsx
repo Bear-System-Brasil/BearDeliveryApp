@@ -12,6 +12,10 @@ import {
 import { useAuth } from "@/contexts/auth-provider";
 import { useAuthStore } from "@/stores";
 import { getWorkspaceLink } from "@/constants/workspace-links";
+import {
+  OPEN_LOCATION_SHEET_EVENT,
+  type OpenLocationSheetMode,
+} from "@/lib/location-sheet";
 import { getProfileRoute, isCompanyStaffRole } from "@/utils/role-helpers";
 import clsx from "clsx";
 import {
@@ -37,6 +41,18 @@ import { BearDeliveryLogo } from "../ui/bear-delivery-logo";
 import Image from "next/image";
 
 const DEFAULT_LOCATION_LABEL = "Escolha seu endereço";
+
+/** Texto da pill do header: "Casa · R. X, 304 - Bairro, Cidade - UF". */
+function formatLocationLabel(location: {
+  address?: string;
+  locality?: string;
+  city?: string;
+  label?: string;
+}) {
+  const place = location.address || location.locality || location.city;
+  if (!place) return "";
+  return location.label ? `${location.label} · ${place}` : place;
+}
 
 interface MainHeaderProps {
   cartItems?: number;
@@ -72,7 +88,6 @@ export function MainHeader({
   const [locationLabel, setLocationLabel] = useState(DEFAULT_LOCATION_LABEL);
   const [locationOpen, setLocationOpen] = useState(false);
   const [isChangingLocation, setIsChangingLocation] = useState(false);
-  const [manualLocation, setManualLocation] = useState("");
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState("");
 
@@ -81,6 +96,24 @@ export function MainHeader({
 
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  // A home (sem endereço escolhido) chama o painel daqui por evento.
+  useEffect(() => {
+    const handleOpenLocation = (event: Event) => {
+      const mode = (event as CustomEvent<{ mode?: OpenLocationSheetMode }>)
+        .detail?.mode;
+      setLocationError("");
+      setIsChangingLocation(mode !== "card");
+      setLocationOpen(true);
+    };
+
+    window.addEventListener(OPEN_LOCATION_SHEET_EVENT, handleOpenLocation);
+    return () =>
+      window.removeEventListener(
+        OPEN_LOCATION_SHEET_EVENT,
+        handleOpenLocation,
+      );
   }, []);
 
   useEffect(() => {
@@ -115,62 +148,18 @@ export function MainHeader({
       }
     }
   };
-  const saveLocation = (location: {
-    lat: number;
-    lng: number;
-    city: string;
-    address: string;
-  }) => {
+  const saveLocation = (
+    location: Omit<SavedDeliveryLocation, "label"> &
+      Partial<Pick<SavedDeliveryLocation, "label">>,
+  ) => {
     document.cookie = `userLocation=${encodeURIComponent(
       JSON.stringify(location),
     )}; path=/; max-age=86400; SameSite=Lax`;
-    setLocationLabel(location.address || location.city);
+    setLocationLabel(formatLocationLabel(location) || DEFAULT_LOCATION_LABEL);
     setLocationOpen(false);
     setIsChangingLocation(false);
-    setManualLocation("");
     setLocationError("");
     window.dispatchEvent(new Event("locationChanged"));
-  };
-
-  const handleManualLocation = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const query = manualLocation.trim();
-    if (!query) {
-      setLocationError("Digite uma cidade, bairro ou endereço.");
-      return;
-    }
-    setLocationLoading(true);
-    setLocationError("");
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          `${query}, Brasil`,
-        )}&format=jsonv2&limit=1&addressdetails=1`,
-      );
-      if (!response.ok) throw new Error("Falha ao buscar localização");
-      const results = await response.json();
-      const result = results?.[0];
-      if (!result?.lat || !result?.lon) {
-        throw new Error("Localização não encontrada");
-      }
-      const city =
-        result.address?.city ||
-        result.address?.town ||
-        result.address?.municipality ||
-        query;
-      saveLocation({
-        lat: Number(result.lat),
-        lng: Number(result.lon),
-        city,
-        address: result.display_name || query,
-      });
-    } catch {
-      setLocationError(
-        "Não encontramos esse local. Tente uma cidade ou bairro.",
-      );
-    } finally {
-      setLocationLoading(false);
-    }
   };
 
   const handleCurrentLocation = async () => {
@@ -229,11 +218,9 @@ export function MainHeader({
       const encodedLocation = locationCookie.split("=").slice(1).join("=");
       try {
         const parsedLocation = JSON.parse(decodeURIComponent(encodedLocation));
-        const label =
-          parsedLocation?.address ||
-          parsedLocation?.locality ||
-          parsedLocation?.city;
-        setLocationLabel(label || DEFAULT_LOCATION_LABEL);
+        setLocationLabel(
+          formatLocationLabel(parsedLocation ?? {}) || DEFAULT_LOCATION_LABEL,
+        );
       } catch {
         setLocationLabel(DEFAULT_LOCATION_LABEL);
       }
@@ -311,7 +298,6 @@ export function MainHeader({
                     if (!open) {
                       setLocationError("");
                       setIsChangingLocation(false);
-                      setManualLocation("");
                     }
                   }}
                 >
@@ -336,15 +322,18 @@ export function MainHeader({
                     {/* Handle visual (opcional mas fica bonito) */}
                     <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted" />
 
-                    <div className="mx-auto w-full max-w-xl space-y-4">
-                      <div className="space-y-1">
-                        <SheetTitle className="text-lg font-bold text-foreground">
-                          Endereço de entrega
-                        </SheetTitle>
-                        <p className="text-sm text-muted-foreground">
-                          Onde seu pedido será entregue
-                        </p>
-                      </div>
+                    {isChangingLocation ? (
+                      <DeliveryAddressForm onSave={saveLocation} />
+                    ) : (
+                      <div className="mx-auto w-full max-w-xl space-y-4">
+                        <div className="space-y-1">
+                          <SheetTitle className="text-lg font-bold text-foreground">
+                            Endereço de entrega
+                          </SheetTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Onde seu pedido será entregue
+                          </p>
+                        </div>
 
                       {/* Card do endereço atual */}
                       <div className="rounded-2xl border border-brand-100 dark:border-brand-900 bg-brand-50/60 dark:bg-brand-950/40 dark:bg-brand-950/30 p-4">
@@ -360,7 +349,6 @@ export function MainHeader({
                               {currentLocationText}
                             </p>
                           </div>
-                        </div>
 
                         <div className="mt-4 grid grid-cols-2 gap-2">
                           <Button
@@ -387,16 +375,10 @@ export function MainHeader({
                             Usar atual
                           </Button>
                         </div>
-                      </div>
 
-                      {/* Formulário só aparece quando o usuário clica em "Trocar" */}
-                      {isChangingLocation && (
-                        <form
-                          onSubmit={handleManualLocation}
-                          className="rounded-2xl border border-border bg-muted p-4"
-                        >
-                          <p className="mb-3 text-sm font-semibold text-foreground">
-                            Digite o novo endereço
+                        {locationError && (
+                          <p className="rounded-xl bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-600 dark:text-red-400">
+                            {locationError}
                           </p>
                           <div className="flex flex-col gap-2">
                             <Input

@@ -1,11 +1,20 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { RESTAURANT_CATEGORIES } from "@/constants";
-import { RestaurantGridSkeleton } from "@/components/restaurant-card-skeleton";
-import { Restaurant } from "@/components/ui/restaurant";
-import { Restaurant as RestaurantType } from "@/types/restaurant";
-import { NoRestaurantNear } from "@/components/ui/no-restaurant-near";
+import { getCategoryIconImage } from "@/constants/category-icons";
+import { RestaurantListSkeleton } from "@/components/restaurant-card-skeleton";
+import { NewDishesSection } from "@/components/home-page/new-dishes-section";
+import { LocationPrompt } from "@/components/home-page/location-prompt";
+import {
+  RestaurantListCard,
+  RestaurantRow,
+} from "@/components/ui/restaurant-row";
+import type {
+  Restaurant as RestaurantType,
+  UserLocation,
+} from "@/types/restaurant";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -13,26 +22,15 @@ type Props = {
   loading: boolean;
   restaurants: RestaurantType[];
   visibleCount: number;
-  trendingRestaurants: RestaurantType[];
+  location?: UserLocation | null;
   hasUserLocation?: boolean;
-};
-
-type RestaurantListBlockProps = {
-  emptyContent?: ReactNode;
-  emptyMessage: string;
-  emptyTitle: string;
-  filterContent?: ReactNode;
-  id?: string;
-  loading: boolean;
-  restaurants: RestaurantType[];
-  skeletonCount: number;
-  subtitle: string;
-  title: string;
 };
 
 type StoreCategory = {
   id: string;
   icon?: string;
+  /** PNG 3D da categoria; sem ele o chip usa o emoji. */
+  iconImage?: string | null;
   name: string;
 };
 
@@ -84,52 +82,6 @@ function CompactEmptyState({
   );
 }
 
-function RestaurantListBlock({
-  emptyContent,
-  emptyMessage,
-  emptyTitle,
-  filterContent,
-  id,
-  loading,
-  restaurants,
-  skeletonCount,
-  subtitle,
-  title,
-}: RestaurantListBlockProps) {
-  return (
-    <section id={id} className="scroll-mt-28">
-      <div className="flex items-start justify-between gap-3 mb-2 sm:mb-3">
-        <div>
-          <h2 className="text-sm sm:text-base font-bold text-foreground">
-            {title}
-          </h2>
-          <p className="mt-0.5 text-[11px] sm:text-sm text-muted-foreground">
-            {subtitle}
-          </p>
-        </div>
-      </div>
-      {filterContent}
-      {loading ? (
-        <RestaurantGridSkeleton count={skeletonCount} />
-      ) : restaurants.length ? (
-        <div className="grid grid-cols-1 gap-2.5 sm:gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {restaurants.map((restaurant, index) => (
-            <Restaurant
-              key={restaurant.id}
-              restaurant={restaurant}
-              index={index}
-            />
-          ))}
-        </div>
-      ) : emptyContent ? (
-        emptyContent
-      ) : (
-        <CompactEmptyState title={emptyTitle} message={emptyMessage} />
-      )}
-    </section>
-  );
-}
-
 function StoreCategoriesFilter({
   categories,
   selectedValue,
@@ -163,7 +115,7 @@ function StoreCategoriesFilter({
           type="button"
           aria-label="Rolar categorias para a esquerda"
           onClick={() => scrollCategories("left")}
-          className="hidden sm:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card/80 shadow-md border border-border items-center justify-center hover:bg-card transition-colors"
+          className="hidden sm:flex absolute left-0 top-[42px] -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card/80 shadow-md border border-border items-center justify-center hover:bg-card transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -190,16 +142,15 @@ function StoreCategoriesFilter({
                 <span className="text-xs sm:text-sm leading-none">
                   {category.icon}
                 </span>
-              )}
-              {category.name}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
         <button
           type="button"
           onClick={() => scrollCategories("right")}
-          className="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card/80 shadow-md border border-border items-center justify-center hover:bg-card transition-colors"
+          className="hidden sm:flex absolute right-0 top-[42px] -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-card/80 shadow-md border border-border items-center justify-center hover:bg-card transition-colors"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -209,9 +160,9 @@ function StoreCategoriesFilter({
 }
 
 export function TrendingRestaurantsSection({
-  trendingRestaurants,
   visibleCount,
   restaurants,
+  location = null,
   loading,
   hasUserLocation = false,
 }: Props) {
@@ -228,6 +179,7 @@ export function TrendingRestaurantsSection({
         return {
           id: categoryId,
           icon: category?.icon,
+          iconImage: getCategoryIconImage(categoryId),
           name:
             HOME_CATEGORY_LABELS[categoryId] ?? category?.name ?? categoryId,
         };
@@ -241,14 +193,6 @@ export function TrendingRestaurantsSection({
     () =>
       restaurants.filter((restaurant) => restaurant.isWithinRadius !== false),
     [restaurants],
-  );
-
-  const newsRestaurants = useMemo(
-    () =>
-      trendingRestaurants.filter(
-        (restaurant) => restaurant.isWithinRadius !== false,
-      ),
-    [trendingRestaurants],
   );
 
   const selectedCategory = storeCategories.find(
@@ -295,24 +239,28 @@ export function TrendingRestaurantsSection({
 
   const visibleStores = filteredStores.slice(0, visibleCount);
   const isInitialLoading = loading && !restaurants.length;
-  const shouldAskForLocation = !hasUserLocation && !restaurants.length;
+
+  // Sem endereço não dá pra dizer quem entrega pro cliente: em vez do
+  // catálogo inteiro (quase todo de outras cidades), pede o endereço.
+  if (!hasUserLocation) {
+    return (
+      <div className="px-3 sm:px-4 mb-6 sm:mb-10">
+        <div className="mx-auto max-w-7xl">
+          <LocationPrompt />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-3 sm:px-4 mb-6 sm:mb-10">
       <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
-        {/* 1. Novidades */}
-        <RestaurantListBlock
-          title="Novidades"
-          subtitle="Destaques recentes perto de você"
-          restaurants={newsRestaurants}
+        {/* 1. Novidades - pratos recém-cadastrados nas lojas perto */}
+        <NewDishesSection
+          restaurants={restaurantsNearUser}
+          location={location}
           loading={isInitialLoading}
-          skeletonCount={4}
-          emptyTitle="Nenhuma novidade encontrada"
-          emptyMessage={
-            shouldAskForLocation
-              ? "Escolha um endereço para ver as novidades perto de você."
-              : "Ainda não ha novidades perto de você."
-          }
+          hasUserLocation={hasUserLocation}
         />
 
         {/* 2. Categorias */}
@@ -334,19 +282,17 @@ export function TrendingRestaurantsSection({
           </div>
 
           {isInitialLoading ? (
-            <RestaurantGridSkeleton count={8} />
+            <RestaurantListSkeleton count={8} />
           ) : visibleStores.length ? (
-            <div className="grid grid-cols-1 gap-2.5 sm:gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <RestaurantListCard>
               {visibleStores.map((restaurant, index) => (
-                <Restaurant
+                <RestaurantRow
                   key={restaurant.id}
                   restaurant={restaurant}
                   index={index}
                 />
               ))}
-            </div>
-          ) : shouldAskForLocation ? (
-            <NoRestaurantNear />
+            </RestaurantListCard>
           ) : (
             <CompactEmptyState
               title="Nenhuma loja encontrada"

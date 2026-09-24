@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { THEME_LOCKED_TO_LIGHT } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
 
 const CYCLE = ["light", "dark", "system"] as const;
@@ -31,6 +32,9 @@ export function ThemeToggle({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
+
+  // Tema travado no claro: o botão não teria o que alternar.
+  if (THEME_LOCKED_TO_LIGHT) return null;
 
   const current = mounted
     ? (CYCLE.find((t) => t === theme) ?? "system")

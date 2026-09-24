@@ -10,10 +10,14 @@ import { UserLocation } from "@/types/restaurant";
  * Hook para buscar todos os restaurantes ativos
  * Otimizado com cache agressivo + placeholderData para feedback instantâneo
  */
-export const useRestaurants = (userLocation?: UserLocation) => {
+export const useRestaurants = (
+  userLocation?: UserLocation,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: ["restaurants", "active", userLocation],
     queryFn: () => getActiveRestaurants(userLocation),
+    enabled: options?.enabled ?? true,
     staleTime: 10 * 60 * 1000, // 10 minutos - restaurantes não mudam com frequência
     gcTime: 60 * 60 * 1000, // 1 hora - mantém cache por mais tempo
     placeholderData: (previousData) => previousData,

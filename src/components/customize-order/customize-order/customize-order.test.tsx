@@ -177,3 +177,22 @@ describe("CustomizeOrder - cliente com sessão", () => {
     expect(showAuthModal).not.toHaveBeenCalled();
   });
 });
+
+describe("CustomizeOrder - preços dos extras", () => {
+  beforeEach(() => {
+    addToCart.mockReset();
+    showAuthModal.mockReset();
+    isAuthenticated = false;
+  });
+
+  it("anuncia o tamanho pelo valor cheio e o complemento pelo acréscimo", () => {
+    renderModal();
+
+    // Tamanho: 35 de base + 5 = R$ 40,00, sem "+" - é o que o cliente paga
+    // naquele tamanho, igual ao que a gestão do cardápio mostra.
+    expect(screen.getByText("R$ 40,00")).toBeInTheDocument();
+    expect(screen.queryByText("+ R$ 5,00")).not.toBeInTheDocument();
+    // Complemento continua somando por cima.
+    expect(screen.getByText("+ R$ 3,00")).toBeInTheDocument();
+  });
+});

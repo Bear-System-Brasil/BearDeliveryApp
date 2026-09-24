@@ -9,7 +9,6 @@ import { AnimatedBackground } from "@/components/ui/custom";
 import { TrendingRestaurantsSection } from "@/components/home-page/trending-restaurants-section";
 import { CouponBanner } from "@/components/home-page/coupon-banner";
 import { MainHeader } from "@/components/main-header";
-import { Footer } from "@/components/footer";
 import { Coords } from "@/types/restaurant";
 import { BannerCarousel } from "../banner-carousel";
 
@@ -30,8 +29,10 @@ export function BearDeliveryAppPage({
   // 1. Captura o termo de busca da URL
   const searchQuery = searchParams.get("search") || "";
 
+  // Sem endereço a home mostra o convite pra escolher um - buscar o
+  // catálogo aqui seria uma requisição que ninguém vê.
   const { data: restaurants = [], isLoading: loadingCompanies } =
-    useRestaurants(location);
+    useRestaurants(location, { enabled: Boolean(location) });
 
   const loading = loadingCompanies;
 
@@ -79,9 +80,6 @@ export function BearDeliveryAppPage({
     }
   }, [loading]);
 
-  // 4. Utiliza a lista filtrada para popular a página
-  const trendingRestaurants = filteredRestaurants.slice(0, 4);
-
   return (
     <AnimatedBackground blobCount={4} showBlobs={true} className="py-0">
       <div className="flex min-h-screen flex-col">
@@ -96,18 +94,17 @@ export function BearDeliveryAppPage({
           {/* Oculta o banner se o usuário estiver buscando algo para dar foco aos resultados */}
           {!searchQuery && <BannerCarousel />}
 
+          {/* 4. Utiliza a lista filtrada para popular a página */}
           <TrendingRestaurantsSection
-            trendingRestaurants={trendingRestaurants}
             visibleCount={visibleCount}
             restaurants={filteredRestaurants}
+            location={location}
             loading={loading}
             hasUserLocation={Boolean(location)}
           />
 
           <CouponBanner />
         </main>
-
-        <Footer />
       </div>
     </AnimatedBackground>
   );

@@ -48,70 +48,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
+import {
+  DEFAULT_OPENING_HOURS,
+  type DayHours,
+} from "@/constants/opening-hours";
 import { toast } from "sonner";
-
-interface DayHours {
-  day: string;
-  label: string;
-  isOpen: boolean;
-  openTime: string;
-  closeTime: string;
-}
-
-// TODO(backend): mock local - o campo `openingHours` já existe na resposta
-// de GET /company/:id, mas ainda não confirmei o contrato de escrita (o
-// PATCH /company/:id usa multipart/form-data, formato de horário incerto).
-const DEFAULT_HOURS: DayHours[] = [
-  {
-    day: "mon",
-    label: "Segunda",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:00",
-  },
-  {
-    day: "tue",
-    label: "Terça",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:00",
-  },
-  {
-    day: "wed",
-    label: "Quarta",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:00",
-  },
-  {
-    day: "thu",
-    label: "Quinta",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:00",
-  },
-  {
-    day: "fri",
-    label: "Sexta",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:30",
-  },
-  {
-    day: "sat",
-    label: "Sábado",
-    isOpen: true,
-    openTime: "18:00",
-    closeTime: "23:30",
-  },
-  {
-    day: "sun",
-    label: "Domingo",
-    isOpen: false,
-    openTime: "18:00",
-    closeTime: "22:00",
-  },
-];
 
 export default function CompanyProfilePage() {
   return (
@@ -223,7 +164,7 @@ function CompanyProfileContent() {
     resetPasswordForm,
   } = useCompanyProfileManagement();
 
-  const [openingHours, setOpeningHours] = useState<DayHours[]>(DEFAULT_HOURS);
+  const [openingHours, setOpeningHours] = useState<DayHours[]>(DEFAULT_OPENING_HOURS);
   const [isSavingHours, setIsSavingHours] = useState(false);
 
   const updateDayHours = (day: string, patch: Partial<DayHours>) => {
