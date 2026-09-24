@@ -2,7 +2,6 @@ import { useSound } from "@/hooks/use-sound";
 import {
   apiService,
   PaymentMethod,
-  PaymentStatus,
   type Address,
   type CreateOrderRequest,
 } from "@/services/api";
@@ -53,13 +52,6 @@ const ADDRESS_TEXT_FIELDS = new Set([
   "state",
 ]);
 
-interface CardInfo {
-  number: string;
-  name: string;
-  expiry: string;
-  cvv: string;
-}
-
 /** Chave do carrinho no Redis: `cart:<customerId>`. Nao e um id de pedido. */
 const CART_KEY_PREFIX = "cart:";
 
@@ -74,10 +66,10 @@ function isPersistedOrderId(value: unknown): value is string {
 /**
  * Descobre o id do pedido gravado no banco depois do finishOrder.
  *
- * O carrinho vive no Redis sob `cart:<customerId>` e o pedido concluido ganha
- * UUID proprio. Pagamento e entrega validam UUID, entao mandar a chave do
+ * O carrinho vive no Redis sob `cart:<customerId>` e o pedido concluído ganha
+ * UUID próprio. Pagamento e entrega validam UUID, então mandar a chave do
  * carrinho faz o backend responder 400/403. Quando a resposta do finishOrder
- * vem com a chave do carrinho, buscamos o pedido recem-gravado na listagem
+ * vem com a chave do carrinho, buscamos o pedido recém-gravado na listagem
  * do cliente.
  */
 async function resolveFinalOrderId(
@@ -175,13 +167,8 @@ export const useCheckoutProcess = () => {
     null,
   );
 
-  const [paymentMethod, setPaymentMethod] = useState("credit");
-  const [cardInfo, setCardInfo] = useState<CardInfo>({
-    number: "",
-    name: "",
-    expiry: "",
-    cvv: "",
-  });
+  // Pagamento online foi removido: todo pedido é pago na entrega.
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [changeAmount, setChangeAmount] = useState(""); // Troco para dinheiro
   const [needsChange, setNeedsChange] = useState(false);
   const [paymentGatewayUrl, setPaymentGatewayUrl] = useState<string | null>(
@@ -265,15 +252,8 @@ export const useCheckoutProcess = () => {
   };
 
   /**
-   * Atualiza campo de cartão
-   */
-  const handleCardInputChange = (field: string, value: string) => {
-    setCardInfo((prev) => ({ ...prev, [field]: value }));
-  };
-
-  /**
    * Coordenada definitiva do endereço digitado. Sem gesto explícito do
-   * cliente, geocodifica o que foi digitado - é isso que evita o endereço ir
+   * cliente, geocodificação o que foi digitado - é isso que evita o endereço ir
    * para o banco com a coordenada errada (ou sem nenhuma).
    */
   const resolveDeliveryCoords = async () => {
@@ -326,7 +306,7 @@ export const useCheckoutProcess = () => {
 
   /**
    * Valida os dados de entrega (etapa 1 do checkout)
-   * Endereço so e obrigatorio quando o pedido e para entrega
+   * Endereço so e obrigatório quando o pedido e para entrega
    */
   const isDeliveryValid = () => {
     const contactValid = Boolean(deliveryInfo.name && deliveryInfo.phone);
@@ -352,25 +332,11 @@ export const useCheckoutProcess = () => {
   const isFormValid = () => {
     const requiredFields = isDeliveryValid();
 
-    // Pagamentos que não precisam de dados adicionais no checkout
+    // Só pagamento na entrega é aceito
     const paymentValid =
       paymentMethod === "cash" ||
-      paymentMethod === "pix" ||
-      paymentMethod === "credit" ||
-      paymentMethod === "debit" ||
-      paymentMethod === "bank_transfer" ||
       paymentMethod === "card_machine" ||
       paymentMethod === "pix_on_delivery";
-
-    // Se e cartão online, validar dados do cartão
-    const cardValid =
-      (paymentMethod !== "credit" && paymentMethod !== "debit") ||
-      Boolean(
-        cardInfo.number.trim() &&
-        cardInfo.expiry.trim() &&
-        cardInfo.cvv.trim() &&
-        cardInfo.name.trim(),
-      );
 
     // Se é dinheiro e precisa de troco, validar valor. `>=` e não `>`:
     // pagar exatamente o total é válido (troco zero), e a mensagem da tela
@@ -382,7 +348,7 @@ export const useCheckoutProcess = () => {
       (changeAmount.trim().length > 0 &&
         Number.parseFloat(changeAmount.replace(",", ".")) >= total);
 
-    return requiredFields && paymentValid && cardValid && changeValid;
+    return requiredFields && paymentValid && changeValid;
   };
 
   /**
@@ -437,7 +403,7 @@ export const useCheckoutProcess = () => {
 
       if (orderType === "delivery") {
         // Uma resolução só para os dois caminhos de criação abaixo: o segundo
-        // é fallback do primeiro, e geocodificar de novo seria uma ida à rede
+        // é fallback do primeiro, e geocodificação de novo seria uma ida à rede
         // repetida bem no clique de finalizar o pedido.
         const coords = deliveryAddressId ? null : await resolveDeliveryCoords();
 
@@ -507,9 +473,9 @@ export const useCheckoutProcess = () => {
       const parsedChangeFor = Number.parseFloat(changeAmount.replace(",", "."));
       const changeFor =
         paymentMethod === "cash" &&
-        needsChange &&
-        Number.isFinite(parsedChangeFor) &&
-        parsedChangeFor >= total
+          needsChange &&
+          Number.isFinite(parsedChangeFor) &&
+          parsedChangeFor >= total
           ? parsedChangeFor
           : undefined;
 
@@ -558,19 +524,11 @@ export const useCheckoutProcess = () => {
             orderId: finalOrderId,
             // customerId: user.id,
             paymentMethod:
-              paymentMethod === "credit"
-                ? PaymentMethod.CREDIT_CARD
-                : paymentMethod === "debit"
-                  ? PaymentMethod.DEBIT_CARD
-                  : paymentMethod === "card_machine"
-                    ? PaymentMethod.DEBIT_CARD
-                    : paymentMethod === "pix"
-                      ? PaymentMethod.PIX
-                      : paymentMethod === "pix_on_delivery"
-                        ? PaymentMethod.PIX
-                        : paymentMethod === "cash"
-                          ? PaymentMethod.CASH
-                          : PaymentMethod.BANK_TRANSFER,
+              paymentMethod === "card_machine"
+                ? PaymentMethod.DEBIT_CARD
+                : paymentMethod === "pix_on_delivery"
+                  ? PaymentMethod.PIX
+                  : PaymentMethod.CASH,
             amount: total,
             // status: PaymentStatus.PENDING,
           };
@@ -690,12 +648,10 @@ export const useCheckoutProcess = () => {
     addressCoords,
     applyCoords,
     paymentMethod,
-    cardInfo,
     changeAmount,
     needsChange,
     paymentGatewayUrl,
     handleInputChange,
-    handleCardInputChange,
     setPaymentMethod,
     setChangeAmount,
     setNeedsChange,

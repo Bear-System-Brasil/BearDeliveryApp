@@ -47,11 +47,9 @@ export function DeliveryWrapper() {
     addressCoords,
     applyCoords,
     paymentMethod,
-    cardInfo,
     changeAmount,
     needsChange,
     handleInputChange,
-    handleCardInputChange,
     setPaymentMethod,
     setChangeAmount,
     setNeedsChange,
@@ -277,8 +275,6 @@ export function DeliveryWrapper() {
               changeAmount={changeAmount}
               needsChange={needsChange}
               total={total}
-              cardInfo={cardInfo}
-              handleCardInputChange={handleCardInputChange}
             />
           )}
         </div>

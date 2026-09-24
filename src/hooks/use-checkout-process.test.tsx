@@ -137,7 +137,7 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
   it("manda DELIVERY quando o pedido é entrega", async () => {
     await submitWith((h) => {
       h.setOrderType("delivery");
-      h.setPaymentMethod("pix");
+      h.setPaymentMethod("pix_on_delivery");
     });
 
     expect(finishOrder).toHaveBeenCalledTimes(1);
@@ -147,7 +147,7 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
   it("manda PICKUP quando o pedido é retirada", async () => {
     await submitWith((h) => {
       h.setOrderType("pickup");
-      h.setPaymentMethod("pix");
+      h.setPaymentMethod("pix_on_delivery");
     });
 
     expect(finishBody()).toEqual({ fulfillmentType: "PICKUP" });
@@ -198,7 +198,7 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
   it("omite changeFor quando o pagamento não é em dinheiro", async () => {
     await submitWith((h) => {
       h.setOrderType("delivery");
-      h.setPaymentMethod("credit");
+      h.setPaymentMethod("card_machine");
       // Resíduo de quem trocou de método depois de digitar: não pode vazar.
       h.setNeedsChange(true);
       h.setChangeAmount("50");
