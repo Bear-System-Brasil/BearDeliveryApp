@@ -5,14 +5,22 @@ import { AuthProvider } from "@/contexts/auth-provider";
 import { Providers } from "@/providers";
 import { NotificationsProvider } from "@/providers/notifications-provider";
 import { GeistMono } from "geist/font/mono";
-import { GeistSans } from "geist/font/sans";
-import type { Viewport } from "next";
+import type { Metadata, Viewport } from "next";
+import { Figtree } from "next/font/google";
 import type React from "react";
 import { Suspense } from "react";
 import "./globals.css";
 
+// Fonte dos mocks de UI (Lojas/Novidades): geométrica e arredondada, fica
+// mais leve que a do sistema nos títulos em peso alto. Variável, então
+// cobre 400-800 num arquivo só.
+const figtree = Figtree({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-figtree",
+  display: "swap",
+});
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'BearDelivery',
   icons: {
     icon: '/favicon-32x32.png',

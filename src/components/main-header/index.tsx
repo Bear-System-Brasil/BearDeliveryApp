@@ -33,7 +33,11 @@ import {
   X,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  DeliveryAddressForm,
+  type SavedDeliveryLocation,
+} from "./delivery-address-form";
 
 import { ThemeToggle } from "../ui/theme-toggle";
 import Link from "next/link";
@@ -317,7 +321,7 @@ export function MainHeader({
 
                   <SheetContent
                     side="bottom"
-                    className="rounded-t-3xl border-t border-brand-100 dark:border-brand-900 bg-card px-4 pb-8 pt-4 sm:px-6"
+                    className="max-h-[92dvh] overflow-y-auto rounded-t-3xl border-t border-brand-100 dark:border-brand-900 bg-card px-4 pb-8 pt-4 sm:px-6"
                   >
                     {/* Handle visual (opcional mas fica bonito) */}
                     <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted" />
@@ -335,92 +339,55 @@ export function MainHeader({
                           </p>
                         </div>
 
-                      {/* Card do endereço atual */}
-                      <div className="rounded-2xl border border-brand-100 dark:border-brand-900 bg-brand-50/60 dark:bg-brand-950/40 dark:bg-brand-950/30 p-4">
-                        <div className="flex gap-3">
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card text-brand-500 shadow-sm">
-                            <MapPin className="h-5 w-5 fill-brand-500" />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-brand-600 dark:text-brand-400">
-                              Entregando em
-                            </p>
-                            <p className="mt-1 text-sm font-semibold leading-snug text-foreground">
-                              {currentLocationText}
-                            </p>
+                        {/* Card do endereço atual */}
+                        <div className="rounded-2xl border border-brand-100 dark:border-brand-900 bg-brand-50/60 dark:bg-brand-950/40 dark:bg-brand-950/30 p-4">
+                          <div className="flex gap-3">
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-card text-brand-500 shadow-sm">
+                              <MapPin className="h-5 w-5 fill-brand-500" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] font-bold uppercase tracking-wide text-brand-600 dark:text-brand-400">
+                                Entregando em
+                              </p>
+                              <p className="mt-1 text-sm font-semibold leading-snug text-foreground">
+                                {currentLocationText}
+                              </p>
+                            </div>
                           </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              setManualLocation("");
-                              setLocationError("");
-                              setIsChangingLocation(true);
-                            }}
-                            className="h-11 justify-center rounded-xl border-brand-200 dark:border-brand-800 bg-card text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40"
-                          >
-                            <PencilLine className="mr-2 h-4 w-4" />
-                            Trocar
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            disabled={locationLoading}
-                            onClick={handleCurrentLocation}
-                            className="h-11 justify-center rounded-xl border-border bg-card text-foreground hover:bg-muted"
-                          >
-                            <Navigation className="mr-2 h-4 w-4" />
-                            Usar atual
-                          </Button>
+                          <div className="mt-4 grid grid-cols-2 gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setLocationError("");
+                                setIsChangingLocation(true);
+                              }}
+                              className="h-11 justify-center rounded-xl border-brand-200 dark:border-brand-800 bg-card text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40"
+                            >
+                              <PencilLine className="mr-2 h-4 w-4" />
+                              Trocar
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={locationLoading}
+                              onClick={handleCurrentLocation}
+                              className="h-11 justify-center rounded-xl border-border bg-card text-foreground hover:bg-muted"
+                            >
+                              <Navigation className="mr-2 h-4 w-4" />
+                              Usar atual
+                            </Button>
+                          </div>
                         </div>
 
                         {locationError && (
                           <p className="rounded-xl bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-600 dark:text-red-400">
                             {locationError}
                           </p>
-                          <div className="flex flex-col gap-2">
-                            <Input
-                              value={manualLocation}
-                              onChange={(event) =>
-                                setManualLocation(event.target.value)
-                              }
-                              placeholder="Ex.: Rua Machado de Assis, 334"
-                              className="h-11 rounded-xl bg-card"
-                            // ← sem autoFocus
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  setIsChangingLocation(false);
-                                  setManualLocation("");
-                                  setLocationError("");
-                                }}
-                                className="h-11 flex-1 rounded-xl"
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                type="submit"
-                                disabled={locationLoading}
-                                className="h-11 flex-1 rounded-xl bg-brand-500 hover:bg-brand-600"
-                              >
-                                {locationLoading ? "Buscando..." : "Salvar"}
-                              </Button>
-                            </div>
-                          </div>
-                        </form>
-                      )}
-
-                      {locationError && (
-                        <p className="rounded-xl bg-red-50 dark:bg-red-950/40 px-3 py-2 text-sm text-red-600 dark:text-red-400">
-                          {locationError}
-                        </p>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </SheetContent>
                 </Sheet>
               </div>
