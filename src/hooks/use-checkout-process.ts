@@ -8,7 +8,7 @@ import {
 } from "@/services/api";
 import { useAuthStore, useCartStore } from "@/stores";
 import { getDeliveryDiscount, getPromoDiscount } from "@/stores/cart-store";
-import { getErrorMessage } from "@/utils";
+import { getErrorMessage, onlyNumbers } from "@/utils";
 import {
   resolveAddressCoordinates,
   withCoords,
@@ -343,6 +343,12 @@ export const useCheckoutProcess = () => {
       return contactValid;
     }
 
+    // CEP tem de estar completo. Aqui só se exigia "não vazio", enquanto o
+    // formulário do perfil pede 8 dígitos e o PATCH do backend recusa o que
+    // estiver fora do formato. Resultado: um CEP pela metade digitado no
+    // checkout entrava no banco pelo POST, que é mais permissivo, e depois
+    // qualquer PATCH naquele endereço falhava com "CEP inválido" - inclusive
+    // o que só queria mudar o endereço padrão.
     return Boolean(
       contactValid &&
       deliveryInfo.street &&
@@ -350,7 +356,7 @@ export const useCheckoutProcess = () => {
       deliveryInfo.neighborhood &&
       deliveryInfo.city &&
       deliveryInfo.state &&
-      deliveryInfo.zipCode,
+      onlyNumbers(deliveryInfo.zipCode).length === 8,
     );
   };
 

@@ -90,37 +90,103 @@ beforeEach(() => {
 });
 
 describe("corpo do PATCH", () => {
-  it("desmarca mandando os campos do endereço junto, e promove com o corpo mínimo", async () => {
+  it("tenta primeiro com o corpo mínimo, dos dois lados", async () => {
     await takeOverDefaultAddress({
       addresses: backend.map((item) => ({ ...item })),
       addressId: "addr-trabalho",
       userId: "user-1",
     });
 
-    const [demoteBody] = updateUserAddress.mock.calls
-      .filter(([, body]) => body.isDefault === false)
-      .map(([, body]) => body);
-    const [promoteBody] = updateUserAddress.mock.calls
-      .filter(([, body]) => body.isDefault === true)
-      .map(([, body]) => body);
+    // É só uma flag que queremos mudar. Reenviar o endereço inteiro sujeita
+    // a troca de padrão a validações de campos que nem estamos tocando.
+    expect(updateUserAddress.mock.calls.map(([, body]) => body)).toEqual([
+      { isDefault: false },
+      { isDefault: true },
+    ]);
+  });
 
-    // Nenhum outro ponto do app desmarca padrão com `isDefault` sozinho -
-    // era a única diferença entre este código e o que já roda em produção.
-    expect(demoteBody).toMatchObject({
-      isDefault: false,
+  it("repete com os campos do endereço quando o mínimo é recusado", async () => {
+    const seen: UpdateAddressRequest[] = [];
+    patchRule = (_id, body) => {
+      seen.push(body);
+      return { success: seen.length > 1 };
+    };
+
+    await setDefaultAddress(
+      backend.map((item) => ({ ...item })),
+      "addr-trabalho",
+    );
+
+    // É como os outros pontos do app mexem em padrão - vale como segunda
+    // tentativa, não como primeira.
+    expect(seen[1]).toMatchObject({
+      isDefault: true,
       street: "Praça da Sé",
       zipCode: "01001000",
       number: "1",
     });
 
     // Complemento de fora: no PATCH ele exige 5 caracteres quando
-    // preenchido, e "301" reprovaria a troca de padrão por um motivo que
-    // não tem nada a ver com padrão.
-    expect(demoteBody).not.toHaveProperty("complement");
+    // preenchido, e "301" reprovaria a troca por um motivo que não tem
+    // nada a ver com padrão.
+    expect(seen[1]).not.toHaveProperty("complement");
+  });
 
-    // Marcar como padrão com o corpo mínimo é o que já funciona em
-    // produção desde o PR #96 - não mexer no que está de pé.
-    expect(promoteBody).toEqual({ isDefault: true });
+  it("omite da segunda tentativa o CEP que não passaria na validação", async () => {
+    // O POST deixou entrar um CEP incompleto; o PATCH não deixa. Reenviá-lo
+    // fazia a troca de padrão falhar com "CEP inválido" - um erro sobre um
+    // campo que não estamos tentando mudar.
+    backend = [
+      { ...address("addr-casa", true), zipCode: "0100-10" },
+      address("addr-trabalho", false),
+    ];
+
+    const seen: UpdateAddressRequest[] = [];
+    patchRule = (_id, body) => {
+      seen.push(body);
+      return { success: seen.length > 1 };
+    };
+
+    await takeOverDefaultAddress({
+      addresses: backend.map((item) => ({ ...item })),
+      addressId: "addr-trabalho",
+      userId: "user-1",
+    });
+
+    expect(seen[1]).not.toHaveProperty("zipCode");
+    expect(seen[1]).toMatchObject({ isDefault: false, street: "Praça da Sé" });
+  });
+
+  it("leva as razões das duas tentativas quando as duas falham", async () => {
+    patchRule = (_id, body) => ({
+      success: false,
+      message: Object.keys(body).length === 1 ? "a razão real" : "CEP inválido",
+    });
+
+    // Só a primeira esconderia por que o plano B não salvou; só a segunda
+    // esconderia por que o plano A era necessário.
+    await expect(
+      takeOverDefaultAddress({
+        addresses: backend.map((item) => ({ ...item })),
+        addressId: "addr-trabalho",
+        userId: "user-1",
+      }),
+    ).rejects.toThrow("a razão real / CEP inválido");
+  });
+
+  it("diz qual dos dois passos falhou", async () => {
+    patchRule = (_id, body) =>
+      body.isDefault === false
+        ? { success: false, message: "algum motivo" }
+        : { success: true };
+
+    await expect(
+      takeOverDefaultAddress({
+        addresses: backend.map((item) => ({ ...item })),
+        addressId: "addr-trabalho",
+        userId: "user-1",
+      }),
+    ).rejects.toThrow("Não foi possível desmarcar seu endereço padrão anterior: algum motivo");
   });
 });
 
@@ -371,7 +437,8 @@ describe("setDefaultAddress", () => {
       "addr-trabalho",
     );
 
-    expect(calls()).toEqual(["addr-trabalho:on"]);
+    // Duas tentativas no alvo (mínima e com os campos), e nenhuma no outro.
+    expect(calls()).toEqual(["addr-trabalho:on", "addr-trabalho:on"]);
     expect(result).toEqual({
       promoted: false,
       demotedAll: false,

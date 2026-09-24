@@ -335,6 +335,37 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
   });
 });
 
+describe("useCheckoutProcess - CEP do endereço novo", () => {
+  it("não deixa avançar com CEP incompleto", async () => {
+    const { result } = renderCheckout();
+
+    act(() => {
+      result.current.setOrderType("delivery");
+      result.current.setAddressMode("new");
+      Object.entries({
+        name: "Cliente",
+        phone: "11999999999",
+        zipCode: "0100-10",
+        street: "Praça da Sé",
+        number: "1",
+        neighborhood: "Sé",
+        city: "São Paulo",
+        state: "SP",
+      }).forEach(([field, value]) =>
+        result.current.handleInputChange(field, value),
+      );
+    });
+
+    // O POST aceita o CEP pela metade; o PATCH não. Deixar entrar aqui
+    // condena aquele endereço a falhar em toda edição futura, inclusive na
+    // troca de endereço padrão.
+    expect(result.current.isDeliveryValid()).toBe(false);
+
+    act(() => result.current.handleInputChange("zipCode", "01001-000"));
+    expect(result.current.isDeliveryValid()).toBe(true);
+  });
+});
+
 describe("useCheckoutProcess - isFormValid e o troco", () => {
   it("libera o valor exato do total e barra abaixo dele", async () => {
     const { result } = renderCheckout();

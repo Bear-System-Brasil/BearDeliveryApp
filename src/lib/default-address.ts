@@ -1,4 +1,9 @@
-import { apiService, type Address } from "@/services/api";
+import {
+  apiService,
+  type Address,
+  type UpdateAddressRequest,
+} from "@/services/api";
+import { onlyNumbers } from "@/utils";
 import { STORAGE_KEYS, localStorageAdapter } from "@/utils/storage-manager";
 
 /**
@@ -57,37 +62,59 @@ export function findDefaultAddress(addresses: Address[]): Address | null {
 type DefaultChange = { ok: boolean; message?: string };
 
 /**
- * Corpo do PATCH que mexe só no padrão.
+ * Campos do endereço que acompanham a segunda tentativa do PATCH.
  *
- * Marcar como padrão vai com o corpo mínimo - é o que o checkout já faz em
- * produção desde o PR #96. Desmarcar vai com os campos do endereço junto,
- * como fazem os outros dois pontos do app que desmarcam padrão
- * (use-company-profile-management e o formulário do perfil): nenhum deles
- * manda `isDefault: false` sozinho, e essa é a única diferença entre eles e
- * o que este arquivo fazia.
- *
- * `complement` e `reference` ficam de fora de propósito: no PATCH eles
- * exigem no mínimo 5 caracteres quando preenchidos (ver adress.md), e
- * endereços antigos criados via POST têm complementos curtos. Reenviá-los
- * faria a mudança de padrão falhar por um motivo que não tem nada a ver
- * com padrão.
+ * Saneados, e omitidos quando não passam: o valor vem do banco, não de um
+ * formulário, e o PATCH valida tudo que recebe. Mandar de volta um CEP
+ * incompleto que o POST deixou entrar faz a mudança de padrão falhar com
+ * "CEP inválido" - um erro sobre um campo que não estamos tentando mudar.
  */
-function defaultOnlyPayload(address: Address | null, isDefault: boolean) {
-  if (!address || isDefault) return { isDefault };
+function addressFields(address: Address) {
+  const zipCode = onlyNumbers(address.zipCode ?? "");
+  const text = (value?: string | null) =>
+    value && value.trim().length > 0 ? value.trim() : undefined;
+  const coord = (value?: number | null) =>
+    typeof value === "number" && Number.isFinite(value) ? value : undefined;
 
   return {
-    isDefault,
-    zipCode: address.zipCode,
-    state: address.state,
-    city: address.city,
-    neighborhood: address.neighborhood,
-    street: address.street,
-    number: address.number,
-    latitude: address.latitude ?? undefined,
-    longitude: address.longitude ?? undefined,
+    ...(zipCode.length === 8 ? { zipCode } : {}),
+    state: text(address.state),
+    city: text(address.city),
+    neighborhood: text(address.neighborhood),
+    street: text(address.street),
+    number: text(address.number),
+    latitude: coord(address.latitude),
+    longitude: coord(address.longitude),
   };
 }
 
+async function patchIsDefault(
+  addressId: string,
+  body: UpdateAddressRequest,
+): Promise<DefaultChange> {
+  try {
+    const response = await apiService.address.updateUserAddress(
+      addressId,
+      body,
+    );
+
+    return { ok: response.success === true, message: response.message };
+  } catch (error) {
+    console.error("Erro ao mudar o endereço padrão:", error);
+    return { ok: false };
+  }
+}
+
+/**
+ * Marca ou desmarca um endereço como padrão.
+ *
+ * Tenta primeiro com o corpo mínimo - é só uma flag que queremos mudar, e
+ * é assim que o checkout marca padrão em produção desde o PR #96. Se o
+ * backend recusar, tenta de novo com os campos do endereço junto, que é
+ * como os outros pontos do app fazem (use-company-profile-management e o
+ * formulário do perfil). As duas são idempotentes, então repetir não custa
+ * nada além de um round-trip no caminho de erro.
+ */
 async function setIsDefault(
   address: Address | string,
   isDefault: boolean,
@@ -95,30 +122,27 @@ async function setIsDefault(
   const full = typeof address === "string" ? null : address;
   const addressId = typeof address === "string" ? address : address.id;
 
-  try {
-    const response = await apiService.address.updateUserAddress(
-      addressId,
-      defaultOnlyPayload(full, isDefault),
-    );
+  const minimal = await patchIsDefault(addressId, { isDefault });
 
-    return { ok: response.success === true, message: response.message };
-  } catch (error) {
-    console.error(
-      `Erro ao ${isDefault ? "definir" : "desmarcar"} endereço padrão:`,
-      error,
-    );
-    return { ok: false };
-  }
+  if (minimal.ok || !full) return minimal;
+
+  const withFields = await patchIsDefault(addressId, {
+    isDefault,
+    ...addressFields(full),
+  });
+
+  if (withFields.ok) return withFields;
+
+  // As duas razões, quando diferem: a da primeira tentativa diz por que
+  // mudar só a flag não passou, a da segunda diz por que o jeito do resto
+  // do app também não. Uma sem a outra deixa metade do diagnóstico de fora.
+  const reasons = [
+    ...new Set([minimal.message, withFields.message].filter(Boolean)),
+  ];
+
+  return { ok: false, message: reasons.join(" / ") || undefined };
 }
 
-/**
- * Confere no backend quem é o padrão agora.
- *
- * O status HTTP de cada PATCH diz o que o backend respondeu, não em que
- * estado o cliente ficou - e é o estado que decide se a entrega sai no
- * endereço certo. `undefined` quando não deu para saber (a leitura falhou):
- * aí o chamador volta a confiar no que os PATCHes disseram.
- */
 async function readUserAddresses(): Promise<Address[] | undefined> {
   try {
     const response = await apiService.address.getUserAddresses();
@@ -212,11 +236,18 @@ export async function setDefaultAddress(
   };
 }
 
-function deliveryAddressError(message?: string) {
+/**
+ * O erro diz qual passo falhou, e não só que algo falhou.
+ *
+ * Marcar o endereço do pedido e desmarcar o anterior são dois PATCHes
+ * diferentes, e o backend valida cada um do seu jeito. Uma mensagem que
+ * não diz qual dos dois quebrou custa uma rodada de testes inteira.
+ */
+function deliveryAddressError(step: string, message?: string) {
   return new Error(
     message
-      ? `Não foi possível usar este endereço na entrega: ${message}`
-      : "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
+      ? `Não foi possível ${step}: ${message}`
+      : `Não foi possível ${step}. Tente novamente ou escolha outro endereço.`,
   );
 }
 
@@ -253,7 +284,10 @@ export async function takeOverDefaultAddress({
     const promotion = await setIsDefault(target ?? addressId, true);
 
     if (!promotion.ok && (await isOnlyDefault(addressId)) !== true) {
-      throw deliveryAddressError(promotion.message);
+      throw deliveryAddressError(
+        "usar este endereço na entrega",
+        promotion.message,
+      );
     }
 
     return null;
@@ -281,7 +315,13 @@ export async function takeOverDefaultAddress({
 
   if (!succeeded) {
     await restoreDefaultAddress(swap);
-    throw deliveryAddressError(promotion.message ?? demotion.message);
+
+    throw demotion.ok
+      ? deliveryAddressError("usar este endereço na entrega", promotion.message)
+      : deliveryAddressError(
+          "desmarcar seu endereço padrão anterior",
+          demotion.message,
+        );
   }
 
   return swap;
