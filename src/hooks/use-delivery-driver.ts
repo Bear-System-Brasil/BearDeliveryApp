@@ -205,9 +205,9 @@ export const useDeliveryDriver = () => {
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["my-deliveries"] });
 
-  const acceptMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiService.deliveries.updateStatus(id, "ACCEPTED"),
+const acceptMutation = useMutation({
+    mutationFn: ({ id, lat, lng }: { id: string; lat: number; lng: number }) =>
+      apiService.deliveries.updateStatus(id, "ACCEPTED", { lat, lng }),
     onSuccess: (response) => {
       invalidate();
       if (response.success) {
