@@ -106,7 +106,7 @@ export default function DeliveryDashboardPage() {
     });
   };
 
-  // Função auxiliar que captura o GPS antes de chamar o acceptDelivery do hook
+// Função que captura o GPS e chama o acceptDelivery do hook corretamente
   const executeAcceptWithGeolocation = (deliveryId: string, options?: { onSuccess?: () => void }) => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -114,19 +114,39 @@ export default function DeliveryDashboardPage() {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           
-          // Passando a lat e lng junto para o acceptDelivery (verifique se seu hook aceita esses parâmetros extras)
-          acceptDelivery(deliveryId, { ...options, lat, lng });
+          // Chama o mutation passando o objeto esperado
+          acceptDelivery({ id: deliveryId, lat, lng }, options);
         },
         (error) => {
           console.error("Erro ao obter geolocalização:", error);
-          // Opcional: chamar sem GPS ou alertar o usuário caso o GPS esteja desligado
-          acceptDelivery(deliveryId, options);
+          toast.error("Ative a localização do GPS para aceitar a entrega.");
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     } else {
-      acceptDelivery(deliveryId, options);
+      toast.error("Seu navegador não suporta geolocalização.");
     }
+  };
+
+  const handleAcceptRequest = (deliveryId: string) => {
+    const delivery = availableDeliveries.find(({ id }) => id === deliveryId);
+    if (!delivery) return;
+
+    if (!shouldConfirm) {
+      executeAcceptWithGeolocation(delivery.id);
+      return;
+    }
+
+    setAcceptTarget(delivery);
+  };
+
+  const handleConfirmAccept = (skipNext: boolean) => {
+    if (!acceptTarget) return;
+    if (skipNext) setSkipConfirm(true);
+
+    executeAcceptWithGeolocation(acceptTarget.id, {
+      onSuccess: () => setAcceptTarget(null),
+    });
   };
 
   const handleAdvance = (delivery: Delivery) => {
