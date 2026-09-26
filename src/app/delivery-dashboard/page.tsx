@@ -83,13 +83,13 @@ export default function DeliveryDashboardPage() {
   const [acceptTarget, setAcceptTarget] = useState<Delivery | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Delivery | null>(null);
 
-  // Com a confirmação desligada, o toque em Aceitar vai direto pro request.
+// Com a confirmação desligada, o toque em Aceitar vai direto pro request com GPS.
   const handleAcceptRequest = (deliveryId: string) => {
     const delivery = availableDeliveries.find(({ id }) => id === deliveryId);
     if (!delivery) return;
 
     if (!shouldConfirm) {
-      acceptDelivery(delivery.id);
+      executeAcceptWithGeolocation(delivery.id);
       return;
     }
 
@@ -101,11 +101,32 @@ export default function DeliveryDashboardPage() {
 
     if (skipNext) setSkipConfirm(true);
 
-    // Fecha quando a resposta chega (o toast diz se deu certo). Numa falha de
-    // conexão o diálogo fica aberto, pra tentar de novo sem refazer o caminho.
-    acceptDelivery(acceptTarget.id, {
+    executeAcceptWithGeolocation(acceptTarget.id, {
       onSuccess: () => setAcceptTarget(null),
     });
+  };
+
+  // Função auxiliar que captura o GPS antes de chamar o acceptDelivery do hook
+  const executeAcceptWithGeolocation = (deliveryId: string, options?: { onSuccess?: () => void }) => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          // Passando a lat e lng junto para o acceptDelivery (verifique se seu hook aceita esses parâmetros extras)
+          acceptDelivery(deliveryId, { ...options, lat, lng });
+        },
+        (error) => {
+          console.error("Erro ao obter geolocalização:", error);
+          // Opcional: chamar sem GPS ou alertar o usuário caso o GPS esteja desligado
+          acceptDelivery(deliveryId, options);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      acceptDelivery(deliveryId, options);
+    }
   };
 
   const handleAdvance = (delivery: Delivery) => {
