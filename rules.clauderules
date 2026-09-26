@@ -1,0 +1,9 @@
+# Next.js & Security Rules for this Project
+
+You must strictly adhere to these architectural and security constraints for every code generation:
+
+- **Backend Isolation**: Do not guess or invent API structures. Rely strictly on provided documentation.
+- **Environment Variables**: Never hardcode sensitive tokens or keys. Use `process.env.VARIABLE`. Remember that `NEXT_PUBLIC_` exposes variables to the browser—never use it for backend secrets.
+- **Server Components First**: Do not add `"use client"` globally. Keep components as Server Components by default. Only use Client Components when interactive React hooks (useState, useEffect) are required.
+- **Framework Optimization**: Always use Next.js native optimization components: `<Link>` instead of `<a>`, and `<Image>` instead of `<img>`.
+- **XSS Prevention**: Avoid `dangerouslySetInnerHTML`. If strictly necessary for API-delivered HTML, alert the user and implement data sanitization.
