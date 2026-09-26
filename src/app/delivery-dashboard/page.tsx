@@ -83,29 +83,6 @@ export default function DeliveryDashboardPage() {
   const [acceptTarget, setAcceptTarget] = useState<Delivery | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Delivery | null>(null);
 
-// Com a confirmação desligada, o toque em Aceitar vai direto pro request com GPS.
-  const handleAcceptRequest = (deliveryId: string) => {
-    const delivery = availableDeliveries.find(({ id }) => id === deliveryId);
-    if (!delivery) return;
-
-    if (!shouldConfirm) {
-      executeAcceptWithGeolocation(delivery.id);
-      return;
-    }
-
-    setAcceptTarget(delivery);
-  };
-
-  const handleConfirmAccept = (skipNext: boolean) => {
-    if (!acceptTarget) return;
-
-    if (skipNext) setSkipConfirm(true);
-
-    executeAcceptWithGeolocation(acceptTarget.id, {
-      onSuccess: () => setAcceptTarget(null),
-    });
-  };
-
 // Função que captura o GPS e chama o acceptDelivery do hook corretamente
   const executeAcceptWithGeolocation = (deliveryId: string, options?: { onSuccess?: () => void }) => {
     if ("geolocation" in navigator) {
