@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Bell, BellOff, Package, RefreshCw } from "lucide-react";
-
+import { toast } from "sonner";
 import { AcceptConfirmDialog } from "@/components/delivery-dashboard/accept-confirm-dialog";
 import { CancelDialog } from "@/components/delivery-dashboard/cancel-dialog";
 import { DeliveryCard } from "@/components/delivery-dashboard/delivery-card";
@@ -94,8 +94,8 @@ export default function DeliveryDashboardPage() {
           // Chama o mutation passando o objeto esperado
           acceptDelivery({ id: deliveryId, lat, lng }, options);
         },
-        (error) => {
-          console.error("Erro ao obter geolocalização:", error);
+        (_error) => {
+          console.error("Erro ao obter geolocalização:", _error);
           toast.error("Ative a localização do GPS para aceitar a entrega.");
         },
         { enableHighAccuracy: true, timeout: 10000 }
