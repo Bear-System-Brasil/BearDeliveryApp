@@ -20,9 +20,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useTeamManagement, type StaffMember, type StaffRole } from "@/hooks";
 import {
-  CalendarDays,
   Mail,
   Search,
   Trash2,
@@ -30,7 +30,6 @@ import {
   UserCog,
   UserPlus,
 } from "lucide-react";
-import { useMemo } from "react";
 
 // A ordem daqui é a ordem do seletor de função do convite, e as chaves são
 // o StaffRoleEnum do backend - função nova entra nos dois mapas junto com o
@@ -49,16 +48,16 @@ const ROLE_BADGE_CLASSES: Record<StaffRole, string> = {
   financial: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
 };
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("pt-BR");
-}
-
 function TeamManagementContent() {
   const {
     staff: filteredStaff,
     allStaff,
     searchQuery,
     setSearchQuery,
+    isLoadingStaff,
+    isStaffError,
+    staffError,
+    refetchStaff,
     isModalOpen,
     formData,
     removeTarget,
@@ -71,12 +70,6 @@ function TeamManagementContent() {
     handleCancelRemove,
     handleConfirmRemove,
   } = useTeamManagement();
-
-  const activeCount = useMemo(
-    () => allStaff.filter((member) => member.status === "active").length,
-    [allStaff],
-  );
-  const pendingCount = allStaff.length - activeCount;
 
   return (
     <AdminPageLayout
@@ -95,10 +88,9 @@ function TeamManagementContent() {
     >
       <div className="mx-auto max-w-7xl">
         <div className="mb-3 rounded-[10px] border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-950/40 px-3.5 py-2.5 text-[11.5px] font-semibold text-amber-700 dark:text-amber-400">
-          Os convites são enviados de verdade e chegam ao servidor. A lista
-          abaixo, porém, ainda é provisória: enquanto o backend não expõe a
-          listagem de equipe, ela mostra dados de exemplo e as remoções valem
-          só nesta sessão.
+          A lista e os convites são reais. A remoção, não: enquanto o backend
+          não expõe a rota, ela some da tela só nesta sessão e o membro volta
+          no próximo carregamento.
         </div>
 
         <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
@@ -113,45 +105,73 @@ function TeamManagementContent() {
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-[8px] border border-border bg-card px-2.5 py-1 text-[11.5px] font-bold text-foreground">
-              {allStaff.length} membros
-            </span>
-            <span className="rounded-[8px] bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-[11.5px] font-bold text-emerald-700 dark:text-emerald-400">
-              {activeCount} ativos
-            </span>
-            {pendingCount > 0 && (
-              <span className="rounded-[8px] bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 text-[11.5px] font-bold text-amber-700 dark:text-amber-400">
-                {pendingCount} pendentes
+            {/* Sem o guarda, o contador anuncia "0 membros" enquanto a lista
+                ainda está carregando ou falhou - número que não é verdade. */}
+            {!isLoadingStaff && !isStaffError && (
+              <span className="rounded-[8px] border border-border bg-card px-2.5 py-1 text-[11.5px] font-bold text-foreground">
+                {allStaff.length} {allStaff.length === 1 ? "membro" : "membros"}
               </span>
             )}
           </div>
         </div>
 
         <section className="overflow-hidden rounded-[8px] border border-border bg-card">
-          <div className="hidden shrink-0 grid-cols-[minmax(0,1fr)_130px_110px_120px_56px] items-center gap-2 border-b border-border bg-muted px-3.5 py-2.5 md:grid">
+          <div className="hidden shrink-0 grid-cols-[minmax(0,1fr)_130px_56px] items-center gap-2 border-b border-border bg-muted px-3.5 py-2.5 md:grid">
             <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
               Membro
             </span>
             <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
               Função
             </span>
-            <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
-              Status
-            </span>
-            <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
-              Convidado em
-            </span>
             <span className="text-right text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
               Ações
             </span>
           </div>
 
-          {filteredStaff.length > 0 ? (
+          {isLoadingStaff ? (
+            <div className="divide-y divide-border">
+              {[0, 1, 2].map((row) => (
+                <div
+                  key={row}
+                  className="grid gap-3 p-3.5 md:grid-cols-[minmax(0,1fr)_130px_56px] md:items-center md:gap-2"
+                >
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-2.5 w-44" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="ml-auto h-7 w-7 rounded-[7px]" />
+                </div>
+              ))}
+            </div>
+          ) : isStaffError ? (
+            <div className="flex flex-col items-center justify-center px-5 py-10 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[8px] bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400">
+                <TriangleAlert className="h-6 w-6" />
+              </div>
+              <p className="mt-3 text-sm font-bold text-foreground">
+                Não foi possível carregar a equipe
+              </p>
+              <p className="mt-1 text-xs font-medium text-muted-foreground">
+                {staffError || "Tente novamente em instantes."}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => refetchStaff()}
+                className="mt-3 h-8 cursor-pointer rounded-[8px] border-border text-xs font-bold"
+              >
+                Tentar de novo
+              </Button>
+            </div>
+          ) : filteredStaff.length > 0 ? (
             <div className="divide-y divide-border">
               {filteredStaff.map((member: StaffMember) => (
                 <div
                   key={member.id}
-                  className="grid gap-3 p-3.5 md:grid-cols-[minmax(0,1fr)_130px_110px_120px_56px] md:items-center md:gap-2"
+                  className="grid gap-3 p-3.5 md:grid-cols-[minmax(0,1fr)_130px_56px] md:items-center md:gap-2"
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-extrabold text-foreground">
@@ -174,23 +194,6 @@ function TeamManagementContent() {
                     >
                       {ROLE_LABELS[member.role]}
                     </span>
-                  </div>
-
-                  <div>
-                    <span
-                      className={`inline-flex rounded-[6px] px-2 py-0.5 text-[10.5px] font-bold ${
-                        member.status === "active"
-                          ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                          : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400"
-                      }`}
-                    >
-                      {member.status === "active" ? "Ativo" : "Pendente"}
-                    </span>
-                  </div>
-
-                  <div className="hidden items-center gap-1.5 text-[11.5px] font-bold text-muted-foreground md:flex">
-                    <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                    {formatDate(member.invitedAt)}
                   </div>
 
                   <div className="flex justify-end">

@@ -1,6 +1,11 @@
-import { apiService, type InviteStaffRequest, type StaffRole } from "@/services/api";
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import {
+  apiService,
+  type CompanyStaffMember,
+  type InviteStaffRequest,
+  type StaffRole,
+} from "@/services/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 // O tipo mora em services/api.ts, junto do contrato de POST /company/invite.
@@ -40,13 +45,16 @@ export function resolveInviteErrorMessage(response: {
   return fromBackend || byStatus || "Não foi possível enviar o convite";
 }
 
+/**
+ * Membro como a tela usa. Só tem o que GET /company/staff devolve: a rota
+ * não manda status nem data de convite, então a tela não mostra nenhum dos
+ * dois em vez de inventar valor.
+ */
 export interface StaffMember {
   id: string;
   name: string;
   email: string;
   role: StaffRole;
-  status: "active" | "pending";
-  invitedAt: string;
 }
 
 interface InviteFormData {
@@ -56,41 +64,69 @@ interface InviteFormData {
 
 const emptyInvite: InviteFormData = { email: "", role: "cook" };
 
-// TODO(backend): o convite já é real (POST /company/invite), mas ainda não
-// existe endpoint de listagem de staff - então esta lista é mock local e não
-// persiste entre sessões. Um convite enviado com sucesso é ecoado aqui só
-// pra dar retorno visual; quem manda é o servidor.
-const MOCK_INITIAL_STAFF: StaffMember[] = [
-  {
-    id: "mock-1",
-    name: "João Cozinha",
-    email: "joao.cozinha@exemplo.com",
-    role: "cook",
-    status: "active",
-    invitedAt: "2026-06-02T10:00:00.000Z",
-  },
-  {
-    id: "mock-2",
-    name: "Marina Entregas",
-    email: "marina.entregas@exemplo.com",
-    role: "delivery",
-    status: "active",
-    invitedAt: "2026-06-10T10:00:00.000Z",
-  },
-];
+export const STAFF_QUERY_KEY = ["company", "staff"] as const;
+
+/**
+ * Achata a resposta de GET /company/staff no formato da tela.
+ *
+ * A rota responde array cru - se vier outra coisa, devolve lista vazia em
+ * vez de estourar `.map is not a function` no render. Linha sem `user.id` é
+ * descartada: sem chave estável não dá para renderizar nem remover.
+ */
+export function toStaffMembers(data: unknown): StaffMember[] {
+  if (!Array.isArray(data)) return [];
+
+  return (data as CompanyStaffMember[])
+    .filter((entry) => entry?.user?.id)
+    .map((entry) => ({
+      id: entry.user.id,
+      name: entry.user.name || entry.user.email || "Sem nome",
+      email: entry.user.email || "",
+      // `staffRole` e não `user.role`: é o campo que o convite define.
+      role: entry.staffRole,
+    }));
+}
 
 /**
  * Hook para gerenciar a equipe da empresa.
  *
- * O convite chama POST /company/invite de verdade. A listagem e a remoção
- * continuam locais (mock) enquanto o backend não expõe os endpoints.
+ * Listagem e convite são reais (GET /company/staff, POST /company/invite).
+ * A remoção segue local: não existe endpoint para ela ainda.
  */
 export const useTeamManagement = () => {
-  const [staff, setStaff] = useState<StaffMember[]>(MOCK_INITIAL_STAFF);
+  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState<InviteFormData>(emptyInvite);
   const [removeTarget, setRemoveTarget] = useState<StaffMember | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Remoção só existe no cliente enquanto o backend não expõe a rota. Guardar
+  // os ids removidos (em vez de reescrever a lista) mantém o cache da query
+  // como fonte única - um refetch traz o membro de volta, que é a verdade.
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+
+  const {
+    data: fetchedStaff = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: STAFF_QUERY_KEY,
+    queryFn: async () => {
+      const response = await apiService.companies.getStaff();
+      if (!response.success) {
+        throw new Error(response.message || "Erro ao carregar a equipe");
+      }
+      return toStaffMembers(response.data);
+    },
+    staleTime: 60_000,
+  });
+
+  const staff = useMemo(
+    () => fetchedStaff.filter((member) => !removedIds.includes(member.id)),
+    [fetchedStaff, removedIds],
+  );
 
   const filteredStaff = staff.filter(
     (member) =>
@@ -120,22 +156,12 @@ export const useTeamManagement = () => {
       }
       return response.data;
     },
-    onSuccess: (invite, variables) => {
-      // Eco local do convite aceito pelo servidor - a lista ainda é mock.
-      const newMember: StaffMember = {
-        id: invite?.id || `invite-${Date.now()}`,
-        name: variables.email.split("@")[0],
-        email: variables.email,
-        role: variables.staffRole,
-        status: "pending",
-        invitedAt:
-          invite?.invitedAt ||
-          invite?.createdAt ||
-          invite?.created_at ||
-          new Date().toISOString(),
-      };
-
-      setStaff((prev) => [...prev, newMember]);
+    onSuccess: (_invite, variables) => {
+      // O eco local do convidado saiu daqui: a lista agora é do servidor, e
+      // uma linha "pendente" montada no cliente exigiria um status que a
+      // rota não devolve. Recarrega e mostra o que o backend tiver - se ele
+      // só lista quem já aceitou, o convidado aparece quando aceitar.
+      queryClient.invalidateQueries({ queryKey: STAFF_QUERY_KEY });
       toast.success(`Convite enviado para ${variables.email}`);
       handleCloseModal();
     },
@@ -167,8 +193,8 @@ export const useTeamManagement = () => {
 
   const handleConfirmRemove = () => {
     if (!removeTarget) return;
-    setStaff((prev) => prev.filter((member) => member.id !== removeTarget.id));
-    toast.success(`${removeTarget.name} removido da equipe`);
+    setRemovedIds((prev) => [...prev, removeTarget.id]);
+    toast.success(`${removeTarget.name} removido da equipe nesta sessão`);
     setRemoveTarget(null);
   };
 
@@ -177,6 +203,11 @@ export const useTeamManagement = () => {
     allStaff: staff,
     searchQuery,
     setSearchQuery,
+
+    isLoadingStaff: isLoading,
+    isStaffError: isError,
+    staffError: error instanceof Error ? error.message : null,
+    refetchStaff: refetch,
 
     isModalOpen,
     formData,
