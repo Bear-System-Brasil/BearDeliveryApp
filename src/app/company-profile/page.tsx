@@ -26,7 +26,11 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RESTAURANT_CATEGORIES } from "@/constants";
-import { useCompanyProfileManagement, useSpecialties } from "@/hooks";
+import {
+  useCompanyOpeningHours,
+  useCompanyProfileManagement,
+  useSpecialties,
+} from "@/hooks";
 import { cn } from "@/lib/utils";
 import { formatCnpj, formatPhoneDisplay } from "@/utils";
 import {
@@ -47,12 +51,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { type ReactNode, useState } from "react";
-import {
-  DEFAULT_OPENING_HOURS,
-  type DayHours,
-} from "@/constants/opening-hours";
-import { toast } from "sonner";
+import { type ReactNode } from "react";
 
 export default function CompanyProfilePage() {
   return (
@@ -134,7 +133,6 @@ function CompanyProfileContent() {
     formData,
     isEditing,
     isSaving,
-    isOpen,
     selectedCategory,
     isSavingSpecialty,
     handleSaveProfile,
@@ -164,24 +162,22 @@ function CompanyProfileContent() {
     resetPasswordForm,
   } = useCompanyProfileManagement();
 
-  const [openingHours, setOpeningHours] = useState<DayHours[]>(DEFAULT_OPENING_HOURS);
-  const [isSavingHours, setIsSavingHours] = useState(false);
-
-  const updateDayHours = (day: string, patch: Partial<DayHours>) => {
-    setOpeningHours((prev) =>
-      prev.map((item) => (item.day === day ? { ...item, ...patch } : item)),
-    );
-  };
-
-  const handleSaveHours = () => {
-    setIsSavingHours(true);
-    // Mock: ainda não há um contrato confirmado de escrita pro backend -
-    // só guarda em memória e confirma visualmente.
-    setTimeout(() => {
-      setIsSavingHours(false);
-      toast.success("Horário de funcionamento atualizado");
-    }, 400);
-  };
+  // O badge Aberto/Fechado vem da rota pública de horários, não mais do
+  // `isOpen` que vinha junto com GET /company.
+  const {
+    hours: openingHours,
+    hasChanges: hasHoursChanges,
+    updateDay: updateDayHours,
+    discardChanges: discardHoursChanges,
+    handleSaveHours,
+    isSavingHours,
+    isLoadingHours,
+    isHoursError,
+    hoursError,
+    refetchHours,
+    isOpenNow,
+    linkedToCashRegister,
+  } = useCompanyOpeningHours(user?.companyId || user?.id);
 
   const { data: specialties } = useSpecialties();
   const specialtyOptions =
@@ -291,16 +287,28 @@ function CompanyProfileContent() {
                         <span className="text-[17px] font-extrabold tracking-tight text-foreground">
                           {formData.tradeName || "Sua Empresa"}
                         </span>
-                        <span
-                          className={cn(
-                            "shrink-0 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold",
-                            isOpen
-                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
-                              : "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400",
-                          )}
-                        >
-                          {isOpen ? "Aberto" : "Fechado"}
-                        </span>
+                        {isOpenNow !== null && (
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold",
+                              isOpenNow
+                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400"
+                                : "bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400",
+                            )}
+                            title={
+                              linkedToCashRegister
+                                ? "Status controlado pelo caixa"
+                                : "Status calculado pelo horário de funcionamento"
+                            }
+                          >
+                            {isOpenNow ? "Aberto" : "Fechado"}
+                          </span>
+                        )}
+                        {linkedToCashRegister && (
+                          <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[10.5px] font-bold text-muted-foreground">
+                            Segue o caixa
+                          </span>
+                        )}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1.5 text-[11.5px] font-semibold text-muted-foreground">
                         {selectedSpecialtyName && (
@@ -477,85 +485,182 @@ function CompanyProfileContent() {
               subtitle="Dias e horários em que a loja aceita pedidos"
               className="mb-3"
               actions={
-                <Button
-                  size="sm"
-                  variant={"secondary"}
-                  onClick={handleSaveHours}
-                  disabled={isSavingHours}
-                  className="h-8 rounded-[9px] px-3.5 text-xs font-bold"
-                >
-                  <div className="flex gap-2">
-                    <Save className="h-3.5 w-3.5" />
-                    Salvar
-                  </div>
-                </Button>
+                <div className="flex gap-2">
+                  {hasHoursChanges && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={discardHoursChanges}
+                      disabled={isSavingHours}
+                      className="h-8 rounded-[9px] px-3 text-xs font-bold"
+                    >
+                      Descartar
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant={"secondary"}
+                    onClick={handleSaveHours}
+                    disabled={isSavingHours || isLoadingHours || isHoursError}
+                    className="h-8 rounded-[9px] px-3.5 text-xs font-bold"
+                  >
+                    <div className="flex gap-2">
+                      <Save className="h-3.5 w-3.5" />
+                      {isSavingHours ? "Salvando..." : "Salvar"}
+                    </div>
+                  </Button>
+                </div>
               }
             >
-              <div className="mb-3 rounded-[9px] border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
-                Em construção: ainda não salva no servidor.
+              {linkedToCashRegister && (
+                <div className="mb-3 rounded-[9px] border border-border bg-muted px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+                  A loja está seguindo o caixa: quem define Aberto/Fechado
+                  agora é o caixa aberto, não a grade abaixo. Os horários
+                  continuam valendo quando essa opção for desligada.
+                </div>
+              )}
+
+              <div className="mb-3 rounded-[9px] border border-border bg-muted px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+                Para fechar um dia já cadastrado, fale com o suporte: a rota de
+                horários ainda não apaga dia, só cria e atualiza.
               </div>
 
-              <div className="space-y-1.5">
-                {openingHours.map((day) => (
-                  <div
-                    key={day.day}
-                    className="flex flex-wrap items-center gap-2.5 rounded-[10px] border border-border px-3 py-2 sm:flex-nowrap"
+              {isLoadingHours ? (
+                <div className="space-y-1.5">
+                  {[0, 1, 2, 3, 4, 5, 6].map((row) => (
+                    <Skeleton key={row} className="h-[50px] rounded-[10px]" />
+                  ))}
+                </div>
+              ) : isHoursError ? (
+                <div className="rounded-[10px] border border-border px-3 py-6 text-center">
+                  <p className="text-[12.5px] font-bold text-foreground">
+                    Não foi possível carregar o horário
+                  </p>
+                  <p className="mt-1 text-[11px] font-medium text-muted-foreground">
+                    {hoursError || "Tente novamente em instantes."}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => refetchHours()}
+                    className="mt-3 h-8 rounded-[9px] px-3.5 text-xs font-bold"
                   >
-                    <label className="flex w-[100px] shrink-0 cursor-pointer items-center gap-2">
-                      <Checkbox
-                        checked={day.isOpen}
-                        onCheckedChange={(checked) =>
-                          updateDayHours(day.day, {
-                            isOpen: checked === true,
-                          })
+                    Tentar de novo
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {openingHours.map((day) => (
+                    <div
+                      key={day.day}
+                      className="flex flex-wrap items-center gap-2.5 rounded-[10px] border border-border px-3 py-2 sm:flex-nowrap"
+                    >
+                      {/* Desmarcar fica travado de propósito: o PUT é upsert e
+                          não apaga dia, então desmarcar não teria efeito no
+                          servidor e o dono acharia que fechou o dia. Marcar
+                          funciona normal - aí o upsert cria. */}
+                      <label
+                        className={cn(
+                          "flex w-[100px] shrink-0 items-center gap-2",
+                          day.isOpen ? "cursor-default" : "cursor-pointer",
+                        )}
+                        title={
+                          day.isOpen
+                            ? "Fechar um dia já cadastrado depende de uma rota que o backend ainda não tem"
+                            : undefined
                         }
-                        className="h-4 w-4 border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-                      />
-                      <span className="text-[12.5px] font-bold text-foreground">
-                        {day.label}
-                      </span>
-                    </label>
-
-                    {day.isOpen ? (
-                      <div className="flex flex-1 items-center gap-2">
-                        <div className="relative flex-1">
-                          <Clock className="pointer-events-none absolute left-[9px] top-1/2 h-[13px] w-[13px] -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            type="time"
-                            value={day.openTime}
-                            onChange={(e) =>
-                              updateDayHours(day.day, {
-                                openTime: e.target.value,
-                              })
-                            }
-                            className="h-[34px] rounded-[8px] border-border bg-background pl-7 pr-2 text-[12.5px]"
-                          />
-                        </div>
-                        <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
-                          até
+                      >
+                        <Checkbox
+                          checked={day.isOpen}
+                          disabled={day.isOpen}
+                          onCheckedChange={(checked) =>
+                            updateDayHours(day.day, {
+                              isOpen: checked === true,
+                            })
+                          }
+                          className="h-4 w-4 border-border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                        />
+                        <span className="text-[12.5px] font-bold text-foreground">
+                          {day.label}
                         </span>
-                        <div className="relative flex-1">
-                          <Clock className="pointer-events-none absolute left-[9px] top-1/2 h-[13px] w-[13px] -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            type="time"
-                            value={day.closeTime}
-                            onChange={(e) =>
-                              updateDayHours(day.day, {
-                                closeTime: e.target.value,
-                              })
-                            }
-                            className="h-[34px] rounded-[8px] border-border bg-background pl-7 pr-2 text-[12.5px]"
-                          />
+                      </label>
+  
+                      {day.isOpen ? (
+                        <div className="flex flex-1 flex-col gap-2 lg:flex-row lg:items-center">
+                          <div className="flex flex-1 items-center gap-2">
+                            <div className="relative flex-1">
+                              <Clock className="pointer-events-none absolute left-[9px] top-1/2 h-[13px] w-[13px] -translate-y-1/2 text-muted-foreground" />
+                              <Input
+                                type="time"
+                                aria-label={`Abertura de ${day.label}`}
+                                value={day.openTime}
+                                onChange={(e) =>
+                                  updateDayHours(day.day, {
+                                    openTime: e.target.value,
+                                  })
+                                }
+                                className="h-[34px] rounded-[8px] border-border bg-background pl-7 pr-2 text-[12.5px]"
+                              />
+                            </div>
+                            <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
+                              até
+                            </span>
+                            <div className="relative flex-1">
+                              <Clock className="pointer-events-none absolute left-[9px] top-1/2 h-[13px] w-[13px] -translate-y-1/2 text-muted-foreground" />
+                              <Input
+                                type="time"
+                                aria-label={`Fechamento de ${day.label}`}
+                                value={day.closeTime}
+                                onChange={(e) =>
+                                  updateDayHours(day.day, {
+                                    closeTime: e.target.value,
+                                  })
+                                }
+                                className="h-[34px] rounded-[8px] border-border bg-background pl-7 pr-2 text-[12.5px]"
+                              />
+                            </div>
+                          </div>
+  
+                          <div className="flex flex-1 items-center gap-2">
+                            <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
+                              intervalo
+                            </span>
+                            <Input
+                              type="time"
+                              aria-label={`Início do intervalo de ${day.label}`}
+                              value={day.breakStart || ""}
+                              onChange={(e) =>
+                                updateDayHours(day.day, {
+                                  breakStart: e.target.value,
+                                })
+                              }
+                              className="h-[34px] flex-1 rounded-[8px] border-border bg-background px-2 text-[12.5px]"
+                            />
+                            <span className="shrink-0 text-[11px] font-bold text-muted-foreground">
+                              até
+                            </span>
+                            <Input
+                              type="time"
+                              aria-label={`Fim do intervalo de ${day.label}`}
+                              value={day.breakEnd || ""}
+                              onChange={(e) =>
+                                updateDayHours(day.day, {
+                                  breakEnd: e.target.value,
+                                })
+                              }
+                              className="h-[34px] flex-1 rounded-[8px] border-border bg-background px-2 text-[12.5px]"
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <span className="flex-1 text-[12px] font-semibold text-muted-foreground">
-                        Fechado
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      ) : (
+                        <span className="flex-1 text-[12px] font-semibold text-muted-foreground">
+                          Fechado
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </SectionCard>
 
             {/* Endereço da Empresa */}

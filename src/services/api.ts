@@ -826,6 +826,57 @@ export interface StaffInvite {
   created_at?: string;
 }
 
+/**
+ * Um dia da grade de horários. `day` é 0-6 com domingo = 0 (igual ao
+ * `Date.getDay()`), e os horários vêm em "HH:mm".
+ *
+ * Não existe flag de "fechado" por dia: dia fechado é dia que não está na
+ * lista. Como o PUT é upsert por dia, isso significa que desmarcar um dia na
+ * tela não tem como ser gravado - ver o comentário em `toOpeningHoursDays`.
+ */
+export interface OpeningHourDay {
+  id: string;
+  companyId: string;
+  day: number;
+  openTime: string;
+  closeTime: string;
+  /** Intervalo (almoço), opcional - os dois vêm juntos ou nenhum. */
+  breakStart?: string;
+  breakEnd?: string;
+}
+
+/**
+ * Resposta de GET /opening-hours/:companyId (pública) e de
+ * GET /opening-hours/me.
+ *
+ * `isOpen` é o status atual da loja e é **cacheado** no backend: não
+ * reflete o relógio em tempo real, então nada de polling em cima dele.
+ * Quando `linkedToCashRegister` é true, quem manda nesse status é o caixa
+ * aberto/fechado, não a grade de horários.
+ */
+export interface OpeningHoursResponse {
+  isOpen: boolean;
+  linkedToCashRegister: boolean;
+  days: OpeningHourDay[];
+}
+
+/**
+ * Dia como vai no PUT. Sem `id` e sem `companyId` de propósito: a chave do
+ * upsert é `day`, e o class-validator do backend roda em whitelist - campo
+ * a mais volta 400 (foi o que aconteceu com `role` no convite de staff).
+ */
+export interface UpdateOpeningHoursDay {
+  day: number;
+  openTime: string;
+  closeTime: string;
+  breakStart?: string;
+  breakEnd?: string;
+}
+
+export interface UpdateOpeningHoursRequest {
+  days: UpdateOpeningHoursDay[];
+}
+
 // Address types
 export interface Address {
   id: string;
@@ -1757,6 +1808,36 @@ export const apiService = {
      */
     invite: (data: InviteStaffRequest) =>
       apiRequest<StaffInvite>("POST", "/company/invite", data, true),
+  },
+
+  openingHours: {
+    /** Grade pública de uma loja - é de onde sai o badge Aberto/Fechado. */
+    getByCompany: (companyId: string) =>
+      apiRequest<OpeningHoursResponse>(
+        "GET",
+        `/opening-hours/${companyId}`,
+      ),
+
+    /** Grade da empresa autenticada (admin/owner/manager). */
+    getMine: () =>
+      apiRequest<OpeningHoursResponse>(
+        "GET",
+        "/opening-hours/me",
+        undefined,
+        true,
+      ),
+
+    /**
+     * Upsert por dia: dia que não vai no corpo continua como estava no
+     * banco - o PUT nunca apaga.
+     */
+    updateMine: (data: UpdateOpeningHoursRequest) =>
+      apiRequest<OpeningHoursResponse>(
+        "PUT",
+        "/opening-hours/me",
+        data,
+        true,
+      ),
   },
 
   // Upload endpoint (S3)
