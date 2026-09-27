@@ -2321,8 +2321,34 @@ export const apiService = {
     create: (deliveryData: CreateDeliveryRequest) =>
       apiRequest<Delivery>("POST", "/delivery", deliveryData, true),
 
-    updateStatus: (id: string, status: string) =>
-      apiRequest<Delivery>("PATCH", `/delivery/${id}/status`, { status }, true),
+    /**
+     * `coords` é a posição atual do ENTREGADOR, não do endereço de entrega.
+     *
+     * Obrigatória no aceite (status ACCEPTED): o backend recusa sem ela,
+     * porque é a origem do cálculo de frete. Os outros avanços de status
+     * (PICKED_UP, DELIVERED) não pedem e chamam sem o parâmetro.
+     *
+     * ⚠️ Os nomes `latitude`/`longitude` seguem a convenção REST do resto
+     * desta API (o DTO de Address usa os mesmos, com @IsLatitude /
+     * @IsLongitude) - mas NÃO foram confirmados contra a doc desta rota. O
+     * gateway de rastreamento, que é outro transporte, usa `lat`/`lng`.
+     */
+    updateStatus: (
+      id: string,
+      status: string,
+      coords?: { lat: number; lng: number },
+    ) =>
+      apiRequest<Delivery>(
+        "PATCH",
+        `/delivery/${id}/status`,
+        {
+          status,
+          ...(coords
+            ? { latitude: coords.lat, longitude: coords.lng }
+            : {}),
+        },
+        true,
+      ),
 
     cancel: (id: string, reason: string, observations?: string) =>
       apiRequest<Delivery>(

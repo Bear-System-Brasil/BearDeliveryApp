@@ -1,17 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, BellOff, Package, RefreshCw } from "lucide-react";
+import { Bell, BellOff, Crosshair, Package, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 import { AcceptConfirmDialog } from "@/components/delivery-dashboard/accept-confirm-dialog";
 import { CancelDialog } from "@/components/delivery-dashboard/cancel-dialog";
 import { DeliveryCard } from "@/components/delivery-dashboard/delivery-card";
+import { LocationDialog } from "@/components/delivery-dashboard/location-dialog";
 import {
   HeaderIconButton,
   ScreenHeader,
 } from "@/components/delivery-dashboard/screen-header";
 import { Button } from "@/components/ui/button";
 import { useAcceptConfirmation } from "@/hooks/use-accept-confirmation";
+import {
+  useCourierPosition,
+  type PositionFailure,
+} from "@/hooks/use-courier-position";
 import { useDeliveryDriver } from "@/hooks/use-delivery-driver";
 import { getNextStatus, pluralizeAvailable } from "@/lib/delivery";
 import type { Delivery } from "@/services/api";
@@ -79,9 +85,52 @@ export default function DeliveryDashboardPage() {
   } = useDeliveryDriver();
 
   const { shouldConfirm, setSkipConfirm } = useAcceptConfirmation();
+  const { position, resolvePosition } = useCourierPosition();
 
   const [acceptTarget, setAcceptTarget] = useState<Delivery | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Delivery | null>(null);
+
+  // Diálogo de localização: abre sozinho quando o GPS falha no aceite, e pelo
+  // botão do cabeçalho quando o entregador quer corrigir a posição.
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [locationPurpose, setLocationPurpose] = useState<"accept" | "adjust">(
+    "adjust",
+  );
+  const [locationFailure, setLocationFailure] =
+    useState<PositionFailure | null>(null);
+  /** Entrega esperando a posição pra ser aceita. */
+  const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null);
+  /** Buscando GPS: o card trava antes mesmo de o request sair. */
+  const [locatingForId, setLocatingForId] = useState<string | null>(null);
+
+  /**
+   * Aceitar exige a posição do entregador - o backend recusa sem ela.
+   * `resolvePosition` usa o que o rastreamento já mediu, cai pro GPS, e só
+   * incomoda o entregador (campo de texto) quando os dois falham.
+   */
+  const runAccept = async (deliveryId: string, onDone?: () => void) => {
+    setLocatingForId(deliveryId);
+    try {
+      const outcome = await resolvePosition();
+
+      if (!outcome.ok) {
+        // Sai do caminho do aceite pra não empilhar dois diálogos.
+        setAcceptTarget(null);
+        setPendingAcceptId(deliveryId);
+        setLocationFailure(outcome.reason);
+        setLocationPurpose("accept");
+        setLocationOpen(true);
+        return;
+      }
+
+      acceptDelivery(
+        { id: deliveryId, coords: outcome.position.coords },
+        { onSuccess: onDone },
+      );
+    } finally {
+      setLocatingForId(null);
+    }
+  };
 
   // Com a confirmação desligada, o toque em Aceitar vai direto pro request.
   const handleAcceptRequest = (deliveryId: string) => {
@@ -89,7 +138,7 @@ export default function DeliveryDashboardPage() {
     if (!delivery) return;
 
     if (!shouldConfirm) {
-      acceptDelivery(delivery.id);
+      void runAccept(delivery.id);
       return;
     }
 
@@ -103,9 +152,29 @@ export default function DeliveryDashboardPage() {
 
     // Fecha quando a resposta chega (o toast diz se deu certo). Numa falha de
     // conexão o diálogo fica aberto, pra tentar de novo sem refazer o caminho.
-    acceptDelivery(acceptTarget.id, {
-      onSuccess: () => setAcceptTarget(null),
-    });
+    void runAccept(acceptTarget.id, () => setAcceptTarget(null));
+  };
+
+  const handleLocationConfirmed = () => {
+    setLocationOpen(false);
+    setLocationFailure(null);
+
+    const resumeId = pendingAcceptId;
+    setPendingAcceptId(null);
+
+    // A posição acabou de entrar no store: `runAccept` acha o cache fresco e
+    // segue direto pro request, sem pedir GPS de novo.
+    if (resumeId) void runAccept(resumeId);
+  };
+
+  const handleLocationClose = () => {
+    setLocationOpen(false);
+    setLocationFailure(null);
+
+    if (pendingAcceptId) {
+      setPendingAcceptId(null);
+      toast.info("Entrega não aceita - sem localização não dá pra calcular o frete.");
+    }
   };
 
   const handleAdvance = (delivery: Delivery) => {
@@ -136,6 +205,20 @@ export default function DeliveryDashboardPage() {
           <>
             <HeaderIconButton label="Atualizar" onClick={() => refetch()}>
               <RefreshCw className="h-5 w-5" />
+            </HeaderIconButton>
+            <HeaderIconButton
+              label={
+                position
+                  ? "Corrigir minha localização"
+                  : "Informar minha localização"
+              }
+              onClick={() => {
+                setLocationFailure(null);
+                setLocationPurpose("adjust");
+                setLocationOpen(true);
+              }}
+            >
+              <Crosshair className="h-5 w-5" />
             </HeaderIconButton>
             <HeaderIconButton
               label={soundEnabled ? "Silenciar alertas" : "Ativar alertas"}
@@ -229,7 +312,10 @@ export default function DeliveryDashboardPage() {
                       key={delivery.id}
                       delivery={delivery}
                       onAccept={handleAcceptRequest}
-                      busy={acceptingId === delivery.id}
+                      busy={
+                        acceptingId === delivery.id ||
+                        locatingForId === delivery.id
+                      }
                     />
                   ))}
                 </div>
@@ -249,9 +335,20 @@ export default function DeliveryDashboardPage() {
 
       <AcceptConfirmDialog
         delivery={acceptTarget}
-        isAccepting={acceptingId !== null && acceptingId === acceptTarget?.id}
+        isAccepting={
+          (acceptingId !== null && acceptingId === acceptTarget?.id) ||
+          (locatingForId !== null && locatingForId === acceptTarget?.id)
+        }
         onClose={() => setAcceptTarget(null)}
         onConfirm={handleConfirmAccept}
+      />
+
+      <LocationDialog
+        open={locationOpen}
+        purpose={locationPurpose}
+        failure={locationFailure}
+        onClose={handleLocationClose}
+        onConfirmed={handleLocationConfirmed}
       />
 
       <CancelDialog
