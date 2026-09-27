@@ -49,6 +49,10 @@ next build
 vitest run
 ```
 
+Se algum dos três falhar, confirme se a falha é sua ou pré-existente na
+`dev`. Falha sua bloqueia o commit. Falha pré-existente não bloqueia —
+relate e siga.
+
 Ao reportar warnings, distinga os que vieram da sua mudança dos pré-existentes — confirme com `git stash` se necessário.
 
 ## Backend
