@@ -2328,10 +2328,10 @@ export const apiService = {
      * porque é a origem do cálculo de frete. Os outros avanços de status
      * (PICKED_UP, DELIVERED) não pedem e chamam sem o parâmetro.
      *
-     * ⚠️ Os nomes `latitude`/`longitude` seguem a convenção REST do resto
-     * desta API (o DTO de Address usa os mesmos, com @IsLatitude /
-     * @IsLongitude) - mas NÃO foram confirmados contra a doc desta rota. O
-     * gateway de rastreamento, que é outro transporte, usa `lat`/`lng`.
+     * ⚠️ O corpo manda os DOIS pares de nome ao mesmo tempo
+     * (`latitude`/`longitude` e `lat`/`lng`, com o mesmo valor) porque a doc
+     * desta rota não confirma qual deles ela lê. É medida temporária de
+     * diagnóstico: assim que o preview disser qual par pegou, o outro sai.
      */
     updateStatus: (
       id: string,
@@ -2343,8 +2343,23 @@ export const apiService = {
         `/delivery/${id}/status`,
         {
           status,
+          // Os dois pares de nome de uma vez, com o mesmo valor: a doc desta
+          // rota não confirma qual deles ela lê, e o backend deve ignorar o
+          // que não reconhecer. `latitude`/`longitude` é a convenção REST do
+          // resto da API (DTO de Address, com @IsLatitude/@IsLongitude);
+          // `lat`/`lng` é o que o gateway de rastreamento usa.
+          //
+          // TEMPORÁRIO: assim que o preview disser qual par pegou, remover o
+          // outro. Se a resposta vier 400, o backend NÃO ignora campo
+          // desconhecido (ValidationPipe com forbidNonWhitelisted) e o teste
+          // tem que ser um par por vez.
           ...(coords
-            ? { latitude: coords.lat, longitude: coords.lng }
+            ? {
+              latitude: coords.lat,
+              longitude: coords.lng,
+              lat: coords.lat,
+              lng: coords.lng,
+            }
             : {}),
         },
         true,
