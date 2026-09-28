@@ -1,3 +1,8 @@
+import type {
+  OpeningHourDay,
+  UpdateOpeningHoursDay,
+} from "@/services/api";
+
 export type DayKey = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 
 export interface DayHours {
@@ -7,6 +12,9 @@ export interface DayHours {
   /** "HH:mm" */
   openTime: string;
   closeTime: string;
+  /** Intervalo (almoço), opcional. Vazio quando não há. */
+  breakStart?: string;
+  breakEnd?: string;
 }
 
 /** Ordem da semana como aparece na tela (segunda a domingo). */
@@ -41,6 +49,147 @@ export const DEFAULT_OPENING_HOURS: DayHours[] = [
 /** `Date.getDay()` começa no domingo (0). */
 export function getTodayKey(date = new Date()): DayKey {
   return DAY_KEYS[(date.getDay() + 6) % 7];
+}
+
+/**
+ * `day` de /opening-hours é 0-6 com domingo = 0, mesma convenção do
+ * `Date.getDay()`. A tela lista de segunda a domingo, daí os dois mapas.
+ */
+const DAY_KEY_BY_NUMBER: Record<number, DayKey> = {
+  0: "sun",
+  1: "mon",
+  2: "tue",
+  3: "wed",
+  4: "thu",
+  5: "fri",
+  6: "sat",
+};
+
+export const DAY_NUMBER_BY_KEY: Record<DayKey, number> = {
+  sun: 0,
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+  sat: 6,
+};
+
+/** Horário só entra na tela se estiver em "HH:mm" (ou "H:mm"). */
+function readTime(value: unknown): string {
+  const time = String(value ?? "");
+  return TIME_PATTERN.test(time) ? time : "";
+}
+
+/**
+ * Monta a semana da tela a partir dos dias de /opening-hours.
+ *
+ * Dia ausente da resposta = fechado: o contrato não tem flag por dia, então
+ * estar na lista é o que significa "abre nesse dia".
+ *
+ * Aceita tanto a resposta com envelope (`{ isOpen, linkedToCashRegister,
+ * days }`) quanto um array cru de dias - o contrato só documenta o envelope
+ * na rota pública, e tolerar os dois sai mais barato que adivinhar.
+ */
+export function toDayHours(raw: unknown): DayHours[] {
+  const days = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as { days?: unknown })?.days)
+      ? ((raw as { days: unknown[] }).days)
+      : [];
+
+  const byDay = new Map<DayKey, DayHours>();
+
+  for (const entry of days) {
+    if (!entry || typeof entry !== "object") continue;
+    const item = entry as Partial<OpeningHourDay>;
+
+    const key = DAY_KEY_BY_NUMBER[Number(item.day)];
+    if (!key) continue;
+
+    const openTime = readTime(item.openTime);
+    const closeTime = readTime(item.closeTime);
+
+    const breakStart = readTime(item.breakStart);
+    const breakEnd = readTime(item.breakEnd);
+    // Meio intervalo não é intervalo - só vale com as duas pontas.
+    const hasBreak = Boolean(breakStart && breakEnd);
+
+    byDay.set(key, {
+      day: key,
+      label: DAY_LABELS[key],
+      isOpen: Boolean(openTime && closeTime),
+      openTime,
+      closeTime,
+      breakStart: hasBreak ? breakStart : "",
+      breakEnd: hasBreak ? breakEnd : "",
+    });
+  }
+
+  return DAY_KEYS.map(
+    (day) =>
+      byDay.get(day) ?? {
+        day,
+        label: DAY_LABELS[day],
+        isOpen: false,
+        openTime: "",
+        closeTime: "",
+        breakStart: "",
+        breakEnd: "",
+      },
+  );
+}
+
+/**
+ * Primeiro problema que impediria o save, ou `null` se estiver tudo certo.
+ *
+ * Sem isso o dia incompleto seria descartado em silêncio por
+ * `toOpeningHoursDays` e o dono veria "salvo" sem ter salvo.
+ */
+export function findOpeningHoursError(hours: DayHours[]): string | null {
+  for (const day of hours) {
+    if (!day.isOpen) continue;
+
+    if (!day.openTime || !day.closeTime) {
+      return `Informe abertura e fechamento de ${day.label}.`;
+    }
+
+    if (Boolean(day.breakStart) !== Boolean(day.breakEnd)) {
+      return `O intervalo de ${day.label} precisa de início e fim.`;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Corpo do PUT /opening-hours/me.
+ *
+ * Só vão os dias abertos e com as duas pontas preenchidas. Dia fechado fica
+ * de fora - e é exatamente aí que mora a limitação do contrato: como o PUT
+ * é upsert, omitir não apaga, então um dia que já existia no banco continua
+ * lá. É por isso que a tela não deixa desmarcar um dia: desmarcar não teria
+ * efeito nenhum no servidor, e o dono acharia que fechou.
+ *
+ * Marcar um dia novo funciona normal - o upsert cria.
+ */
+export function toOpeningHoursDays(hours: DayHours[]): UpdateOpeningHoursDay[] {
+  return hours
+    .filter((day) => day.isOpen && day.openTime && day.closeTime)
+    .map((day) => {
+      const payload: UpdateOpeningHoursDay = {
+        day: DAY_NUMBER_BY_KEY[day.day],
+        openTime: day.openTime,
+        closeTime: day.closeTime,
+      };
+
+      if (day.breakStart && day.breakEnd) {
+        payload.breakStart = day.breakStart;
+        payload.breakEnd = day.breakEnd;
+      }
+
+      return payload;
+    });
 }
 
 const TIME_PATTERN = /^\d{1,2}:\d{2}$/;

@@ -32,6 +32,7 @@ export * from './use-profile-management'
 export * from './use-restaurant-actions'
 export * from './use-restaurant-registration'
 export * from './use-team-management'
+export * from './use-opening-hours'
 export * from './use-unauthorized-page'
 
 // Legacy hooks

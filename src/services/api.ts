@@ -815,6 +815,25 @@ export interface InviteStaffRequest {
   staffRole: StaffRole;
 }
 
+/**
+ * Item de GET /company/staff. A rota responde um array cru, sem o envelope
+ * `{data, meta}` das listas paginadas - por isso nada de `toPaginated` aqui.
+ *
+ * Não traz `status` nem data de convite: a tela de equipe mostra só o que
+ * está aqui. Quem vale para exibir a função é `staffRole` (o que o convite
+ * define), não `user.role`.
+ */
+export interface CompanyStaffMember {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  companyId: string;
+  staffRole: StaffRole;
+}
+
 /** Convite recém-criado (POST /company/invite). */
 export interface StaffInvite {
   id?: string;
@@ -824,6 +843,57 @@ export interface StaffInvite {
   invitedAt?: string;
   createdAt?: string;
   created_at?: string;
+}
+
+/**
+ * Um dia da grade de horários. `day` é 0-6 com domingo = 0 (igual ao
+ * `Date.getDay()`), e os horários vêm em "HH:mm".
+ *
+ * Não existe flag de "fechado" por dia: dia fechado é dia que não está na
+ * lista. Como o PUT é upsert por dia, isso significa que desmarcar um dia na
+ * tela não tem como ser gravado - ver o comentário em `toOpeningHoursDays`.
+ */
+export interface OpeningHourDay {
+  id: string;
+  companyId: string;
+  day: number;
+  openTime: string;
+  closeTime: string;
+  /** Intervalo (almoço), opcional - os dois vêm juntos ou nenhum. */
+  breakStart?: string;
+  breakEnd?: string;
+}
+
+/**
+ * Resposta de GET /opening-hours/:companyId (pública) e de
+ * GET /opening-hours/me.
+ *
+ * `isOpen` é o status atual da loja e é **cacheado** no backend: não
+ * reflete o relógio em tempo real, então nada de polling em cima dele.
+ * Quando `linkedToCashRegister` é true, quem manda nesse status é o caixa
+ * aberto/fechado, não a grade de horários.
+ */
+export interface OpeningHoursResponse {
+  isOpen: boolean;
+  linkedToCashRegister: boolean;
+  days: OpeningHourDay[];
+}
+
+/**
+ * Dia como vai no PUT. Sem `id` e sem `companyId` de propósito: a chave do
+ * upsert é `day`, e o class-validator do backend roda em whitelist - campo
+ * a mais volta 400 (foi o que aconteceu com `role` no convite de staff).
+ */
+export interface UpdateOpeningHoursDay {
+  day: number;
+  openTime: string;
+  closeTime: string;
+  breakStart?: string;
+  breakEnd?: string;
+}
+
+export interface UpdateOpeningHoursRequest {
+  days: UpdateOpeningHoursDay[];
 }
 
 // Address types
@@ -1757,6 +1827,42 @@ export const apiService = {
      */
     invite: (data: InviteStaffRequest) =>
       apiRequest<StaffInvite>("POST", "/company/invite", data, true),
+
+    /**
+     * Equipe da empresa autenticada. A empresa vem do token, como no convite.
+     */
+    getStaff: () =>
+      apiRequest<CompanyStaffMember[]>("GET", "/company/staff", undefined, true),
+  },
+
+  openingHours: {
+    /** Grade pública de uma loja - é de onde sai o badge Aberto/Fechado. */
+    getByCompany: (companyId: string) =>
+      apiRequest<OpeningHoursResponse>(
+        "GET",
+        `/opening-hours/${companyId}`,
+      ),
+
+    /** Grade da empresa autenticada (admin/owner/manager). */
+    getMine: () =>
+      apiRequest<OpeningHoursResponse>(
+        "GET",
+        "/opening-hours/me",
+        undefined,
+        true,
+      ),
+
+    /**
+     * Upsert por dia: dia que não vai no corpo continua como estava no
+     * banco - o PUT nunca apaga.
+     */
+    updateMine: (data: UpdateOpeningHoursRequest) =>
+      apiRequest<OpeningHoursResponse>(
+        "PUT",
+        "/opening-hours/me",
+        data,
+        true,
+      ),
   },
 
   // Upload endpoint (S3)
@@ -2321,8 +2427,34 @@ export const apiService = {
     create: (deliveryData: CreateDeliveryRequest) =>
       apiRequest<Delivery>("POST", "/delivery", deliveryData, true),
 
-    updateStatus: (id: string, status: string) =>
-      apiRequest<Delivery>("PATCH", `/delivery/${id}/status`, { status }, true),
+    /**
+     * `coords` é a posição atual do ENTREGADOR, não do endereço de entrega.
+     *
+     * Obrigatória no aceite (status ACCEPTED): o backend recusa sem ela,
+     * porque é a origem do cálculo de frete. Os outros avanços de status
+     * (PICKED_UP, DELIVERED) não pedem e chamam sem o parâmetro.
+     *
+     * Os nomes são `lat`/`lng`, iguais aos do gateway de rastreamento - e
+     * NÃO `latitude`/`longitude` como no DTO de Address. Mandar
+     * `latitude` derruba a rota com 400 "property latitude should not
+     * exist": o ValidationPipe deste backend roda com
+     * `forbidNonWhitelisted`, então campo fora do DTO é erro, não é
+     * ignorado. Nada de acrescentar campo "por garantia" aqui.
+     */
+    updateStatus: (
+      id: string,
+      status: string,
+      coords?: { lat: number; lng: number },
+    ) =>
+      apiRequest<Delivery>(
+        "PATCH",
+        `/delivery/${id}/status`,
+        {
+          status,
+          ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
+        },
+        true,
+      ),
 
     cancel: (id: string, reason: string, observations?: string) =>
       apiRequest<Delivery>(
