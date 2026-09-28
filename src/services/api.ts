@@ -815,6 +815,25 @@ export interface InviteStaffRequest {
   staffRole: StaffRole;
 }
 
+/**
+ * Item de GET /company/staff. A rota responde um array cru, sem o envelope
+ * `{data, meta}` das listas paginadas - por isso nada de `toPaginated` aqui.
+ *
+ * Não traz `status` nem data de convite: a tela de equipe mostra só o que
+ * está aqui. Quem vale para exibir a função é `staffRole` (o que o convite
+ * define), não `user.role`.
+ */
+export interface CompanyStaffMember {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
+  companyId: string;
+  staffRole: StaffRole;
+}
+
 /** Convite recém-criado (POST /company/invite). */
 export interface StaffInvite {
   id?: string;
@@ -1757,6 +1776,12 @@ export const apiService = {
      */
     invite: (data: InviteStaffRequest) =>
       apiRequest<StaffInvite>("POST", "/company/invite", data, true),
+
+    /**
+     * Equipe da empresa autenticada. A empresa vem do token, como no convite.
+     */
+    getStaff: () =>
+      apiRequest<CompanyStaffMember[]>("GET", "/company/staff", undefined, true),
   },
 
   // Upload endpoint (S3)
