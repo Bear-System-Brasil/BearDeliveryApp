@@ -2321,8 +2321,34 @@ export const apiService = {
     create: (deliveryData: CreateDeliveryRequest) =>
       apiRequest<Delivery>("POST", "/delivery", deliveryData, true),
 
-    updateStatus: (id: string, status: string) =>
-      apiRequest<Delivery>("PATCH", `/delivery/${id}/status`, { status }, true),
+    /**
+     * `coords` é a posição atual do ENTREGADOR, não do endereço de entrega.
+     *
+     * Obrigatória no aceite (status ACCEPTED): o backend recusa sem ela,
+     * porque é a origem do cálculo de frete. Os outros avanços de status
+     * (PICKED_UP, DELIVERED) não pedem e chamam sem o parâmetro.
+     *
+     * Os nomes são `lat`/`lng`, iguais aos do gateway de rastreamento - e
+     * NÃO `latitude`/`longitude` como no DTO de Address. Mandar
+     * `latitude` derruba a rota com 400 "property latitude should not
+     * exist": o ValidationPipe deste backend roda com
+     * `forbidNonWhitelisted`, então campo fora do DTO é erro, não é
+     * ignorado. Nada de acrescentar campo "por garantia" aqui.
+     */
+    updateStatus: (
+      id: string,
+      status: string,
+      coords?: { lat: number; lng: number },
+    ) =>
+      apiRequest<Delivery>(
+        "PATCH",
+        `/delivery/${id}/status`,
+        {
+          status,
+          ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
+        },
+        true,
+      ),
 
     cancel: (id: string, reason: string, observations?: string) =>
       apiRequest<Delivery>(

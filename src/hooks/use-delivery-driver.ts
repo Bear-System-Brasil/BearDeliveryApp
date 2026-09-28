@@ -11,6 +11,7 @@ import {
   type DeliveryStatus,
 } from "@/lib/delivery";
 import { socketAuthProvider } from "@/lib/socket-auth";
+import { useCourierPositionStore } from "@/stores/courier-position-store";
 import {
   apiService,
   MAX_PAGE_LIMIT,
@@ -19,6 +20,7 @@ import {
   type PaginationParams,
 } from "@/services/api";
 import { useAuthStore } from "@/stores";
+import type { Coords } from "@/types/restaurant";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Socket, io } from "socket.io-client";
@@ -181,11 +183,20 @@ export const useDeliveryDriver = () => {
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (position) => {
-          socketRef.current?.emit("updateLocation", {
-            deliveryId,
+          const coords = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          });
+          };
+
+          socketRef.current?.emit("updateLocation", { deliveryId, ...coords });
+
+          // Reaproveita a medição pro aceite: o navegador já está medindo por
+          // causa do rastreamento, então aceitar outra corrida no meio da rua
+          // não precisa acordar o GPS de novo. Só observa - não muda nada do
+          // que o rastreamento faz.
+          useCourierPositionStore
+            .getState()
+            .setPosition(coords, "tracking");
         },
         () => {
           // Sem permissão de localização - não quebra o resto do fluxo,
@@ -205,9 +216,11 @@ export const useDeliveryDriver = () => {
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["my-deliveries"] });
 
+  // O aceite leva a posição do entregador: o backend recusa sem ela, porque
+  // e dali que o frete e calculado.
   const acceptMutation = useMutation({
-    mutationFn: (id: string) =>
-      apiService.deliveries.updateStatus(id, "ACCEPTED"),
+    mutationFn: ({ id, coords }: { id: string; coords: Coords }) =>
+      apiService.deliveries.updateStatus(id, "ACCEPTED", coords),
     onSuccess: (response) => {
       invalidate();
       if (response.success) {
@@ -260,7 +273,7 @@ export const useDeliveryDriver = () => {
   // Com vários cards na tela, travar todos os botões enquanto um request roda
   // esconderia qual entrega está sendo mexida - o estado é por entrega.
   const acceptingId = acceptMutation.isPending
-    ? (acceptMutation.variables ?? null)
+    ? (acceptMutation.variables?.id ?? null)
     : null;
   const advancingId = advanceMutation.isPending
     ? (advanceMutation.variables?.id ?? null)
