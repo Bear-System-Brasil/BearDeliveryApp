@@ -822,18 +822,13 @@ export const useCompanyProfileManagement = () => {
       return;
     }
 
-    try {
-      // TODO: Implementar endpoint no backend
-      toast.success("Senha alterada com sucesso!");
-      setIsChangingPassword(false);
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-    } catch (error) {
-      toast.error("Erro ao alterar senha");
-    }
+    // Ainda não existe rota de troca de senha para a empresa. Antes daqui
+    // saía "Senha alterada com sucesso!" sem chamar API nenhuma - o dono da
+    // loja achava que tinha trocado uma senha que continuava a mesma.
+    // Formulário fica preenchido para não parecer que algo foi salvo.
+    toast.error(
+      "A troca de senha ainda não está disponível. Sua senha não foi alterada.",
+    );
   };
 
   /**

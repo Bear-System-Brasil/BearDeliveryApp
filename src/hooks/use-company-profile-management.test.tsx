@@ -674,5 +674,26 @@ describe("useCompanyProfileManagement", () => {
       expect(toast.error).toHaveBeenCalledWith(message);
       expect(toast.success).not.toHaveBeenCalled();
     });
+
+    it("senha válida não finge sucesso: a troca ainda não existe no backend", async () => {
+      const { result } = await renderCompany();
+      act(() => {
+        result.current.setIsChangingPassword(true);
+        result.current.updatePasswordField("currentPassword", "Velha@1");
+        result.current.updatePasswordField("newPassword", "Nova@123");
+        result.current.updatePasswordField("confirmPassword", "Nova@123");
+      });
+
+      await act(async () => {
+        await result.current.handleChangePassword();
+      });
+
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith(
+        "A troca de senha ainda não está disponível. Sua senha não foi alterada.",
+      );
+      expect(result.current.isChangingPassword).toBe(true);
+      expect(result.current.passwordData.newPassword).toBe("Nova@123");
+    });
   });
 });
