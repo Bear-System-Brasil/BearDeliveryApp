@@ -28,8 +28,10 @@ import {
   getRestaurantLogo,
   getRestaurantName,
   isAvailable,
+  isSameMoney,
   STATUS_LABEL,
   STATUS_TONE,
+  type PaymentSummary,
 } from "@/lib/delivery";
 import type { Delivery } from "@/services/api";
 import { formatCurrency } from "@/utils";
@@ -100,8 +102,7 @@ function Thumb({
  * chegar, então "receber na entrega" tem peso visual de alerta e "pago
  * online" é discreto - ele só precisa saber que não cobra nada.
  */
-function PaymentRow({ delivery }: { delivery: Delivery }) {
-  const payment = getPaymentSummary(delivery);
+function PaymentRow({ payment }: { payment: PaymentSummary | null }) {
   if (!payment) return null;
 
   const methods = payment.methods.join(" + ");
@@ -117,14 +118,35 @@ function PaymentRow({ delivery }: { delivery: Delivery }) {
     );
   }
 
+  // Com troco, o que importa é o par "recebe X, devolve Y" - o valor da
+  // conta em si ele não precisa fazer de cabeça na porta.
+  if (payment.changeDue !== null && payment.paysWith !== null) {
+    return (
+      <div className="flex items-start gap-2.5 rounded-xl bg-emerald-50 px-3 py-2.5 dark:bg-emerald-950/40">
+        <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-[#1b7f4c] dark:text-emerald-400" />
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-[#1b7f4c] dark:text-emerald-400">
+            Receber em dinheiro
+          </p>
+          <p className="mt-0.5 text-[15px] font-bold text-emerald-900 dark:text-emerald-200">
+            Cliente paga com {formatCurrency(payment.paysWith)}
+          </p>
+          <p className="mt-0.5 text-[16px] font-extrabold text-emerald-900 dark:text-emerald-200">
+            Levar {formatCurrency(payment.changeDue)} de troco
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-start gap-2.5 rounded-xl bg-emerald-50 px-3 py-2.5 dark:bg-emerald-950/40">
       <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-[#1b7f4c] dark:text-emerald-400" />
       <div className="min-w-0">
         <p className="text-[11px] font-bold uppercase tracking-wide text-[#1b7f4c] dark:text-emerald-400">
-          Receber na entrega
+          A receber
         </p>
-        <p className="mt-0.5 text-[15px] font-extrabold text-emerald-900 dark:text-emerald-200">
+        <p className="mt-0.5 text-[16px] font-extrabold text-emerald-900 dark:text-emerald-200">
           {/* Sem valor utilizável, mostra só a forma - "R$ 0,00 a receber"
               seria uma afirmação errada sobre o dinheiro na porta. */}
           {payment.amountDue > 0 ? formatCurrency(payment.amountDue) : methods}
@@ -151,6 +173,15 @@ export function DeliveryCard({
   const orderTotal = getOrderTotal(delivery);
   const earnings = getCourierEarnings(delivery);
   const nextStatus = getNextStatus(delivery);
+
+  // Sem troco, o valor a receber JÁ É o total do pedido. Mostrar os dois é
+  // o mesmo número com dois rótulos, e quem lê isso está na rua com pressa.
+  const payment = getPaymentSummary(delivery);
+  const totalRepeatsAmountDue =
+    orderTotal !== null &&
+    payment !== null &&
+    !payment.isPaid &&
+    isSameMoney(orderTotal, payment.amountDue);
   const observations = delivery.observations?.trim();
 
   if (compact) {
@@ -252,10 +283,10 @@ export function DeliveryCard({
           </div>
         </div>
 
-        <PaymentRow delivery={delivery} />
+        <PaymentRow payment={payment} />
 
         <dl className="space-y-1.5">
-          {orderTotal !== null && (
+          {orderTotal !== null && !totalRepeatsAmountDue && (
             <div className="flex items-baseline justify-between gap-3">
               <dt className="text-[13px] font-semibold text-muted-foreground">
                 Total do pedido

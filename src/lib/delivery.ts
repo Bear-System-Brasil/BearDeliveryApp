@@ -224,7 +224,29 @@ export type PaymentSummary = {
   methods: string[];
   /** Quanto ainda falta receber. Zero quando `isPaid`. */
   amountDue: number;
+  /**
+   * Quanto o cliente entrega em dinheiro (`order.changeFor`). Null quando
+   * ele não pediu troco, ou quando o valor informado não dá troco.
+   */
+  paysWith: number | null;
+  /** Troco a levar = `paysWith` - `amountDue`. Null quando não há troco. */
+  changeDue: number | null;
 };
+
+/** Centavos inteiros: 50 - 35.90 em ponto flutuante dá 14.100000000000001. */
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/** Dois valores em dinheiro são o mesmo até o centavo? */
+export function isSameMoney(a: number, b: number): boolean {
+  return Math.round(a * 100) === Math.round(b * 100);
+}
+
+function readAmount(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 /**
  * O que o entregador precisa saber sobre dinheiro antes de bater na porta:
@@ -256,12 +278,41 @@ export function getPaymentSummary(delivery: Delivery): PaymentSummary | null {
     ),
   ];
 
-  const amountDue = pending.reduce((total, payment) => {
-    const amount = Number(payment.amount);
-    return total + (Number.isFinite(amount) ? amount : 0);
-  }, 0);
+  const amountDue = roundMoney(
+    pending.reduce((total, payment) => total + (readAmount(payment.amount) ?? 0), 0),
+  );
 
-  return { isPaid: pending.length === 0, methods, amountDue };
+  const isPaid = pending.length === 0;
+
+  // `changeFor` é o que o cliente entrega, não o troco, e é campo do PEDIDO
+  // (`order.changeFor`) - não do pagamento.
+  const declaredPaysWith = readAmount(delivery.order?.changeFor);
+  const paysWith =
+    declaredPaysWith !== null && declaredPaysWith > 0
+      ? roundMoney(declaredPaysWith)
+      : null;
+
+  // Três casos em que não há troco a levar:
+  //
+  // - o pedido já foi pago: o campo fica no pedido e sobrevive ao pagamento
+  //   ser concluído, mas quem não recebe nada também não devolve troco;
+  // - o cliente paga o valor exato;
+  // - `changeFor` menor que a conta, que é dado incoerente.
+  //
+  // Nos três a tela mostra "a receber" e pronto, em vez de anunciar troco
+  // zero, negativo ou sobre dinheiro que ninguém vai entregar.
+  const changeDue =
+    !isPaid && paysWith !== null && paysWith > amountDue
+      ? roundMoney(paysWith - amountDue)
+      : null;
+
+  return {
+    isPaid,
+    methods,
+    amountDue,
+    paysWith: changeDue === null ? null : paysWith,
+    changeDue,
+  };
 }
 
 /**
