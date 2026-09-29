@@ -25,12 +25,18 @@ function ProfileShell({
   const router = useRouter();
 
   return (
-    <AnimatedBackground showBlobs={false} className="min-h-screen bg-muted py-0">
+    <AnimatedBackground
+      showBlobs={false}
+      className="min-h-screen bg-muted py-0"
+    >
       <MainHeader
         cartItems={cartItems}
         onCartClick={() => router.push("/cart")}
         showSearch={false}
-        showNav={true}
+        showLocation
+        showCart
+        showOrders
+        showNotifications
       />
       {children}
     </AnimatedBackground>
@@ -123,7 +129,9 @@ export function ProfileWrapper() {
       <ProfileShell cartItems={totalItems}>
         <div className="flex min-h-[70vh] items-center justify-center pt-24">
           <div className="text-center max-w-md p-6">
-            <div className="text-red-500 dark:text-red-400 text-6xl mb-4">⚠️</div>
+            <div className="text-red-500 dark:text-red-400 text-6xl mb-4">
+              ⚠️
+            </div>
             <h2 className="text-2xl font-bold text-foreground mb-2">
               Erro ao Carregar Perfil
             </h2>
@@ -153,7 +161,9 @@ export function ProfileWrapper() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Meu Perfil</h1>
-            <p className="text-muted-foreground">Gerencie suas informações pessoais</p>
+            <p className="text-muted-foreground">
+              Gerencie suas informações pessoais
+            </p>
           </div>
         </div>
 

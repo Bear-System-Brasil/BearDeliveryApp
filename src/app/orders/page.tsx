@@ -237,7 +237,9 @@ function OrderHistoryContent() {
       toast.success("Itens adicionados ao carrinho");
       router.push("/cart");
     } catch (repeatError) {
-      toast.error(getErrorMessage(repeatError, "Não foi possível repetir o pedido"));
+      toast.error(
+        getErrorMessage(repeatError, "Não foi possível repetir o pedido"),
+      );
     } finally {
       setRepeatingOrderId(null);
     }
@@ -360,7 +362,10 @@ function OrdersShell({
         cartItems={cartItems}
         onCartClick={() => router.push("/cart")}
         showSearch={false}
-        showNav={true}
+        showLocation
+        showCart
+        showOrders
+        showNotifications
       />
       {children}
     </AnimatedBackground>

@@ -66,7 +66,8 @@ export default function CartPage() {
     handleGoToCheckout,
   } = useCartActions();
 
-  const { appliedPromo, setAppliedPromo } = useCartStore();
+  const { appliedPromo, setAppliedPromo, getTotalItems } = useCartStore();
+  const handleCartClick = () => router.push("/cart");
   const [promoCode, setPromoCode] = useState("");
   const [isMounted, setIsMounted] = useState(false);
 
@@ -139,7 +140,15 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <AnimatedBackground showBlobs={false} className="bg-muted py-0">
-        <MainHeader cartItems={0} showSearch={false} showNav={true} />
+        <MainHeader
+          cartItems={totalItems}
+          onCartClick={handleCartClick}
+          showSearch={false}
+          showLocation
+          showCart
+          showOrders
+          showNotifications
+        />
         <main className="px-3 pb-16 pt-24 sm:px-5">
           <div className="mx-auto flex min-h-[70vh] max-w-[1160px] items-center justify-center">
             <Card className="w-full max-w-md border-border bg-card p-8 text-center shadow-sm">
@@ -170,9 +179,12 @@ export default function CartPage() {
     <AnimatedBackground showBlobs={false} className="bg-muted py-0">
       <MainHeader
         cartItems={totalItems}
-        onCartClick={() => router.push("/cart")}
+        onCartClick={handleCartClick}
         showSearch={false}
-        showNav={true}
+        showLocation
+        showCart
+        showOrders
+        showNotifications
       />
 
       <main className="px-3 pb-16 pt-20 sm:px-5 sm:pt-24">
@@ -380,7 +392,9 @@ export default function CartPage() {
                   </div>
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span>Taxa de entrega</span>
-                    <span className="text-emerald-700 dark:text-emerald-400">{deliveryLabel}</span>
+                    <span className="text-emerald-700 dark:text-emerald-400">
+                      {deliveryLabel}
+                    </span>
                   </div>
                   {promoDiscount > 0 && (
                     <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400">
