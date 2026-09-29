@@ -31,6 +31,49 @@ describe("hasRoutePermission", () => {
   });
 });
 
+/**
+ * O menu passou a listar todas as areas de trabalho para quem administra o
+ * restaurante - o primeiro cliente e uma pessoa so, que e dono, cozinheiro e
+ * entregador. Item de menu que aponta pra rota que a role nao alcanca leva
+ * direto pro "Acesso Negado", entao cada area listada precisa estar liberada
+ * aqui. Estes testes travam esse par.
+ */
+describe("areas de trabalho das roles de gestao", () => {
+  const AREAS = [
+    "/menu-management",
+    "/kitchen",
+    "/order-management",
+    "/delivery-dashboard",
+    "/financial-management/dashboard",
+  ];
+
+  it.each(["owner", "admin", "manager"])("%s alcanca todas as areas", (role) => {
+    for (const area of AREAS) {
+      expect(hasRoutePermission(area, role)).toBe(true);
+    }
+  });
+
+  it("a area de entregas continua aberta pro entregador", () => {
+    expect(hasRoutePermission("/delivery-dashboard", "delivery")).toBe(true);
+  });
+
+  it("nao abre as demais areas pra quem faz uma coisa so", () => {
+    // Estas roles continuam com um destino unico no menu, e o mapa tem de
+    // dizer o mesmo - senao a lista de areas e a permissao divergem.
+    expect(hasRoutePermission("/menu-management", "cook")).toBe(false);
+    expect(hasRoutePermission("/delivery-dashboard", "cook")).toBe(false);
+    expect(hasRoutePermission("/kitchen", "delivery")).toBe(false);
+    expect(hasRoutePermission("/menu-management", "financial")).toBe(false);
+    expect(hasRoutePermission("/delivery-dashboard", "financial")).toBe(false);
+  });
+
+  it("cliente nao entra em area de trabalho nenhuma", () => {
+    for (const area of AREAS) {
+      expect(hasRoutePermission(area, "client")).toBe(false);
+    }
+  });
+});
+
 describe("getAccessibleRoutes", () => {
   it("retorna só as rotas cujo role tem acesso", () => {
     const routes = getAccessibleRoutes("financial");

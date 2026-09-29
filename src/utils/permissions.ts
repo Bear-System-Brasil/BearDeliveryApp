@@ -21,18 +21,29 @@ export const ROUTE_PERMISSIONS: { [key: string]: string[] } = {
   "/order-management": ["owner", "admin", "manager", "cook"],
   "/kitchen": ["owner", "admin", "manager", "cook"],
 
+  // Delivery - a area de entregas tambem e alcancavel por quem administra o
+  // restaurante, que no cliente pequeno e a mesma pessoa que entrega. A rota
+  // nao estava mapeada aqui, e rota nao mapeada e bloqueada por padrao em
+  // hasRoutePermission.
+  "/delivery-dashboard": ["delivery", "owner", "admin", "manager"],
+
   // Financial management - o role financial enxerga TODAS as telas de
   // /financial-management/*. Tela nova ali dentro entra nesta lista junto
   // com a rota: rota não mapeada é bloqueada por padrão em
   // hasRoutePermission, então esquecer a linha derruba o acesso do
   // financeiro (foi o que aconteceu com /cash-register).
-  "/financial-management": ["owner", "admin", "financial"],
-  "/financial-management/dashboard": ["owner", "admin", "financial"],
-  "/financial-management/orders": ["owner", "admin", "financial"],
-  "/financial-management/customers": ["owner", "admin", "financial"],
-  "/financial-management/finance": ["owner", "admin", "financial"],
-  "/financial-management/cash-register": ["owner", "admin", "financial"],
-  "/financial-management/settings": ["owner", "admin", "financial"],
+  "/financial-management": ["owner", "admin", "manager", "financial"],
+  "/financial-management/dashboard": ["owner", "admin", "manager", "financial"],
+  "/financial-management/orders": ["owner", "admin", "manager", "financial"],
+  "/financial-management/customers": ["owner", "admin", "manager", "financial"],
+  "/financial-management/finance": ["owner", "admin", "manager", "financial"],
+  "/financial-management/cash-register": [
+    "owner",
+    "admin",
+    "manager",
+    "financial",
+  ],
+  "/financial-management/settings": ["owner", "admin", "manager", "financial"],
 
   // Relatórios (GET /reports) - mesma tríade da gestão financeira
   "/reports": ["owner", "admin", "financial"],

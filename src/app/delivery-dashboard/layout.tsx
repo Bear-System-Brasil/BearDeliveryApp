@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { DeliveryTabBar } from "@/components/delivery-dashboard/delivery-tab-bar";
 import ProtectedRoute from "@/components/protected-route";
+import { ROUTE_PERMISSIONS } from "@/utils/permissions";
 
 /**
  * Casca da área de entregas: proteção de role, espaço reservado pra barra
@@ -16,9 +17,18 @@ import ProtectedRoute from "@/components/protected-route";
  * da própria barra é esta camada.
  */
 
-// Fora do componente porque `ProtectedRoute` tem `allowedRoles` no array de
-// dependências de um efeito - um literal novo a cada render o re-dispara.
-const DELIVERY_ROLES = ["delivery"];
+/**
+ * Fora do componente porque `ProtectedRoute` tem `allowedRoles` no array de
+ * dependências de um efeito - um literal novo a cada render o re-dispara.
+ *
+ * A lista sai do mapa de permissões em vez de ser repetida aqui, pelo mesmo
+ * motivo do layout de /financial-management: enquanto era literal
+ * `["delivery"]`, este guard e o middleware podiam discordar em silêncio - e
+ * quem administra o restaurante agora também entra aqui.
+ */
+const DELIVERY_ROLES = ROUTE_PERMISSIONS["/delivery-dashboard"] ?? [
+  "delivery",
+];
 
 export default function DeliveryAreaLayout({
   children,
