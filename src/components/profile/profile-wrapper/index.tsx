@@ -71,6 +71,8 @@ export function ProfileWrapper() {
     handleCloseAddressModal,
     handleDeleteAddress,
     handleEditAddress,
+    handleSetDefaultAddress,
+    settingDefaultAddressId,
     editingAddressId,
     addressCoords,
     applyCoords,
@@ -203,6 +205,8 @@ export function ProfileWrapper() {
           handleDeleteAddress={handleDeleteAddress}
           handleAddAddress={handleAddAddress}
           handleEditAddress={handleEditAddress}
+          handleSetDefaultAddress={handleSetDefaultAddress}
+          settingDefaultAddressId={settingDefaultAddressId}
           applyCoords={applyCoords}
           editingAddressId={editingAddressId}
           addingAddressState={addingAddressState}
