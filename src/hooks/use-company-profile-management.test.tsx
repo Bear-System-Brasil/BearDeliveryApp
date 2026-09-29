@@ -451,6 +451,41 @@ describe("useCompanyProfileManagement", () => {
       );
     });
 
+    it("como padrão, desmarca o antigo só depois de criar, e nunca o recém-criado", async () => {
+      serverAddresses = [storeAddress("antigo", { isDefault: true })];
+      api.address.updateCompanyAddress.mockResolvedValue({ success: true });
+      api.address.createCompanyAddress.mockImplementation(async () => {
+        // A listagem depois de criar já traz o novo como padrão.
+        serverAddresses = [...serverAddresses, storeAddress("novo", { isDefault: true })];
+        return { success: true, data: storeAddress("novo", { isDefault: true }) };
+      });
+      const { result } = await renderCompany();
+      fillAddress(result, { ...addressForm, isDefault: true });
+
+      await act(async () => {
+        await result.current.handleSaveAddress();
+      });
+
+      expect(api.address.createCompanyAddress.mock.invocationCallOrder[0]).toBeLessThan(
+        api.address.updateCompanyAddress.mock.invocationCallOrder[0],
+      );
+      expect(api.address.updateCompanyAddress.mock.calls.map(([id]) => id)).toEqual(["antigo"]);
+    });
+
+    it("criação recusada não mexe no padrão atual", async () => {
+      serverAddresses = [storeAddress("antigo", { isDefault: true })];
+      api.address.createCompanyAddress.mockResolvedValue({ success: false, message: "CEP inválido" });
+      const { result } = await renderCompany();
+      fillAddress(result, { ...addressForm, isDefault: true });
+
+      await act(async () => {
+        await result.current.handleSaveAddress();
+      });
+
+      expect(api.address.updateCompanyAddress).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith("CEP inválido");
+    });
+
     it("recusa do backend mantém o formulário aberto", async () => {
       api.address.createCompanyAddress.mockResolvedValue({ success: false, message: "CEP inválido" });
       const { result } = await renderCompany();
@@ -534,8 +569,23 @@ describe("useCompanyProfileManagement", () => {
         await hook.result.current.handleSaveAddress();
       });
 
+      // Salva primeiro; só então desmarca o outro padrão.
       const ids = api.address.updateCompanyAddress.mock.calls.map(([id]) => id);
-      expect(ids).toEqual(["a2", "a1"]);
+      expect(ids).toEqual(["a1", "a2"]);
+    });
+
+    it("edição recusada não desmarca o outro padrão", async () => {
+      serverAddresses = [storeAddress("a1"), storeAddress("a2", { isDefault: true })];
+      api.address.updateCompanyAddress.mockResolvedValue({ success: false, message: "complement too short" });
+      const hook = await renderCompany();
+      act(() => hook.result.current.handleEditAddress(hook.result.current.addresses[0]));
+      fillAddress(hook.result, { isDefault: true });
+
+      await act(async () => {
+        await hook.result.current.handleSaveAddress();
+      });
+
+      expect(api.address.updateCompanyAddress.mock.calls.map(([id]) => id)).toEqual(["a1"]);
     });
 
     it("cancelar limpa a edição", async () => {
