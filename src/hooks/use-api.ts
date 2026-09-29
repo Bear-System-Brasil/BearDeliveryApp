@@ -58,8 +58,16 @@ export function useProfile() {
     // A tela de "editar perfil" só coleta dados pessoais (nunca role/status),
     // por isso o payload real é mais estreito que `UpdateUserRequest` - o
     // backend aceita o PUT parcial mesmo assim.
-    (data: Partial<UpdateUserRequest> & { id: string }) =>
-      apiService.updateUser(data as UpdateUserRequest),
+    // `apiRequest` devolve `{ success: false }` em vez de lançar: sem virar
+    // exceção aqui, uma recusa do backend passava como salva e a tela
+    // gravava no store os dados que o servidor tinha rejeitado.
+    async (data: Partial<UpdateUserRequest> & { id: string }) => {
+      const response = await apiService.updateUser(data as UpdateUserRequest);
+      if (!response.success) {
+        throw new Error(response.message || "Erro ao atualizar perfil");
+      }
+      return response;
+    },
     {
       invalidateQueries: [["profile"]],
     },
