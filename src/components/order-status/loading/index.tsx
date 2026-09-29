@@ -15,7 +15,10 @@ export function LoadingPage() {
         cartItems={totalItems}
         onCartClick={() => router.push("/cart")}
         showSearch={false}
-        showNav={true}
+        showLocation
+        showCart
+        showOrders
+        showNotifications
       />
       <div className="min-h-screen pt-32 sm:pt-32 px-4">
         <div className="max-w-4xl mx-auto space-y-6">

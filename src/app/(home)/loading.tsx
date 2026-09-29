@@ -5,7 +5,13 @@ import { RestaurantGridSkeleton } from "@/components/restaurant-card-skeleton";
 export default function HomePageLoading() {
   return (
     <>
-      <MainHeader showSearch showNav={false} />
+      <MainHeader
+        showSearch
+        showLocation
+        showCart
+        showOrders
+        showNotifications
+      />
 
       <main className="flex-1 pt-24">
         {/* Banner */}

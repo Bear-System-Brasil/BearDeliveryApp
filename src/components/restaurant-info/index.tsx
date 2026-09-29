@@ -23,11 +23,7 @@ import { Card } from "@/components/ui/card";
 import { AnimatedBackground } from "@/components/ui/animated-background";
 import { DeliveryBikeIcon } from "@/components/ui/delivery-bike-icon";
 import { GradientButton } from "@/components/ui/gradient-button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { withDeliveryDefaults } from "@/constants/delivery-defaults";
 import {
@@ -108,7 +104,7 @@ export default function RestaurantPage() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Product | null>(null);
-  
+
   const navRef = useRef<HTMLElement>(null);
 
   const loading = loadingRestaurant || loadingProducts;
@@ -151,7 +147,10 @@ export default function RestaurantPage() {
       // Pega a primeira categoria do produto, ou "Outros" se não tiver
       let catName = "Outros";
       if (item.productCategories && item.productCategories.length > 0) {
-        const foundName = getProductCategoryName(item.productCategories[0], categoryMap);
+        const foundName = getProductCategoryName(
+          item.productCategories[0],
+          categoryMap,
+        );
         if (foundName) catName = foundName;
       }
 
@@ -177,7 +176,7 @@ export default function RestaurantPage() {
   // 3. Efeito para mudar a aba ativa no menu enquanto o usuário rola a página
   useEffect(() => {
     // Interrompe imediatamente se não houver categorias
-    if (categories.length === 0) return; 
+    if (categories.length === 0) return;
 
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
@@ -187,16 +186,17 @@ export default function RestaurantPage() {
 
       categories.forEach((category) => {
         // Busca usando o slug seguro
-        const element = document.getElementById(`category-${slugify(category)}`);
+        const element = document.getElementById(
+          `category-${slugify(category)}`,
+        );
         if (element) {
           const elementTop = element.offsetTop;
           if (scrollPosition >= elementTop - headerOffset) {
             currentActive = category;
           }
         }
-      },
-      );
-      setSelectedCategory(currentActive)
+      });
+      setSelectedCategory(currentActive);
     };
 
     // Adicionado { passive: true } para performance no mobile
@@ -208,12 +208,17 @@ export default function RestaurantPage() {
   useEffect(() => {
     if (navRef.current && selectedCategory) {
       // Busca usando o slug seguro
-      const activeButton = document.getElementById(`nav-btn-${slugify(selectedCategory)}`);
+      const activeButton = document.getElementById(
+        `nav-btn-${slugify(selectedCategory)}`,
+      );
       if (activeButton) {
         const nav = navRef.current;
         // Calcula a posição para centralizar o botão no scroll horizontal
-        const scrollLeft = activeButton.offsetLeft - nav.offsetWidth / 2 + activeButton.offsetWidth / 2;
-        nav.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+        const scrollLeft =
+          activeButton.offsetLeft -
+          nav.offsetWidth / 2 +
+          activeButton.offsetWidth / 2;
+        nav.scrollTo({ left: scrollLeft, behavior: "smooth" });
       }
     }
   }, [selectedCategory]);
@@ -221,7 +226,9 @@ export default function RestaurantPage() {
   // Função de Clique para rolar até a categoria
   const scrollToCategory = (categoryName: string) => {
     // Busca usando o slug seguro
-    const element = document.getElementById(`category-${slugify(categoryName)}`);
+    const element = document.getElementById(
+      `category-${slugify(categoryName)}`,
+    );
     if (element) {
       // Usa 120 para compensar o header fixo e a barra de categorias
       const y = element.getBoundingClientRect().top + window.scrollY - 120;
@@ -270,8 +277,11 @@ export default function RestaurantPage() {
       <MainHeader
         cartItems={totalItems}
         onCartClick={() => router.push("/cart")}
-        showSearch={true}
-        showNav={true}
+        showSearch
+        showLocation
+        showCart
+        showOrders
+        showNotifications
       />
 
       <main className="px-3 pb-28 pt-20 sm:px-5 sm:pt-24">
@@ -454,7 +464,10 @@ export default function RestaurantPage() {
               </nav>
 
               {/* === LISTA DE PRODUTOS AGRUPADOS POR CATEGORIA === */}
-              <section aria-label="Itens do cardápio" className="mt-2 space-y-6">
+              <section
+                aria-label="Itens do cardápio"
+                className="mt-2 space-y-6"
+              >
                 {menuItems.length === 0 ? (
                   <Card className="border-border bg-card p-10 text-center shadow-sm">
                     <p className="text-sm font-medium text-muted-foreground">
@@ -463,15 +476,15 @@ export default function RestaurantPage() {
                   </Card>
                 ) : (
                   Object.entries(groupedItems).map(([category, items]) => (
-                    <div 
-                      key={category} 
+                    <div
+                      key={category}
                       id={`category-${slugify(category)}`} // Uso do slug
                       className="scroll-mt-[130px]"
                     >
                       <h2 className="mb-2 text-sm font-bold text-foreground sm:mb-3 sm:text-base">
                         {category}
                       </h2>
-                      
+
                       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         {items.map((item) => {
                           const isAvailable = item.isAvailable !== false;
@@ -490,22 +503,26 @@ export default function RestaurantPage() {
                           return (
                             <Card
                               key={item.id}
-                              onClick={() => isAvailable && handleOpenModal(item)}
+                              onClick={() =>
+                                isAvailable && handleOpenModal(item)
+                              }
                               className={`group flex min-w-0 min-h-[116px] gap-3 overflow-visible rounded-[13px] border border-border bg-card p-3 shadow-sm transition hover:border-border hover:shadow-md ${
-                                isAvailable ? "cursor-pointer" : "cursor-default"
+                                isAvailable
+                                  ? "cursor-pointer"
+                                  : "cursor-default"
                               }`}
                             >
                               <div className="flex min-w-0 flex-1 flex-col">
                                 <h3 className="line-clamp-2 wrap-break-word text-sm font-bold tracking-[-0.01em] text-foreground">
                                   {item.name}
                                 </h3>
-                                
+
                                 {item.description && (
                                   <p className="mt-1 line-clamp-2 wrap-break-word text-xs font-medium leading-relaxed text-muted-foreground">
                                     {item.description}
                                   </p>
                                 )}
-                                
+
                                 <div className="mt-auto flex items-center gap-2 pt-3">
                                   {hasSellableVariation && (
                                     <span className="text-xs font-medium text-muted-foreground">
@@ -706,7 +723,9 @@ function RestaurantInfoSheet({
                   <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
                     Endereço
                   </p>
-                  <p className="mt-0.5 text-sm text-foreground">{addressLine}</p>
+                  <p className="mt-0.5 text-sm text-foreground">
+                    {addressLine}
+                  </p>
                 </div>
               </div>
             )}
@@ -747,7 +766,9 @@ function RestaurantInfoSheet({
                   <li
                     key={day.day}
                     className={`flex items-center justify-between gap-3 px-4 py-2 text-sm ${
-                      isToday ? "bg-orange-50/60 font-bold dark:bg-orange-950/30" : ""
+                      isToday
+                        ? "bg-orange-50/60 font-bold dark:bg-orange-950/30"
+                        : ""
                     }`}
                   >
                     <span className="flex items-center gap-2 text-foreground">
@@ -760,9 +781,7 @@ function RestaurantInfoSheet({
                     </span>
                     <span
                       className={
-                        day.isOpen
-                          ? "text-foreground"
-                          : "text-muted-foreground"
+                        day.isOpen ? "text-foreground" : "text-muted-foreground"
                       }
                     >
                       {day.isOpen

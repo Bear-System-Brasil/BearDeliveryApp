@@ -20,7 +20,10 @@ export function ErrorPage({ data }: Props) {
         cartItems={data.totalItems}
         onCartClick={() => router.push("/cart")}
         showSearch={false}
-        showNav={true}
+        showLocation
+        showCart
+        showOrders
+        showNotifications
       />
       <div className="min-h-screen flex items-center justify-center pt-32">
         <div className="text-center max-w-md px-4">
