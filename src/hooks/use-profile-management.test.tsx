@@ -198,6 +198,22 @@ describe("useProfileManagement", () => {
       expect(toast.success).toHaveBeenCalledWith("Perfil atualizado com sucesso!");
     });
 
+    it("recusa do backend não salva no store e mostra a razão", async () => {
+      api.updateUser.mockResolvedValue({ success: false, message: "E-mail já cadastrado" });
+      const { result } = await renderProfile();
+      act(() => result.current.editingState.open());
+
+      await act(async () => {
+        await result.current.handleSaveProfile({ ...user, email: "outro@example.com" });
+      });
+
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith("E-mail já cadastrado");
+      expect(useAuthStore.getState().user?.email).toBe("ana@example.com");
+      expect(result.current.editingState.isOpen).toBe(true);
+      await waitFor(() => expect(result.current.updateProfile.isError).toBe(true));
+    });
+
     it("exceção ao salvar avisa erro e mantém a edição aberta", async () => {
       api.updateUser.mockRejectedValue(new Error("offline"));
       const { result } = await renderProfile();
@@ -207,7 +223,7 @@ describe("useProfileManagement", () => {
         await result.current.handleSaveProfile({ ...user });
       });
 
-      expect(toast.error).toHaveBeenCalledWith("Erro ao atualizar perfil");
+      expect(toast.error).toHaveBeenCalledWith("offline");
       expect(result.current.editingState.isOpen).toBe(true);
     });
 
