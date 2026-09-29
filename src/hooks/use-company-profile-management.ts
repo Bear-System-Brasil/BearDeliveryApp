@@ -422,6 +422,52 @@ export const useCompanyProfileManagement = () => {
   };
 
   /**
+   * Desmarca os outros endereços padrão da empresa - o backend não faz isso
+   * sozinho (ver adress.md). Só roda depois que o endereço escolhido já foi
+   * salvo como padrão: antes, rodava primeiro, e um salvamento recusado
+   * deixava a loja sem endereço padrão nenhum. Devolve se algum falhou.
+   */
+  const unsetOtherDefaults = async (keepId: string) => {
+    let failed = false;
+    const currentAddresses = await apiService.address.getCompanyAddresses();
+    if (!currentAddresses.success || !currentAddresses.data) return failed;
+
+    const backendAddresses = Array.isArray(currentAddresses.data)
+      ? currentAddresses.data
+      : [];
+    const backendDefaults = backendAddresses.filter(
+      (addr) => addr.isDefault && addr.id !== keepId,
+    );
+
+    for (const addr of backendDefaults) {
+      try {
+        const unsetResponse = await apiService.address.updateCompanyAddress(
+          addr.id,
+          {
+            zipCode: addr.zipCode,
+            state: addr.state,
+            city: addr.city,
+            neighborhood: addr.neighborhood,
+            street: addr.street,
+            number: addr.number,
+            complement: sanitizeOptionalText(addr.complement ?? ""),
+            reference: sanitizeOptionalText(addr.reference ?? ""),
+            latitude: addr.latitude ?? undefined,
+            longitude: addr.longitude ?? undefined,
+            isDefault: false,
+          },
+        );
+        if (!unsetResponse.success) failed = true;
+      } catch (error) {
+        console.error("Erro ao desmarcar endereço padrão:", error);
+        failed = true;
+      }
+    }
+
+    return failed;
+  };
+
+  /**
    * Adiciona novo endereço
    */
   const handleAddAddress = async () => {
@@ -450,48 +496,13 @@ export const useCompanyProfileManagement = () => {
         reference: sanitizeOptionalText(addressData.reference),
       };
 
-      // Se o novo endereço for padrão, desmarcar todos os outros no backend
-      let failedToUnsetDefault = false;
-      if (addressData.isDefault) {
-        const currentAddresses = await apiService.address.getCompanyAddresses();
-        if (currentAddresses.success && currentAddresses.data) {
-          const backendAddresses = Array.isArray(currentAddresses.data)
-            ? currentAddresses.data
-            : [];
-          const backendDefaults = backendAddresses.filter(
-            (addr) => addr.isDefault,
-          );
-
-          for (const addr of backendDefaults) {
-            try {
-              const unsetResponse = await apiService.address.updateCompanyAddress(
-                addr.id,
-                {
-                  zipCode: addr.zipCode,
-                  state: addr.state,
-                  city: addr.city,
-                  neighborhood: addr.neighborhood,
-                  street: addr.street,
-                  number: addr.number,
-                  complement: sanitizeOptionalText(addr.complement ?? ""),
-                  reference: sanitizeOptionalText(addr.reference ?? ""),
-                  latitude: addr.latitude ?? undefined,
-                  longitude: addr.longitude ?? undefined,
-                  isDefault: false,
-                },
-              );
-              if (!unsetResponse.success) failedToUnsetDefault = true;
-            } catch (error) {
-              console.error("Erro ao desmarcar endereço padrão:", error);
-              failedToUnsetDefault = true;
-            }
-          }
-        }
-      }
-
       const response = await apiService.address.createCompanyAddress(payload);
 
       if (response.success && response.data) {
+        const failedToUnsetDefault = addressData.isDefault
+          ? await unsetOtherDefaults(response.data.id)
+          : false;
+
         toast.success("Endereço adicionado com sucesso!");
         if (failedToUnsetDefault) {
           toast.warning(
@@ -674,51 +685,16 @@ export const useCompanyProfileManagement = () => {
             : sanitizeOptionalText(addressData.reference),
       };
 
-      // Se o endereço editado virar padrão, desmarcar todos os outros
-      let failedToUnsetDefault = false;
-      if (addressData.isDefault) {
-        const currentAddresses = await apiService.address.getCompanyAddresses();
-        if (currentAddresses.success && currentAddresses.data) {
-          const backendAddresses = Array.isArray(currentAddresses.data)
-            ? currentAddresses.data
-            : [];
-          const backendDefaults = backendAddresses.filter(
-            (addr) => addr.isDefault && addr.id !== editingAddressId,
-          );
-
-          for (const addr of backendDefaults) {
-            try {
-              const unsetResponse = await apiService.address.updateCompanyAddress(
-                addr.id,
-                {
-                  zipCode: addr.zipCode,
-                  state: addr.state,
-                  city: addr.city,
-                  neighborhood: addr.neighborhood,
-                  street: addr.street,
-                  number: addr.number,
-                  complement: sanitizeOptionalText(addr.complement ?? ""),
-                  reference: sanitizeOptionalText(addr.reference ?? ""),
-                  latitude: addr.latitude ?? undefined,
-                  longitude: addr.longitude ?? undefined,
-                  isDefault: false,
-                },
-              );
-              if (!unsetResponse.success) failedToUnsetDefault = true;
-            } catch (error) {
-              console.error("Erro ao desmarcar endereço padrão:", error);
-              failedToUnsetDefault = true;
-            }
-          }
-        }
-      }
-
       const response = await apiService.address.updateCompanyAddress(
         editingAddressId,
         payload,
       );
 
       if (response.success) {
+        const failedToUnsetDefault = addressData.isDefault
+          ? await unsetOtherDefaults(editingAddressId)
+          : false;
+
         toast.success("Endereço atualizado com sucesso!");
         if (failedToUnsetDefault) {
           toast.warning(
