@@ -48,6 +48,27 @@ const ROLE_BADGE_CLASSES: Record<StaffRole, string> = {
   financial: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
 };
 
+/**
+ * Remover membro está escondido até existir DELETE no backend (LDMF-231).
+ *
+ * Não há rota de remoção: o fluxo só apagava a linha da tela naquela sessão
+ * enquanto a pessoa seguia com a role e com acesso ao painel - e o diálogo
+ * ainda prometia que ela "vai perder o acesso". O código fica inteiro,
+ * só não renderiza; quando o DELETE existir, é virar esta chave e ligar
+ * `handleConfirmRemove` na rota.
+ */
+const CAN_REMOVE_MEMBER: boolean = false;
+
+// As duas variantes precisam aparecer literais no código: o Tailwind gera a
+// classe lendo o fonte, então template interpolado não viraria CSS.
+const HEADER_GRID = CAN_REMOVE_MEMBER
+  ? "grid-cols-[minmax(0,1fr)_130px_56px]"
+  : "grid-cols-[minmax(0,1fr)_130px]";
+
+const ROW_GRID = CAN_REMOVE_MEMBER
+  ? "md:grid-cols-[minmax(0,1fr)_130px_56px]"
+  : "md:grid-cols-[minmax(0,1fr)_130px]";
+
 function TeamManagementContent() {
   const {
     staff: filteredStaff,
@@ -87,12 +108,6 @@ function TeamManagementContent() {
       }
     >
       <div className="mx-auto max-w-7xl">
-        <div className="mb-3 rounded-[10px] border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-950/40 px-3.5 py-2.5 text-[11.5px] font-semibold text-amber-700 dark:text-amber-400">
-          A lista e os convites são reais. A remoção, não: enquanto o backend
-          não expõe a rota, ela some da tela só nesta sessão e o membro volta
-          no próximo carregamento.
-        </div>
-
         <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex h-9 w-full max-w-[340px] items-center gap-2 rounded-[8px] border border-border bg-card px-3">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -116,16 +131,20 @@ function TeamManagementContent() {
         </div>
 
         <section className="overflow-hidden rounded-[8px] border border-border bg-card">
-          <div className="hidden shrink-0 grid-cols-[minmax(0,1fr)_130px_56px] items-center gap-2 border-b border-border bg-muted px-3.5 py-2.5 md:grid">
+          <div
+            className={`hidden shrink-0 ${HEADER_GRID} items-center gap-2 border-b border-border bg-muted px-3.5 py-2.5 md:grid`}
+          >
             <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
               Membro
             </span>
             <span className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
               Função
             </span>
-            <span className="text-right text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
-              Ações
-            </span>
+            {CAN_REMOVE_MEMBER && (
+              <span className="text-right text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground">
+                Ações
+              </span>
+            )}
           </div>
 
           {isLoadingStaff ? (
@@ -133,7 +152,7 @@ function TeamManagementContent() {
               {[0, 1, 2].map((row) => (
                 <div
                   key={row}
-                  className="grid gap-3 p-3.5 md:grid-cols-[minmax(0,1fr)_130px_56px] md:items-center md:gap-2"
+                  className={`grid gap-3 p-3.5 ${ROW_GRID} md:items-center md:gap-2`}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
@@ -143,7 +162,9 @@ function TeamManagementContent() {
                     </div>
                   </div>
                   <Skeleton className="h-4 w-20" />
-                  <Skeleton className="ml-auto h-7 w-7 rounded-[7px]" />
+                  {CAN_REMOVE_MEMBER && (
+                    <Skeleton className="ml-auto h-7 w-7 rounded-[7px]" />
+                  )}
                 </div>
               ))}
             </div>
@@ -171,7 +192,7 @@ function TeamManagementContent() {
               {filteredStaff.map((member: StaffMember) => (
                 <div
                   key={member.id}
-                  className="grid gap-3 p-3.5 md:grid-cols-[minmax(0,1fr)_130px_56px] md:items-center md:gap-2"
+                  className={`grid gap-3 p-3.5 ${ROW_GRID} md:items-center md:gap-2`}
                 >
                   <div className="flex min-w-0 items-center gap-2.5">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-extrabold text-foreground">
@@ -196,18 +217,20 @@ function TeamManagementContent() {
                     </span>
                   </div>
 
-                  <div className="flex justify-end">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRequestRemove(member)}
-                      className="h-7 w-7 cursor-pointer rounded-[7px] bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
-                      aria-label={`Remover ${member.name}`}
-                      title="Remover"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+                  {CAN_REMOVE_MEMBER && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRequestRemove(member)}
+                        className="h-7 w-7 cursor-pointer rounded-[7px] bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
+                        aria-label={`Remover ${member.name}`}
+                        title="Remover"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -294,46 +317,48 @@ function TeamManagementContent() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={!!removeTarget}
-        onOpenChange={(open) => !open && handleCancelRemove()}
-      >
-        <AlertDialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-[8px] bg-card text-center shadow-2xl sm:w-fit">
-          <div className="mx-auto mt-2 flex h-12 w-12 items-center justify-center rounded-[8px] bg-yellow-100 dark:bg-yellow-900">
-            <TriangleAlert className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-          </div>
+      {CAN_REMOVE_MEMBER && (
+        <AlertDialog
+          open={!!removeTarget}
+          onOpenChange={(open) => !open && handleCancelRemove()}
+        >
+          <AlertDialogContent className="w-[calc(100%-2rem)] max-w-sm rounded-[8px] bg-card text-center shadow-2xl sm:w-fit">
+            <div className="mx-auto mt-2 flex h-12 w-12 items-center justify-center rounded-[8px] bg-yellow-100 dark:bg-yellow-900">
+              <TriangleAlert className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+            </div>
 
-          <AlertDialogHeader className="space-y-3 px-4">
-            <AlertDialogTitle className="text-center text-xl font-bold text-foreground">
-              Remover da equipe?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2 text-sm text-muted-foreground">
-              <span className="block">
-                <strong className="text-foreground">
-                  {removeTarget?.name}
-                </strong>{" "}
-                vai perder o acesso ao painel da empresa.
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+            <AlertDialogHeader className="space-y-3 px-4">
+              <AlertDialogTitle className="text-center text-xl font-bold text-foreground">
+                Remover da equipe?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2 text-sm text-muted-foreground">
+                <span className="block">
+                  <strong className="text-foreground">
+                    {removeTarget?.name}
+                  </strong>{" "}
+                  vai perder o acesso ao painel da empresa.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
 
-          <div className="flex w-full flex-row gap-3 px-4 pb-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={handleCancelRemove}
-              className="h-10 flex-1 cursor-pointer rounded-[8px] border-border font-medium text-foreground hover:bg-muted"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleConfirmRemove}
-              className="h-10 flex-1 cursor-pointer rounded-[8px] bg-red-600 font-medium text-white hover:bg-red-700"
-            >
-              Remover
-            </Button>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+            <div className="flex w-full flex-row gap-3 px-4 pb-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={handleCancelRemove}
+                className="h-10 flex-1 cursor-pointer rounded-[8px] border-border font-medium text-foreground hover:bg-muted"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmRemove}
+                className="h-10 flex-1 cursor-pointer rounded-[8px] bg-red-600 font-medium text-white hover:bg-red-700"
+              >
+                Remover
+              </Button>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </AdminPageLayout>
   );
 }
