@@ -370,6 +370,145 @@ describe("useCartActions", () => {
       // o item continua no carrinho local - a 2ª tentativa deu sucesso
       expect(useCartStore.getState().items).toHaveLength(1);
     });
+
+    it("manda a observação do prato para o backend como observations", async () => {
+      login();
+      act(() => useCartStore.getState().setOrderId("order-1"));
+      vi.mocked(apiService.orderItems.addProductToCart).mockResolvedValue({ success: true });
+
+      const { result } = renderCartActions();
+
+      await act(async () => {
+        await result.current.handleAddToCart({
+          id: "prod-1",
+          name: "Pizza",
+          price: 30,
+          restaurantId: "r1",
+          restaurantName: "Pizzaria",
+          specialInstructions: "sem cebola",
+        });
+      });
+
+      await waitFor(() => {
+        expect(apiService.orderItems.addProductToCart).toHaveBeenCalledWith(
+          "order-1",
+          "prod-1",
+          "user-1",
+          1,
+          expect.objectContaining({ observations: "sem cebola" }),
+          expect.anything(),
+        );
+      });
+      expect(useCartStore.getState().items[0].specialInstructions).toBe("sem cebola");
+    });
+
+    it("o reenvio depois do 404 mantém a observação do prato", async () => {
+      login();
+      act(() => useCartStore.getState().setOrderId("order-morto"));
+      vi.mocked(apiService.orderItems.addProductToCart)
+        .mockResolvedValueOnce({ success: false, status: 404, message: "not found" })
+        .mockResolvedValueOnce({ success: true });
+      vi.mocked(apiService.orders.openCart).mockResolvedValue({
+        success: true,
+        data: orderStub("order-novo"),
+      });
+
+      const { result } = renderCartActions();
+
+      await act(async () => {
+        await result.current.handleAddToCart({
+          id: "prod-1",
+          name: "Pizza",
+          price: 30,
+          restaurantId: "r1",
+          restaurantName: "Pizzaria",
+          specialInstructions: "bem passada",
+        });
+      });
+
+      await waitFor(() => {
+        expect(apiService.orderItems.addProductToCart).toHaveBeenCalledTimes(2);
+      });
+      expect(vi.mocked(apiService.orderItems.addProductToCart).mock.calls[1]).toEqual([
+        "order-novo",
+        "prod-1",
+        "user-1",
+        1,
+        expect.objectContaining({ observations: "bem passada" }),
+        expect.anything(),
+      ]);
+    });
+  });
+
+  describe("syncCartFromBackend - observação do prato", () => {
+    // O carrinho vive no Redis e volta com o formato de BackendCart; só os
+    // campos lidos pela sincronização importam aqui.
+    const backendCart = (observations?: string) =>
+      ({
+        id: "order-1",
+        companyId: "r1",
+        orderedItems: [
+          {
+            productId: "prod-1",
+            unitPrice: 30,
+            quantity: 1,
+            product: { name: "Pizza" },
+            ...(observations !== undefined ? { observations } : {}),
+          },
+        ],
+      }) as unknown as Order;
+
+    beforeEach(() => {
+      vi.mocked(apiService.productAddOns.getAllPublic).mockResolvedValue({ success: false });
+      vi.mocked(apiService.productVariations.getAllPublic).mockResolvedValue({ success: false });
+    });
+
+    it("traz observations do backend como specialInstructions do item", async () => {
+      login();
+      const { result } = renderCartActions();
+      vi.mocked(apiService.orders.viewOrder).mockResolvedValue({
+        success: true,
+        data: backendCart("sem cebola"),
+      });
+
+      await act(async () => {
+        await result.current.syncCartFromBackend();
+      });
+
+      expect(useCartStore.getState().items).toHaveLength(1);
+      expect(useCartStore.getState().items[0].specialInstructions).toBe("sem cebola");
+    });
+
+    it("mantém a observação local quando o backend não devolve observations", async () => {
+      login();
+      act(() => useCartStore.getState().setOrderId("order-1"));
+      vi.mocked(apiService.orderItems.addProductToCart).mockResolvedValue({ success: true });
+
+      const { result } = renderCartActions();
+
+      await act(async () => {
+        await result.current.handleAddToCart({
+          id: "prod-1",
+          name: "Pizza",
+          price: 30,
+          restaurantId: "r1",
+          restaurantName: "Pizzaria",
+          specialInstructions: "sem cebola",
+        });
+      });
+
+      vi.mocked(apiService.orders.viewOrder).mockResolvedValue({
+        success: true,
+        data: backendCart(),
+      });
+
+      await act(async () => {
+        await result.current.syncCartFromBackend();
+      });
+
+      expect(useCartStore.getState().items).toHaveLength(1);
+      expect(useCartStore.getState().items[0].specialInstructions).toBe("sem cebola");
+    });
   });
 
   describe("handleRemoveFromCart", () => {
