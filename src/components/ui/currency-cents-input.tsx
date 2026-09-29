@@ -97,8 +97,12 @@ export function CurrencyCentsInput({
     // Se é um dígito, validar se ultrapassaria o limite de 7 dígitos (máx R$ 99.999,99)
     if (isDigit) {
       const currentDigits = displayValue.replace(/\D/g, "")
+      // Com texto selecionado a tecla substitui a seleção, não soma dígito:
+      // sem essa exceção, campo cheio não deixava digitar por cima.
+      const { selectionStart, selectionEnd } = e.currentTarget
+      const hasSelection = selectionStart !== selectionEnd
       // Máximo 7 dígitos permitidos
-      if (currentDigits.length >= 7) {
+      if (currentDigits.length >= 7 && !hasSelection) {
         e.preventDefault()
       }
     }
