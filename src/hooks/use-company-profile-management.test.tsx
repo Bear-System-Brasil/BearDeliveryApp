@@ -228,7 +228,8 @@ describe("useCompanyProfileManagement", () => {
         await result.current.handleSaveProfile();
       });
 
-      const payload = api.companies.update.mock.calls[0][1];
+      // O tipo do update não declara logo_url/cover_url, mas o hook envia.
+      const payload = api.companies.update.mock.calls[0][1] as Record<string, unknown>;
       expect(payload.cover_url).toBe("https://r2.test/capa.png");
       expect(payload).not.toHaveProperty("logo_url");
     });

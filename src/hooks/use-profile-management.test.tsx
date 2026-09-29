@@ -117,7 +117,7 @@ describe("useProfileManagement", () => {
       { ...initialAuthState, isAuthenticated: true, _hasHydrated: true, user },
       true,
     );
-    api.getMe.mockResolvedValue({ success: true, data: user });
+    api.getMe.mockResolvedValue({ success: true, data: user as never });
     api.address.getUserAddresses.mockImplementation(async () => ({
       success: true,
       data: savedAddresses,
@@ -164,7 +164,7 @@ describe("useProfileManagement", () => {
     });
 
     it("cliente fica e carrega /user/me no store", async () => {
-      api.getMe.mockResolvedValue({ success: true, data: { ...user, name: "Ana Maria" } });
+      api.getMe.mockResolvedValue({ success: true, data: { ...user, name: "Ana Maria" } as never });
 
       await renderProfile();
 
@@ -183,7 +183,7 @@ describe("useProfileManagement", () => {
 
   describe("perfil", () => {
     it("salvar manda os dados com o id, atualiza o store e fecha a edição", async () => {
-      api.updateUser.mockResolvedValue({ success: true, data: user });
+      api.updateUser.mockResolvedValue({ success: true, data: user as never });
       const { result } = await renderProfile();
       act(() => result.current.editingState.open());
 
