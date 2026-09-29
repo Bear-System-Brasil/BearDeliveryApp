@@ -265,6 +265,18 @@ describe("useCancelOrder", () => {
     expect(toast.success).toHaveBeenCalledWith("Pedido cancelado com sucesso!");
   });
 
+  it("recusa do backend avisa o erro, não sucesso", async () => {
+    orders.clearCart.mockResolvedValue({ success: false, message: "Pedido já saiu" });
+    const { result } = renderHook(() => useCancelOrder(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync("o1").catch(() => {});
+    });
+
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith("Pedido já saiu");
+  });
+
   it("sem usuário logado, falha sem chamar a API", async () => {
     useAuthStore.setState({ ...initialAuthState, user: null }, true);
     const { result } = renderHook(() => useCancelOrder(), { wrapper });

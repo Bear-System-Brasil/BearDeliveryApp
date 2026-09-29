@@ -25,8 +25,12 @@ export function CancelForm({ isOpen, setIsOpen, deliveryId }: Props) {
   const { mutateAsync: cancelOrder, isPending } = useCancelOrder();
 
   const handleCancelOrder = async () => {
-    await cancelOrder(deliveryId);
-    setIsOpen(false);
+    try {
+      await cancelOrder(deliveryId);
+      setIsOpen(false);
+    } catch {
+      // O hook já avisou o erro; o diálogo fica aberto para tentar de novo.
+    }
   };
 
   return (

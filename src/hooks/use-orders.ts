@@ -187,6 +187,11 @@ export const useCancelOrder = () => {
 
       // Usando clearCart como alternativa
       const response = await apiService.orders.clearCart(user.id, orderId)
+      // Sem isto, uma recusa do backend caía no onSuccess e a tela dizia
+      // "cancelado com sucesso" com o pedido intacto.
+      if (!response?.success) {
+        throw new Error(response?.message || 'Erro ao cancelar pedido')
+      }
       return response
     },
     onSuccess: () => {
