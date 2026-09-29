@@ -20,10 +20,18 @@ function makePayment(overrides: Partial<Payment> = {}): Payment {
   };
 }
 
-/** Só o que `getPaymentSummary` lê - o resto do Delivery não importa aqui. */
-function makeDelivery(payments: Payment[], totalValue = 35.9): Delivery {
+/**
+ * Só o que `getPaymentSummary` lê - o resto do Delivery não importa aqui.
+ *
+ * `changeFor` fica no PEDIDO, não no pagamento: é de lá que o payload da
+ * entrega traz o campo.
+ */
+function makeDelivery(
+  payments: Payment[],
+  { totalValue = 35.9, changeFor }: { totalValue?: number; changeFor?: number } = {},
+): Delivery {
   return {
-    order: { totalValue, payments },
+    order: { totalValue, payments, changeFor },
   } as unknown as Delivery;
 }
 
@@ -52,7 +60,7 @@ describe("getPaymentSummary", () => {
   it("changeFor é o que o cliente entrega, não o troco", () => {
     // Pedido de R$ 35,90 pago com R$ 50 dá R$ 14,10 de troco - e não R$ 50.
     const summary = getPaymentSummary(
-      makeDelivery([makePayment({ changeFor: 50 })]),
+      makeDelivery([makePayment()], { changeFor: 50 }),
     );
 
     expect(summary?.amountDue).toBe(35.9);
@@ -63,7 +71,7 @@ describe("getPaymentSummary", () => {
   it("arredonda o troco em centavos", () => {
     // 50 - 35.90 em ponto flutuante dá 14.100000000000001.
     const summary = getPaymentSummary(
-      makeDelivery([makePayment({ changeFor: 50 })]),
+      makeDelivery([makePayment()], { changeFor: 50 }),
     );
 
     expect(Number.isInteger((summary?.changeDue ?? 0) * 100)).toBe(true);
@@ -71,7 +79,7 @@ describe("getPaymentSummary", () => {
 
   it("pagar o valor exato não é troco", () => {
     const summary = getPaymentSummary(
-      makeDelivery([makePayment({ changeFor: 35.9 })]),
+      makeDelivery([makePayment()], { changeFor: 35.9 }),
     );
 
     expect(summary?.changeDue).toBeNull();
@@ -80,7 +88,7 @@ describe("getPaymentSummary", () => {
 
   it("changeFor menor que a conta é dado incoerente - não vira troco negativo", () => {
     const summary = getPaymentSummary(
-      makeDelivery([makePayment({ changeFor: 20 })]),
+      makeDelivery([makePayment()], { changeFor: 20 }),
     );
 
     expect(summary?.changeDue).toBeNull();
@@ -93,6 +101,24 @@ describe("getPaymentSummary", () => {
     );
 
     expect(summary).toMatchObject({ isPaid: true, amountDue: 0 });
+  });
+
+  it("pedido pago não anuncia troco, mesmo com changeFor preenchido", () => {
+    // O campo vive no pedido e sobrevive ao pagamento ser concluído. Sem
+    // guarda, `changeFor` 50 contra amountDue 0 viraria "levar R$ 50,00 de
+    // troco" num pedido em que o entregador não recebe nada.
+    const summary = getPaymentSummary(
+      makeDelivery([makePayment({ status: PaymentStatus.COMPLETED })], {
+        changeFor: 50,
+      }),
+    );
+
+    expect(summary).toMatchObject({
+      isPaid: true,
+      amountDue: 0,
+      paysWith: null,
+      changeDue: null,
+    });
   });
 
   it("descarta falho e estornado ao somar o que falta receber", () => {

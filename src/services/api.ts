@@ -987,6 +987,17 @@ export interface Order {
   fulfillmentType: "DELIVERY" | "PICKUP";
   cancelReason?: string | null;
   companyId: string;
+  /**
+   * Troco para quanto: o valor que o cliente entrega em dinheiro, NÃO o
+   * troco calculado. Num pedido de R$ 35,90 com `changeFor: 50`, o troco é
+   * R$ 14,10.
+   *
+   * É campo do PEDIDO, não do pagamento - chega ao backend por
+   * `FinishOrderRequest` e volta aqui aninhado em
+   * `GET /delivery/delivery-person/me`. Ausente quando o pagamento não é em
+   * dinheiro ou o cliente dispensou o troco.
+   */
+  changeFor?: number;
   /** Observação geral do pedido, enviada em POST /order (ver order.md). */
   observations?: string | null;
 }
@@ -1119,14 +1130,6 @@ export interface Payment {
   customer?: CustomerRef;
   paymentMethod: PaymentMethod;
   status: PaymentStatus;
-  /**
-   * Quanto o cliente vai entregar em dinheiro - NÃO é o troco.
-   *
-   * Pedido de R$ 35,90 com `changeFor: 50` significa que ele paga com uma
-   * nota de 50 e o entregador leva R$ 14,10 de troco. Ausente quando o
-   * cliente não pediu troco.
-   */
-  changeFor?: number;
   transaction?: string;
   /** Devolvido em métodos que exigem redirecionamento externo (ex. PIX via gateway). */
   gatewayUrl?: string;

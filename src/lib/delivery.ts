@@ -225,8 +225,8 @@ export type PaymentSummary = {
   /** Quanto ainda falta receber. Zero quando `isPaid`. */
   amountDue: number;
   /**
-   * Quanto o cliente entrega em dinheiro (`changeFor` do pagamento). Null
-   * quando ele não pediu troco, ou quando o valor informado não dá troco.
+   * Quanto o cliente entrega em dinheiro (`order.changeFor`). Null quando
+   * ele não pediu troco, ou quando o valor informado não dá troco.
    */
   paysWith: number | null;
   /** Troco a levar = `paysWith` - `amountDue`. Null quando não há troco. */
@@ -282,26 +282,32 @@ export function getPaymentSummary(delivery: Delivery): PaymentSummary | null {
     pending.reduce((total, payment) => total + (readAmount(payment.amount) ?? 0), 0),
   );
 
-  // `changeFor` é o que o cliente entrega, não o troco. Só dos pagamentos
-  // que ainda serão recebidos: troco de pagamento já concluído não existe.
-  const declaredPaysWith = pending.reduce<number | null>((total, payment) => {
-    const value = readAmount(payment.changeFor);
-    if (value === null || value <= 0) return total;
-    return (total ?? 0) + value;
-  }, null);
+  const isPaid = pending.length === 0;
 
-  const paysWith = declaredPaysWith === null ? null : roundMoney(declaredPaysWith);
+  // `changeFor` é o que o cliente entrega, não o troco, e é campo do PEDIDO
+  // (`order.changeFor`) - não do pagamento.
+  const declaredPaysWith = readAmount(delivery.order?.changeFor);
+  const paysWith =
+    declaredPaysWith !== null && declaredPaysWith > 0
+      ? roundMoney(declaredPaysWith)
+      : null;
 
-  // Pagar exatamente o valor não é troco, e um `changeFor` menor que a conta
-  // é dado incoerente - nos dois casos a tela mostra "a receber" e pronto,
-  // em vez de anunciar troco negativo ou zero.
+  // Três casos em que não há troco a levar:
+  //
+  // - o pedido já foi pago: o campo fica no pedido e sobrevive ao pagamento
+  //   ser concluído, mas quem não recebe nada também não devolve troco;
+  // - o cliente paga o valor exato;
+  // - `changeFor` menor que a conta, que é dado incoerente.
+  //
+  // Nos três a tela mostra "a receber" e pronto, em vez de anunciar troco
+  // zero, negativo ou sobre dinheiro que ninguém vai entregar.
   const changeDue =
-    paysWith !== null && paysWith > amountDue
+    !isPaid && paysWith !== null && paysWith > amountDue
       ? roundMoney(paysWith - amountDue)
       : null;
 
   return {
-    isPaid: pending.length === 0,
+    isPaid,
     methods,
     amountDue,
     paysWith: changeDue === null ? null : paysWith,
