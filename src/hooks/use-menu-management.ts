@@ -612,11 +612,15 @@ export const useMenuManagement = () => {
       await queryClient.cancelQueries({ queryKey: productsQueryKey });
       await deleteProduct.mutateAsync(targetId);
     } catch (error) {
+      // O useDeleteProduct já mostra o erro - um toast aqui duplicava a
+      // mensagem.
       console.error("Erro ao deletar produto:", error);
-      toast.error(
-        getErrorMessage(error, "Não foi possível deletar este prato."),
-      );
       setRemovedProductIds((prev) => prev.filter((id) => id !== targetId));
+      // O prato já saiu do cache no início (remoção otimista) e continua no
+      // servidor: sem recarregar, sumia da lista mesmo com a exclusão
+      // recusada. Recarrega em vez de restaurar a cópia antiga porque
+      // categoria e fotos podem já ter sido removidas acima.
+      queryClient.invalidateQueries({ queryKey: productsQueryKey });
     } finally {
       setIsDeleting(false);
     }
