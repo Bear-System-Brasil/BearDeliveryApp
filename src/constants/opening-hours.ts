@@ -141,12 +141,41 @@ export function toDayHours(raw: unknown): DayHours[] {
 }
 
 /**
+ * Semana em branco: os sete dias fechados, sem horário.
+ *
+ * É o que a tela mostra quando não há nada salvo e também quando o GET
+ * falha - sem isso o dono de loja nova não teria dia nenhum para marcar.
+ * Ninguém muta essas entradas no lugar (`updateDay` sempre cria objeto
+ * novo com spread), então dá para compartilhar a mesma referência.
+ */
+export const EMPTY_WEEK_HOURS: DayHours[] = toDayHours(null);
+
+/**
+ * Dias que já existem no servidor, entre os que o GET devolveu.
+ *
+ * Só esses não podem ser desmarcados: o PUT é upsert e não apaga, então
+ * desmarcá-los não teria efeito. Dia que o dono acabou de marcar na tela
+ * ainda não existe lá - desmarcar é só não criar, e isso é permitido.
+ */
+export function getPersistedDays(serverHours: DayHours[] | undefined): DayKey[] {
+  return (serverHours ?? [])
+    .filter((day) => day.isOpen)
+    .map((day) => day.day);
+}
+
+/**
  * Primeiro problema que impediria o save, ou `null` se estiver tudo certo.
  *
  * Sem isso o dia incompleto seria descartado em silêncio por
  * `toOpeningHoursDays` e o dono veria "salvo" sem ter salvo.
  */
 export function findOpeningHoursError(hours: DayHours[]): string | null {
+  // Semana em branco não tem o que salvar: o PUT sairia com `days: []` e,
+  // sendo upsert, não mudaria nada - mas a tela diria "atualizado".
+  if (!hours.some((day) => day.isOpen)) {
+    return "Marque pelo menos um dia para salvar o horário.";
+  }
+
   for (const day of hours) {
     if (!day.isOpen) continue;
 

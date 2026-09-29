@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  EMPTY_WEEK_HOURS,
   findOpeningHoursError,
+  getPersistedDays,
   toDayHours,
   toOpeningHoursDays,
   type DayHours,
@@ -93,6 +95,46 @@ describe("toDayHours", () => {
   });
 });
 
+describe("EMPTY_WEEK_HOURS", () => {
+  it("tem os sete dias em branco, de segunda a domingo", () => {
+    expect(EMPTY_WEEK_HOURS).toHaveLength(7);
+    expect(EMPTY_WEEK_HOURS.map((d) => d.day)).toEqual([
+      "mon",
+      "tue",
+      "wed",
+      "thu",
+      "fri",
+      "sat",
+      "sun",
+    ]);
+    expect(EMPTY_WEEK_HOURS.every((d) => !d.isOpen)).toBe(true);
+    expect(EMPTY_WEEK_HOURS.every((d) => d.openTime === "")).toBe(true);
+  });
+
+  it("mantém o rótulo de cada dia, que a tela usa para marcar", () => {
+    expect(EMPTY_WEEK_HOURS[0].label).toBe("Segunda");
+    expect(EMPTY_WEEK_HOURS[6].label).toBe("Domingo");
+  });
+});
+
+describe("getPersistedDays", () => {
+  it("lista só os dias que o servidor devolveu abertos", () => {
+    const servidor = toDayHours({ days: [segunda, domingo] });
+
+    expect(getPersistedDays(servidor).sort()).toEqual(["mon", "sun"]);
+  });
+
+  it("não trava nada quando não há nada salvo", () => {
+    expect(getPersistedDays(EMPTY_WEEK_HOURS)).toEqual([]);
+  });
+
+  it("não trava nada quando o GET falhou e não veio dado", () => {
+    // Sem isso o dono não conseguiria desmarcar um dia que ele mesmo marcou
+    // depois de uma falha de carregamento.
+    expect(getPersistedDays(undefined)).toEqual([]);
+  });
+});
+
 describe("toOpeningHoursDays", () => {
   it("converte a chave do dia de volta para o número do contrato", () => {
     const payload = toOpeningHoursDays([dia({ day: "sun", label: "Domingo" })]);
@@ -130,8 +172,17 @@ describe("findOpeningHoursError", () => {
 
   it("não cobra horário de dia fechado", () => {
     expect(
-      findOpeningHoursError([dia({ isOpen: false, openTime: "" })]),
+      findOpeningHoursError([
+        dia({}),
+        dia({ day: "sun", label: "Domingo", isOpen: false, openTime: "" }),
+      ]),
     ).toBeNull();
+  });
+
+  it("barra a semana em branco, que salvaria sem mudar nada", () => {
+    expect(findOpeningHoursError(EMPTY_WEEK_HOURS)).toContain(
+      "pelo menos um dia",
+    );
   });
 
   it("acusa dia aberto sem horário, que seria descartado em silêncio", () => {
