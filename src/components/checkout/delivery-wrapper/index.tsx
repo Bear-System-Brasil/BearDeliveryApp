@@ -178,7 +178,9 @@ export function DeliveryWrapper() {
             <h2 className="mb-2 text-2xl font-bold text-foreground">
               Carregando carrinho...
             </h2>
-            <p className="text-muted-foreground">Sincronizando dados do restaurante</p>
+            <p className="text-muted-foreground">
+              Sincronizando dados do restaurante
+            </p>
           </div>
         </div>
       </AnimatedBackground>
@@ -191,7 +193,11 @@ export function DeliveryWrapper() {
         cartItems={cartItems.length}
         onCartClick={() => router.push("/cart")}
         showSearch={false}
-        showNav={false}
+        showCart={false}
+        showOrders={false}
+        showNotifications={false}
+        showMenu={false}
+        showStoreCta={false}
       />
 
       <main className="min-h-screen bg-muted px-3 pb-40 pt-20 sm:px-5">
@@ -207,7 +213,9 @@ export function DeliveryWrapper() {
             </button>
 
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-extrabold text-foreground">Checkout</h1>
+              <h1 className="text-xl font-extrabold text-foreground">
+                Checkout
+              </h1>
               {restaurant?.name && (
                 <p className="truncate text-xs font-semibold text-muted-foreground">
                   {restaurant.name}

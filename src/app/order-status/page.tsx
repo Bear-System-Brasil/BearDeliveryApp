@@ -65,7 +65,10 @@ export default function OrderStatusPage() {
         cartItems={totalItems}
         onCartClick={() => router.push("/cart")}
         showSearch={false}
-        showNav={true}
+        showLocation
+        showCart
+        showOrders
+        showNotifications
       />
       <div className="min-h-screen">
         <main className="pt-28 pb-8">

@@ -7,7 +7,13 @@ import { MainHeader } from "@/components/main-header";
 export default function RestaurantLoading() {
   return (
     <>
-      <MainHeader showSearch={true} showNav={true} />
+      <MainHeader
+        showSearch
+        showLocation
+        showCart
+        showOrders
+        showNotifications
+      />
 
       <div className="pt-20 mt-[88px] sm:pt-24 pb-6 sm:pb-8 px-3 sm:px-4">
         <div className="max-w-7xl mx-auto">

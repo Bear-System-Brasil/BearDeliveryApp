@@ -10,7 +10,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/auth-provider";
-import { useAuthStore } from "@/stores";
+import { useAuthStore, useCartStore } from "@/stores";
 import { getWorkspaceLink } from "@/constants/workspace-links";
 import {
   OPEN_LOCATION_SHEET_EVENT,
@@ -84,7 +84,7 @@ interface MainHeaderProps {
 }
 
 export function MainHeader({
-  cartItems = 0,
+  cartItems,
   onCartClick,
   showLogo = true,
   showLocation = true,
@@ -106,6 +106,16 @@ export function MainHeader({
   const { showAuthModal, logout } = useAuth();
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const storeTotalItems = useCartStore((s) =>
+    s.items.reduce((total, item) => total + item.quantity, 0),
+  );
+  const resolvedCartItems =
+    cartItems !== undefined ? cartItems : storeTotalItems;
+  const resolvedShowCart = showCart ?? showNav;
+  const resolvedShowOrders = showOrders ?? showNav;
+  const resolvedShowNotifications = showNotifications ?? showNav;
+  const resolvedShowMenu = showMenu ?? showNav;
+  const resolvedShowStoreCta = showStoreCta ?? showNav;
   const workspaceLink = getWorkspaceLink(user?.role);
   const isStaffAccount = isAuthenticated && isCompanyStaffRole(user?.role);
 
