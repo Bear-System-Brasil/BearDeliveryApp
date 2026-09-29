@@ -224,7 +224,29 @@ export type PaymentSummary = {
   methods: string[];
   /** Quanto ainda falta receber. Zero quando `isPaid`. */
   amountDue: number;
+  /**
+   * Quanto o cliente entrega em dinheiro (`changeFor` do pagamento). Null
+   * quando ele não pediu troco, ou quando o valor informado não dá troco.
+   */
+  paysWith: number | null;
+  /** Troco a levar = `paysWith` - `amountDue`. Null quando não há troco. */
+  changeDue: number | null;
 };
+
+/** Centavos inteiros: 50 - 35.90 em ponto flutuante dá 14.100000000000001. */
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/** Dois valores em dinheiro são o mesmo até o centavo? */
+export function isSameMoney(a: number, b: number): boolean {
+  return Math.round(a * 100) === Math.round(b * 100);
+}
+
+function readAmount(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 /**
  * O que o entregador precisa saber sobre dinheiro antes de bater na porta:
@@ -256,12 +278,35 @@ export function getPaymentSummary(delivery: Delivery): PaymentSummary | null {
     ),
   ];
 
-  const amountDue = pending.reduce((total, payment) => {
-    const amount = Number(payment.amount);
-    return total + (Number.isFinite(amount) ? amount : 0);
-  }, 0);
+  const amountDue = roundMoney(
+    pending.reduce((total, payment) => total + (readAmount(payment.amount) ?? 0), 0),
+  );
 
-  return { isPaid: pending.length === 0, methods, amountDue };
+  // `changeFor` é o que o cliente entrega, não o troco. Só dos pagamentos
+  // que ainda serão recebidos: troco de pagamento já concluído não existe.
+  const declaredPaysWith = pending.reduce<number | null>((total, payment) => {
+    const value = readAmount(payment.changeFor);
+    if (value === null || value <= 0) return total;
+    return (total ?? 0) + value;
+  }, null);
+
+  const paysWith = declaredPaysWith === null ? null : roundMoney(declaredPaysWith);
+
+  // Pagar exatamente o valor não é troco, e um `changeFor` menor que a conta
+  // é dado incoerente - nos dois casos a tela mostra "a receber" e pronto,
+  // em vez de anunciar troco negativo ou zero.
+  const changeDue =
+    paysWith !== null && paysWith > amountDue
+      ? roundMoney(paysWith - amountDue)
+      : null;
+
+  return {
+    isPaid: pending.length === 0,
+    methods,
+    amountDue,
+    paysWith: changeDue === null ? null : paysWith,
+    changeDue,
+  };
 }
 
 /**
