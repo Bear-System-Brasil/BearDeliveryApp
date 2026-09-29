@@ -498,6 +498,24 @@ describe("useKitchenOrders", () => {
       expect(result.current.columns.COMPLETED.orders).toEqual([]);
     });
 
+    it.each(["7d", "all"] as const)(
+      "com o período '%s', pedido concluído em outro aparelho entra em Concluídos",
+      async (period) => {
+        board = { READY_FOR_PICKUP: [[order("r1", "READY_FOR_PICKUP")]] };
+        const { result } = await renderLoaded();
+
+        act(() => result.current.setPeriod(period));
+        await waitFor(() => expect(result.current.columns.COMPLETED.isLoading).toBe(false));
+
+        act(() => fakeSocket.fire("orderStatusUpdated", order("r1", "COMPLETED")));
+
+        await waitFor(() => {
+          expect(ids(result.current.columns.COMPLETED.orders)).toEqual(["r1"]);
+        });
+        expect(result.current.columns.READY_FOR_PICKUP.orders).toEqual([]);
+      },
+    );
+
     it("desmontar a tela desconecta o socket", async () => {
       const { unmount } = await renderLoaded();
 
