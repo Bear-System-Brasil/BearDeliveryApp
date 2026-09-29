@@ -73,6 +73,9 @@ interface MainHeaderProps {
   showStoreCta?: boolean; // "Tem um restaurante?"
   showThemeToggle?: boolean; // só aparece dentro do Sheet, mas pode ativar/desativar
 
+  /** @deprecated use os switches individuais showCart, showOrders, showNotifications, showMenu */
+  showNav?: boolean;
+
   // variantes da logo
   logoIconOnlyBelow?: "sm" | "lg";
   logoSmall?: boolean;
@@ -89,12 +92,13 @@ export function MainHeader({
   showLogo = true,
   showLocation = true,
   showSearch = true,
-  showCart = true,
-  showOrders = true,
-  showNotifications = true,
-  showMenu = true,
-  showStoreCta = true,
+  showCart,
+  showOrders,
+  showNotifications,
+  showMenu,
+  showStoreCta,
   showThemeToggle = true,
+  showNav = true,
   logoIconOnlyBelow = "lg",
   logoSmall = false,
   logoHref = "/",
@@ -334,7 +338,7 @@ export function MainHeader({
                             <MapPin className="h-5 w-5 fill-brand-500" />
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text- font-bold uppercase tracking-wide text-brand-600">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-brand-600 dark:text-brand-400">
                               Entregando em
                             </p>
                             <p className="mt-1 text-sm font-semibold">
@@ -448,7 +452,7 @@ export function MainHeader({
                 </form>
               </>
             )}
-            {showCart && !isStaffAccount && (
+            {resolvedShowCart && !isStaffAccount && (
               <Button
                 variant="outline"
                 size="icon"
@@ -458,15 +462,15 @@ export function MainHeader({
                 }
               >
                 <ShoppingCart className="h-4 w-4" />
-                {isMounted && cartItems > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text- font-bold text-white">
-                    {cartItems}
+                {isMounted && resolvedCartItems > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white">
+                    {resolvedCartItems}
                   </span>
                 )}
               </Button>
             )}
 
-            {showOrders &&
+            {resolvedShowOrders &&
               canShowAuthUI &&
               isAuthenticated &&
               user?.role === "client" && (
@@ -480,7 +484,7 @@ export function MainHeader({
                 </Button>
               )}
 
-            {showNotifications &&
+            {resolvedShowNotifications &&
               canShowAuthUI &&
               isAuthenticated &&
               user?.role === "client" && (
@@ -489,7 +493,7 @@ export function MainHeader({
                 </div>
               )}
 
-            {showMenu && canShowAuthUI && (
+            {resolvedShowMenu && canShowAuthUI && (
               <div className={clsx(searchOpen && "max-sm:hidden")}>
                 {isAuthenticated ? (
                   <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -508,7 +512,13 @@ export function MainHeader({
                     >
                       <SheetTitle className="sr-only">Menu</SheetTitle>
                       <div className="mb-6 flex items-center justify-between pr-8">
-                        <BearDeliveryLogo />
+                        <Link
+                          href={logoHref}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="shrink-0"
+                        >
+                          <BearDeliveryLogo />
+                        </Link>
                         {showThemeToggle && <ThemeToggle />}
                       </div>
                       <div className="space-y-2">
@@ -533,7 +543,7 @@ export function MainHeader({
                           )}
                           Perfil
                         </Button>
-                        {showCart && !isStaffAccount && (
+                        {resolvedShowCart && !isStaffAccount && (
                           <Button
                             variant="outline"
                             className="w-full justify-start rounded-xl"
@@ -545,14 +555,14 @@ export function MainHeader({
                           >
                             <ShoppingCart className="h-4 w-4 mr-2" />
                             Carrinho{" "}
-                            {cartItems > 0 && (
+                            {resolvedCartItems > 0 && (
                               <span className="ml-auto bg-brand-500 text-white text-xs px-2 py-1 rounded-full">
-                                {cartItems}
+                                {resolvedCartItems}
                               </span>
                             )}
                           </Button>
                         )}
-                        {showOrders && user?.role === "client" && (
+                        {resolvedShowOrders && user?.role === "client" && (
                           <Button
                             variant="outline"
                             className="w-full justify-start rounded-xl"
@@ -563,6 +573,19 @@ export function MainHeader({
                           >
                             <Package className="h-4 w-4 mr-2" />
                             Meus Pedidos
+                          </Button>
+                        )}
+                        {resolvedShowStoreCta && user?.role === "client" && (
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start rounded-xl"
+                            onClick={() => {
+                              router.push("/restaurant-landing-page");
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            <Store className="h-4 w-4 mr-2" />
+                            Cadastrar meu restaurante
                           </Button>
                         )}
                         {getWorkspaceLink(user?.role) && (
@@ -586,22 +609,23 @@ export function MainHeader({
                           </Button>
                         )}
                         <button
+                          type="button"
                           onClick={() => {
                             logout();
                             router.push("/");
                             setMobileMenuOpen(false);
                           }}
-                          className="flex h- w-full items-center gap-2 rounded- bg-brand-500 px-3 text- font-semibold text-white hover:bg-brand-400"
+                          className="flex h-[38px] w-full items-center gap-[11px] rounded-[14px] bg-brand-500 px-3 text-[13px] font-semibold text-white shadow-[0_6px_14px_var(--tw-shadow-color)] shadow-brand-500/35 transition-colors hover:bg-brand-400 cursor-pointer"
                         >
-                          <LogOut className="h-4 w-4" />
-                          Sair da conta
+                          <LogOut className="h-4 w-4 shrink-0" />
+                          <span className="truncate">Sair da conta</span>
                         </button>
                       </div>
                     </SheetContent>
                   </Sheet>
                 ) : (
                   <div className="flex items-center gap-2">
-                    {showStoreCta && (
+                    {resolvedShowStoreCta && (
                       <Button
                         variant="outline"
                         size="sm"
