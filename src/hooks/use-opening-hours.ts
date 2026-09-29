@@ -1,5 +1,7 @@
 import {
+  EMPTY_WEEK_HOURS,
   findOpeningHoursError,
+  getPersistedDays,
   toDayHours,
   toOpeningHoursDays,
   type DayHours,
@@ -7,7 +9,7 @@ import {
 } from "@/constants/opening-hours";
 import { apiService } from "@/services/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const OPENING_HOURS_KEY = ["opening-hours"] as const;
@@ -62,8 +64,19 @@ export function useCompanyOpeningHours(companyId?: string | null) {
   // e não precisa de useEffect sincronizando estado com query.
   const [draft, setDraft] = useState<DayHours[] | null>(null);
 
-  const hours = draft ?? hoursQuery.data ?? [];
+  // Sem dados do servidor - porque não há nada salvo ou porque o GET falhou
+  // - a tela cai na semana em branco, nunca em lista vazia. Loja nova precisa
+  // dos sete dias na mão para conseguir cadastrar o primeiro horário.
+  //
+  // Quando um refetch falha mas já havia dados, `hoursQuery.data` continua
+  // preenchido: aí vale mostrar o que temos, com o aviso, em vez de apagar.
+  const hours = draft ?? hoursQuery.data ?? EMPTY_WEEK_HOURS;
   const hasChanges = draft !== null;
+
+  const persistedDays = useMemo(
+    () => getPersistedDays(hoursQuery.data),
+    [hoursQuery.data],
+  );
 
   const updateDay = (day: DayKey, patch: Partial<DayHours>) => {
     setDraft(
@@ -111,6 +124,9 @@ export function useCompanyOpeningHours(companyId?: string | null) {
     discardChanges,
     handleSaveHours,
     isSavingHours: saveMutation.isPending,
+
+    /** Dias que existem no servidor - os únicos que não podem ser desmarcados. */
+    persistedDays,
 
     isLoadingHours: hoursQuery.isLoading,
     isHoursError: hoursQuery.isError,

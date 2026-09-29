@@ -167,6 +167,7 @@ function CompanyProfileContent() {
   const {
     hours: openingHours,
     hasChanges: hasHoursChanges,
+    persistedDays,
     updateDay: updateDayHours,
     discardChanges: discardHoursChanges,
     handleSaveHours,
@@ -501,7 +502,7 @@ function CompanyProfileContent() {
                     size="sm"
                     variant={"secondary"}
                     onClick={handleSaveHours}
-                    disabled={isSavingHours || isLoadingHours || isHoursError}
+                    disabled={isSavingHours || isLoadingHours}
                     className="h-8 rounded-[9px] px-3.5 text-xs font-bold"
                   >
                     <div className="flex gap-2">
@@ -520,33 +521,41 @@ function CompanyProfileContent() {
                 </div>
               )}
 
-              <div className="mb-3 rounded-[9px] border border-border bg-muted px-3 py-2 text-[11px] font-semibold text-muted-foreground">
-                Para fechar um dia já cadastrado, fale com o suporte: a rota de
-                horários ainda não apaga dia, só cria e atualiza.
-              </div>
+              {/* O aviso de falha fica acima da grade, não no lugar dela: sem
+                  os sete dias na tela o dono não teria o que preencher. Como
+                  o PUT é upsert, salvar depois de um GET que falhou não apaga
+                  o que estiver no banco - no pior caso reescreve o mesmo dia. */}
+              {isHoursError && (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[9px] border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-[11px] font-semibold text-amber-800 dark:text-amber-300">
+                  <span>
+                    Não foi possível carregar o horário salvo
+                    {hoursError ? `: ${hoursError}` : "."} Dá para preencher e
+                    salvar mesmo assim: os dias que você enviar são gravados, e
+                    os demais continuam como estão no servidor.
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => refetchHours()}
+                    className="h-7 shrink-0 rounded-[9px] px-3 text-[11px] font-bold"
+                  >
+                    Tentar de novo
+                  </Button>
+                </div>
+              )}
+
+              {persistedDays.length > 0 && (
+                <div className="mb-3 rounded-[9px] border border-border bg-muted px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+                  Para fechar um dia já cadastrado, fale com o suporte: a rota
+                  de horários ainda não apaga dia, só cria e atualiza.
+                </div>
+              )}
 
               {isLoadingHours ? (
                 <div className="space-y-1.5">
                   {[0, 1, 2, 3, 4, 5, 6].map((row) => (
                     <Skeleton key={row} className="h-[50px] rounded-[10px]" />
                   ))}
-                </div>
-              ) : isHoursError ? (
-                <div className="rounded-[10px] border border-border px-3 py-6 text-center">
-                  <p className="text-[12.5px] font-bold text-foreground">
-                    Não foi possível carregar o horário
-                  </p>
-                  <p className="mt-1 text-[11px] font-medium text-muted-foreground">
-                    {hoursError || "Tente novamente em instantes."}
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => refetchHours()}
-                    className="mt-3 h-8 rounded-[9px] px-3.5 text-xs font-bold"
-                  >
-                    Tentar de novo
-                  </Button>
                 </div>
               ) : (
                 <div className="space-y-1.5">
@@ -555,24 +564,27 @@ function CompanyProfileContent() {
                       key={day.day}
                       className="flex flex-wrap items-center gap-2.5 rounded-[10px] border border-border px-3 py-2 sm:flex-nowrap"
                     >
-                      {/* Desmarcar fica travado de propósito: o PUT é upsert e
-                          não apaga dia, então desmarcar não teria efeito no
-                          servidor e o dono acharia que fechou o dia. Marcar
-                          funciona normal - aí o upsert cria. */}
+                      {/* Trava só o que já existe no servidor: o PUT é upsert
+                          e não apaga, então desmarcar um dia salvo não teria
+                          efeito e o dono acharia que fechou. Dia que ele
+                          acabou de marcar aqui ainda não existe lá -
+                          desmarcar é só não criar, e isso pode. */}
                       <label
                         className={cn(
                           "flex w-[100px] shrink-0 items-center gap-2",
-                          day.isOpen ? "cursor-default" : "cursor-pointer",
+                          persistedDays.includes(day.day)
+                            ? "cursor-default"
+                            : "cursor-pointer",
                         )}
                         title={
-                          day.isOpen
+                          persistedDays.includes(day.day)
                             ? "Fechar um dia já cadastrado depende de uma rota que o backend ainda não tem"
                             : undefined
                         }
                       >
                         <Checkbox
                           checked={day.isOpen}
-                          disabled={day.isOpen}
+                          disabled={persistedDays.includes(day.day)}
                           onCheckedChange={(checked) =>
                             updateDayHours(day.day, {
                               isOpen: checked === true,
