@@ -86,8 +86,11 @@ export function BearDeliveryAppPage({
         <MainHeader
           cartItems={getTotalItems()}
           onCartClick={handleCartClick}
-          showSearch={true}
-          showNav={false}
+          showSearch
+          showLocation
+          showCart
+          showOrders
+          showNotifications
         />
 
         <main className="flex-1 flex flex-col pt-24">
