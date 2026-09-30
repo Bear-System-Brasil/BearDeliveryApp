@@ -83,6 +83,7 @@ export function NewDishesSection({
   const railRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
   const [pageCount, setPageCount] = useState(1);
+  const [canScrollBack, setCanScrollBack] = useState(false);
 
   // Um chip só aparece quando algum prato tem o dado que ele filtra - hoje
   // a API não manda frete, tempo nem promoção na listagem, então a linha
@@ -112,6 +113,10 @@ export function NewDishesSection({
     setPage(
       Math.min(count - 1, Math.round(rail.scrollLeft / rail.clientWidth)),
     );
+    // A seta de voltar olha o scroll, não a página: `page` arredonda e fica
+    // em 0 até passar de meia tela, escondendo a seta no 2º e 3º card.
+    // 1px de folga para scroll fracionário.
+    setCanScrollBack(rail.scrollLeft > 1);
   }, []);
 
   useEffect(() => {
@@ -204,7 +209,7 @@ export function NewDishesSection({
             onClick={() => scrollRail("left")}
             className={cn(
               "absolute left-0 top-[75px] z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card/80 shadow-md transition-colors hover:bg-card sm:flex",
-              page === 0 && "sm:hidden",
+              !canScrollBack && "sm:hidden",
             )}
           >
             <ChevronLeft className="h-4 w-4" />

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -177,5 +177,61 @@ describe("NewDishesSection", () => {
     expect(
       screen.getByText("Nenhuma novidade encontrada"),
     ).toBeInTheDocument();
+  });
+
+  describe("seta de voltar (desktop)", () => {
+    // jsdom não faz layout: simula um trilho de 1000px com 10 cards de
+    // 212px + 12px de gap (224px por card)
+    const CARD_STEP = 224;
+
+    function renderRail() {
+      dishes = Array.from({ length: 10 }, (_, index) => dish(`p${index}`));
+      renderSection();
+
+      const back = screen.getByRole("button", {
+        name: "Rolar novidades para a esquerda",
+      });
+      const rail = back.nextElementSibling as HTMLElement;
+      Object.defineProperty(rail, "clientWidth", { value: 1000 });
+      Object.defineProperty(rail, "scrollWidth", { value: CARD_STEP * 10 });
+
+      const scrollToCard = (index: number) => {
+        rail.scrollLeft = index * CARD_STEP;
+        fireEvent.scroll(rail);
+      };
+
+      return { back, scrollToCard };
+    }
+
+    const isHiddenOnDesktop = (button: HTMLElement) =>
+      button.className.split(" ").includes("sm:hidden");
+
+    it("some no primeiro card", () => {
+      const { back, scrollToCard } = renderRail();
+
+      scrollToCard(0);
+
+      expect(isHiddenOnDesktop(back)).toBe(true);
+    });
+
+    it.each([1, 2, 3, 5])(
+      "aparece quando o card %i está no início (há card anterior)",
+      (index) => {
+        const { back, scrollToCard } = renderRail();
+
+        scrollToCard(index);
+
+        expect(isHiddenOnDesktop(back)).toBe(false);
+      },
+    );
+
+    it("some de novo ao voltar para o primeiro card", () => {
+      const { back, scrollToCard } = renderRail();
+
+      scrollToCard(2);
+      scrollToCard(0);
+
+      expect(isHiddenOnDesktop(back)).toBe(true);
+    });
   });
 });
