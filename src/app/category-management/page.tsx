@@ -58,6 +58,7 @@ function CategoryManagementContent() {
     handleRequestDelete,
     handleConfirmDelete,
     handleCancelDelete,
+    canDelete,
     updateFormField,
     isSaving,
     isDeleting,
@@ -207,16 +208,18 @@ function CategoryManagementContent() {
                       >
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRequestDelete(category)}
-                        className="h-7 w-7 cursor-pointer rounded-[7px] bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
-                        aria-label={`Remover ${category.name}`}
-                        title="Remover"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRequestDelete(category)}
+                          className="h-7 w-7 cursor-pointer rounded-[7px] bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400"
+                          aria-label={`Remover ${category.name}`}
+                          title="Remover"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
