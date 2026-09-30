@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ROUTE_PERMISSIONS,
   getAccessibleRoutes,
   hasRoutePermission,
   isClient,
@@ -85,6 +86,96 @@ describe("areas de trabalho das roles de gestao", () => {
     for (const area of AREAS) {
       expect(hasRoutePermission(area, "client")).toBe(false);
     }
+  });
+});
+
+/**
+ * Matriz da area financeira, fixada rota por rota.
+ *
+ * Estas rotas ja regrediram duas vezes sem ninguem perceber: /cash-register
+ * ficou fora do mapa e derrubou o acesso do financeiro, e o layout da area
+ * ficou com ["owner", "admin"] literal, barrando a mesma role que o mapa e o
+ * middleware liberavam. Rota nao mapeada e bloqueada por padrao em
+ * hasRoutePermission, entao esquecer uma linha nao da erro - da tela negada.
+ *
+ * Por isso a matriz e escrita aqui por extenso, e nao derivada do mapa: uma
+ * segunda afirmacao independente da intencao. Derivar do proprio mapa
+ * passaria com qualquer valor que ele tivesse.
+ */
+describe("matriz de permissoes da area financeira", () => {
+  const PERMITIDAS: Record<string, string[]> = {
+    "/financial-management": ["owner", "admin", "manager", "financial"],
+    "/financial-management/dashboard": [
+      "owner",
+      "admin",
+      "manager",
+      "financial",
+    ],
+    "/financial-management/orders": [
+      "owner",
+      "admin",
+      "manager",
+      "financial",
+    ],
+    "/financial-management/customers": [
+      "owner",
+      "admin",
+      "manager",
+      "financial",
+    ],
+    "/financial-management/finance": [
+      "owner",
+      "admin",
+      "manager",
+      "financial",
+    ],
+    "/financial-management/cash-register": [
+      "owner",
+      "admin",
+      "manager",
+      "financial",
+    ],
+    "/financial-management/settings": [
+      "owner",
+      "admin",
+      "manager",
+      "financial",
+    ],
+  };
+
+  const TODAS_AS_ROLES = [
+    "owner",
+    "admin",
+    "manager",
+    "cook",
+    "delivery",
+    "financial",
+    "client",
+  ];
+
+  it.each(Object.entries(PERMITIDAS))(
+    "%s aceita exatamente as roles fixadas",
+    (rota, permitidas) => {
+      // Os dois sentidos na mesma volta: role removida sem querer quebra
+      // aqui, e role acrescentada sem querer tambem.
+      for (const role of TODAS_AS_ROLES) {
+        expect(
+          hasRoutePermission(rota, role),
+          `${role} em ${rota}`,
+        ).toBe(permitidas.includes(role));
+      }
+    },
+  );
+
+  it("a matriz cobre toda rota de /financial-management do mapa", () => {
+    // Sem isto, tela nova ali dentro entraria no mapa e ficaria fora da
+    // matriz - de novo sem ninguem perceber, que e o modo de falha destas
+    // rotas. Tambem pega a rota que sair do mapa.
+    const noMapa = Object.keys(ROUTE_PERMISSIONS).filter((rota) =>
+      rota.startsWith("/financial-management"),
+    );
+
+    expect(noMapa.sort()).toEqual(Object.keys(PERMITIDAS).sort());
   });
 });
 
