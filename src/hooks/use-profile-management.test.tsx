@@ -239,6 +239,72 @@ describe("useProfileManagement", () => {
     });
   });
 
+  describe("recarregar a página", () => {
+    // F5: o hook monta com o store ainda vazio e o persist hidrata depois
+    function renderBeforeHydration() {
+      useAuthStore.setState({ ...initialAuthState }, true);
+      const hook = renderHook(() => useProfileManagement(), { wrapper });
+      act(() => {
+        useAuthStore.setState({ isAuthenticated: true, _hasHydrated: true, user });
+      });
+      return hook;
+    }
+
+    it("preenche o formulário quando o usuário hidrata depois da montagem", async () => {
+      const { result } = renderBeforeHydration();
+
+      await waitFor(() =>
+        expect(result.current.profileForm.getValues()).toMatchObject({
+          name: "Ana",
+          email: "ana@example.com",
+          cpf: "12345678900",
+          phone: "41999990000",
+          birthDate: "1990-01-01",
+        }),
+      );
+    });
+
+    it("cancelar a edição volta para os dados carregados, não para vazio", async () => {
+      const { result } = renderBeforeHydration();
+      await waitFor(() => expect(result.current.profileForm.getValues("name")).toBe("Ana"));
+
+      act(() => {
+        result.current.editingState.open();
+        result.current.profileForm.setValue("name", "Rascunho");
+      });
+      act(() => result.current.handleCancelEdit());
+
+      expect(result.current.profileForm.getValues("name")).toBe("Ana");
+    });
+
+    it("não apaga o que o usuário está digitando quando o perfil chega do backend", async () => {
+      let resolveMe: (value: unknown) => void = () => {};
+      api.getMe.mockReturnValue(new Promise((resolve) => (resolveMe = resolve)) as never);
+      const { result } = await renderProfile();
+
+      act(() => {
+        result.current.editingState.open();
+        result.current.profileForm.setValue("name", "Rascunho", { shouldDirty: true });
+      });
+      await act(async () => {
+        resolveMe({ success: true, data: { ...user, phone: "41911112222" } });
+      });
+
+      await waitFor(() =>
+        expect(useAuthStore.getState().user?.phone).toBe("41911112222"),
+      );
+      expect(result.current.profileForm.getValues("name")).toBe("Rascunho");
+    });
+
+    it("carrega os endereços quando o usuário hidrata depois da montagem", async () => {
+      savedAddresses = [stored("a1", { isDefault: true })];
+      const { result } = renderBeforeHydration();
+
+      await waitFor(() => expect(result.current.addresses).toHaveLength(1));
+      expect(result.current.addresses[0]).toMatchObject({ id: "a1", street: "Rua A" });
+    });
+  });
+
   describe("salvar endereço", () => {
     it("novo endereço sai com todos os campos, CEP só com dígitos e a coordenada geocodificada", async () => {
       api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
