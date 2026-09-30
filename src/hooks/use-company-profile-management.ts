@@ -1,4 +1,5 @@
 import { apiService, type Address, type Specialty } from "@/services/api";
+import { unsetDefaultAddress } from "@/lib/default-address";
 import { geocodeAddress } from "@/lib/geocode";
 import { useAuthStore } from "@/stores";
 import { getErrorMessage, onlyNumbers } from "@/utils";
@@ -426,6 +427,10 @@ export const useCompanyProfileManagement = () => {
    * sozinho (ver adress.md). Só roda depois que o endereço escolhido já foi
    * salvo como padrão: antes, rodava primeiro, e um salvamento recusado
    * deixava a loja sem endereço padrão nenhum. Devolve se algum falhou.
+   *
+   * Desmarca só com a flag, como o perfil do cliente: reenviar o endereço
+   * inteiro fazia o PATCH recusar por CEP ou complemento antigos fora do
+   * formato - um erro sobre campo que não estamos mudando.
    */
   const unsetOtherDefaults = async (keepId: string) => {
     let failed = false;
@@ -435,33 +440,18 @@ export const useCompanyProfileManagement = () => {
     const backendAddresses = Array.isArray(currentAddresses.data)
       ? currentAddresses.data
       : [];
+    // DELETE é soft delete (isActive: false) - endereço apagado não conta.
     const backendDefaults = backendAddresses.filter(
-      (addr) => addr.isDefault && addr.id !== keepId,
+      (addr) =>
+        addr.isDefault && addr.isActive !== false && addr.id !== keepId,
     );
 
     for (const addr of backendDefaults) {
-      try {
-        const unsetResponse = await apiService.address.updateCompanyAddress(
-          addr.id,
-          {
-            zipCode: addr.zipCode,
-            state: addr.state,
-            city: addr.city,
-            neighborhood: addr.neighborhood,
-            street: addr.street,
-            number: addr.number,
-            complement: sanitizeOptionalText(addr.complement ?? ""),
-            reference: sanitizeOptionalText(addr.reference ?? ""),
-            latitude: addr.latitude ?? undefined,
-            longitude: addr.longitude ?? undefined,
-            isDefault: false,
-          },
-        );
-        if (!unsetResponse.success) failed = true;
-      } catch (error) {
-        console.error("Erro ao desmarcar endereço padrão:", error);
-        failed = true;
-      }
+      const change = await unsetDefaultAddress(
+        addr,
+        apiService.address.updateCompanyAddress,
+      );
+      if (!change.ok) failed = true;
     }
 
     return failed;

@@ -403,7 +403,7 @@ describe("useCompanyProfileManagement", () => {
       );
     });
 
-    it("como padrão, desmarca o padrão antigo mandando o endereço dele inteiro", async () => {
+    it("como padrão, desmarca o padrão antigo mandando só a flag", async () => {
       serverAddresses = [
         storeAddress("antigo", { isDefault: true, complement: "Loja 2", latitude: -25.1, longitude: -49.1 }),
         storeAddress("outro"),
@@ -418,20 +418,46 @@ describe("useCompanyProfileManagement", () => {
       });
 
       expect(api.address.updateCompanyAddress).toHaveBeenCalledTimes(1);
-      expect(api.address.updateCompanyAddress).toHaveBeenCalledWith("antigo", {
-        zipCode: "80000000",
-        state: "PR",
-        city: "Curitiba",
-        neighborhood: "Centro",
-        street: "Rua A",
-        number: "10",
-        complement: "Loja 2",
-        reference: undefined,
-        latitude: -25.1,
-        longitude: -49.1,
-        isDefault: false,
-      });
+      expect(api.address.updateCompanyAddress).toHaveBeenCalledWith("antigo", { isDefault: false });
       expect(api.address.createCompanyAddress.mock.calls[0][0].isDefault).toBe(true);
+      expect(toast.warning).not.toHaveBeenCalled();
+    });
+
+    it("se só a flag for recusada, tenta de novo sem reenviar CEP incompleto nem complemento", async () => {
+      serverAddresses = [
+        storeAddress("antigo", { isDefault: true, zipCode: "8000", complement: "301", reference: "Bar" }),
+      ];
+      api.address.updateCompanyAddress
+        .mockResolvedValueOnce({ success: false, message: "recusado" })
+        .mockResolvedValueOnce({ success: true });
+      api.address.createCompanyAddress.mockResolvedValue({ success: true, data: storeAddress("novo") });
+      const { result } = await renderCompany();
+      fillAddress(result, { ...addressForm, isDefault: true });
+
+      await act(async () => {
+        await result.current.handleSaveAddress();
+      });
+
+      expect(api.address.updateCompanyAddress).toHaveBeenCalledTimes(2);
+      const retry = api.address.updateCompanyAddress.mock.calls[1][1];
+      expect(retry).toMatchObject({ isDefault: false, street: "Rua A", number: "10" });
+      expect(retry.zipCode).toBeUndefined();
+      expect(retry.complement).toBeUndefined();
+      expect(retry.reference).toBeUndefined();
+      expect(toast.warning).not.toHaveBeenCalled();
+    });
+
+    it("endereço apagado (isActive: false) não é desmarcado", async () => {
+      serverAddresses = [storeAddress("apagado", { isDefault: true, isActive: false })];
+      api.address.createCompanyAddress.mockResolvedValue({ success: true, data: storeAddress("novo") });
+      const { result } = await renderCompany();
+      fillAddress(result, { ...addressForm, isDefault: true });
+
+      await act(async () => {
+        await result.current.handleSaveAddress();
+      });
+
+      expect(api.address.updateCompanyAddress).not.toHaveBeenCalled();
     });
 
     it("se não desmarcar o antigo, salva e avisa", async () => {
