@@ -83,8 +83,26 @@ interface MainHeaderProps {
 
   // estilo do container
   fixed?: boolean;
+  /**
+   * Posicao do container, quando `fixed` (flutuante no topo) nao serve.
+   *
+   * "static" existe para a area de entregas: as telas de la tem cabecalho
+   * proprio `sticky top-0` com as acoes da tela, e um cabecalho de app
+   * flutuante ou sticky o cobriria no scroll. Estatico, os dois convivem sem
+   * um esconder o outro.
+   *
+   * Quando ausente, `fixed` continua decidindo - nenhuma chamada existente
+   * muda de comportamento.
+   */
+  position?: "fixed" | "sticky" | "static";
   className?: string;
 }
+
+const POSITION_CLASS = {
+  fixed: "fixed top-1 left-1 right-1 z-50",
+  sticky: "sticky top-0 z-50",
+  static: "relative z-50",
+} as const;
 
 export function MainHeader({
   cartItems,
@@ -103,6 +121,7 @@ export function MainHeader({
   logoSmall = false,
   logoHref = "/",
   fixed = true,
+  position,
   className,
 }: MainHeaderProps) {
   const router = useRouter();
@@ -274,7 +293,7 @@ export function MainHeader({
   return (
     <header
       className={clsx(
-        fixed ? "fixed top-1 left-1 right-1 z-50" : "sticky top-0 z-50",
+        POSITION_CLASS[position ?? (fixed ? "fixed" : "sticky")],
         "bg-background/80 backdrop-blur-md border border-brand-100/50 dark:border-brand-900/50",
         "rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden",
         className,
