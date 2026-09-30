@@ -14,7 +14,7 @@ import {
 } from "@/lib/default-address";
 import { useAuthStore } from "@/stores";
 import { Coords } from "@/types/restaurant";
-import { onlyNumbers } from "@/utils";
+import { getErrorMessage, onlyNumbers } from "@/utils";
 import { isCompanyAdminRole } from "@/utils/role-helpers";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -324,7 +324,7 @@ export const useProfileManagement = () => {
       editingState.close();
       toast.success("Perfil atualizado com sucesso!");
     } catch (error) {
-      toast.error("Erro ao atualizar perfil");
+      toast.error(getErrorMessage(error, "Erro ao atualizar perfil"));
     }
   };
 

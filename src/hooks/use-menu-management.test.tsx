@@ -567,6 +567,30 @@ describe("useMenuManagement", () => {
       expect(result.current.deleteTarget).toBeNull();
     });
 
+    it("exclusão recusada traz o prato de volta do servidor e avisa uma vez", async () => {
+      server = [target(), product("p2")];
+      api.deleteProduct.mockResolvedValue({
+        success: false,
+        status: 409,
+        message: "Prato em pedido aberto",
+      } as never);
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const { result } = await renderMenu();
+      const reads = api.getProductsByCompany.mock.calls.length;
+
+      act(() => result.current.handleRequestDelete(result.current.allProducts[0]));
+      await act(async () => {
+        await result.current.handleConfirmDelete();
+      });
+
+      await waitFor(() =>
+        expect(result.current.allProducts.map((p) => p.id)).toEqual(["p1", "p2"]),
+      );
+      expect(api.getProductsByCompany.mock.calls.length).toBeGreaterThan(reads);
+      expect(vi.mocked(toast.error).mock.calls).toEqual([["Prato em pedido aberto"]]);
+      expect(result.current.isDeleting).toBe(false);
+    });
+
     it("cancelar a exclusão não chama nada", async () => {
       server = [target()];
       const { result } = await renderMenu();

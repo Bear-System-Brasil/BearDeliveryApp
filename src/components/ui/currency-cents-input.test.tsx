@@ -98,6 +98,27 @@ describe("CurrencyCentsInput", () => {
     expect(onChangeSpy).toHaveBeenLastCalledWith(12345.67);
   });
 
+  it("campo cheio: selecionar tudo e digitar substitui o valor", async () => {
+    const user = userEvent.setup();
+    render(<Controlled maskWhileTyping />);
+    await user.type(input(), "1234567");
+
+    await user.tripleClick(input());
+    await user.keyboard("9");
+
+    expect(onChangeSpy).toHaveBeenLastCalledWith(0.09);
+  });
+
+  it("campo cheio sem seleção continua travado no oitavo dígito", async () => {
+    const user = userEvent.setup();
+    render(<Controlled maskWhileTyping />);
+    await user.type(input(), "1234567");
+
+    await user.keyboard("9");
+
+    expect(onChangeSpy).toHaveBeenLastCalledWith(12345.67);
+  });
+
   it("colar um preço já formatado mantém o valor", async () => {
     const user = userEvent.setup();
     // Modo usado em todas as telas hoje (cardápio, adicionais, variações).

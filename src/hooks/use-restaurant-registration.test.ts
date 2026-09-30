@@ -203,8 +203,10 @@ describe("useRestaurantRegistration", () => {
     it.each([
       ["User already exists", "Este email, CNPJ ou telefone já está cadastrado no sistema."],
       ["duplicate key violates unique constraint", "Este email, CNPJ ou telefone já está cadastrado no sistema."],
-      // Só o começo: o resto da frase cita um botão "Gerar CNPJ" que não existe.
-      ["cnpj must be a valid CNPJ", /^CNPJ inválido\./],
+      ["cnpj must be a valid CNPJ", /^CNPJ inválido\. Verifique o número digitado\.$/],
+      // Erro que não é de CNPJ chega como o backend mandou.
+      ["Invalid phone number", /^Invalid phone number$/],
+      ["email is invalid", /^email is invalid$/],
     ])("traduz '%s'", async (message, text) => {
       api.register.mockResolvedValue({ success: false, message } as never);
       const { result } = renderHook(() => useRestaurantRegistration());
