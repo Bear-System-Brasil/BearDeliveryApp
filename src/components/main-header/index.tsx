@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/auth-provider";
 import { useAuthStore, useCartStore } from "@/stores";
-import { getWorkspaceLink } from "@/constants/workspace-links";
+import { getWorkspaceLinks } from "@/constants/workspace-links";
 import {
   OPEN_LOCATION_SHEET_EVENT,
   type OpenLocationSheetMode,
@@ -120,7 +120,10 @@ export function MainHeader({
   const resolvedShowNotifications = showNotifications ?? showNav;
   const resolvedShowMenu = showMenu ?? showNav;
   const resolvedShowStoreCta = showStoreCta ?? showNav;
-  const workspaceLink = getWorkspaceLink(user?.role);
+  // Todas as áreas da role, e não uma só: quem administra o restaurante
+  // enxerga Gestão, Cozinha, Pedidos, Entregas e Financeiro. Aqui cabe a
+  // lista inteira - é um menu vertical, ao contrário da barra inferior.
+  const workspaceLinks = getWorkspaceLinks(user?.role);
   const isStaffAccount = isAuthenticated && isCompanyStaffRole(user?.role);
 
   const [isMounted, setIsMounted] = useState(false);
@@ -588,26 +591,20 @@ export function MainHeader({
                             Cadastrar meu restaurante
                           </Button>
                         )}
-                        {getWorkspaceLink(user?.role) && (
+                        {workspaceLinks.map((area) => (
                           <Button
+                            key={area.href}
                             variant="outline"
                             className="w-full justify-start rounded-xl"
                             onClick={() => {
-                              router.push(getWorkspaceLink(user?.role)!.href);
+                              router.push(area.href);
                               setMobileMenuOpen(false);
                             }}
                           >
-                            {(() => {
-                              const L = getWorkspaceLink(user?.role)!;
-                              return (
-                                <>
-                                  <L.icon className="h-4 w-4 mr-2" />
-                                  {L.label}
-                                </>
-                              );
-                            })()}
+                            <area.icon className="h-4 w-4 mr-2" />
+                            {area.label}
                           </Button>
-                        )}
+                        ))}
                         <button
                           type="button"
                           onClick={() => {
