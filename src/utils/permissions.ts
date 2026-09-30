@@ -17,6 +17,14 @@ export const ROUTE_PERMISSIONS: { [key: string]: string[] } = {
   "/menu-management": ["owner", "admin", "manager"],
   "/category-management": ["owner", "admin", "manager"],
 
+  // Equipe - mesma trinca da gestao do cardapio. A rota existia so no
+  // middleware, e rota nao mapeada aqui e bloqueada por padrao em
+  // hasRoutePermission: o link de Equipe no menu lateral funcionava (quem
+  // enforce e o middleware, e ele libera), mas qualquer guard de front que
+  // lesse este mapa negaria a tela - e e esse o padrao que os layouts de
+  // /financial-management e /delivery-dashboard usam.
+  "/team-management": ["owner", "admin", "manager"],
+
   // Order management
   "/order-management": ["owner", "admin", "manager", "cook"],
   "/kitchen": ["owner", "admin", "manager", "cook"],

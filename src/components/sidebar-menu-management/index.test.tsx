@@ -101,19 +101,10 @@ describe("Sidebar da gestao - menu e permissao nao divergem", () => {
   const ROLES = ["owner", "admin", "manager", "cook", "delivery", "financial"];
 
   /**
-   * Fora do cruzamento, com motivo:
-   *
-   * - "/" e o logo, saida pro app, nao item de navegacao de trabalho.
-   * - "/team-management" nao esta em ROUTE_PERMISSIONS, so no middleware, que
-   *   libera owner/admin/manager. Como rota nao mapeada e bloqueada por
-   *   padrao em hasRoutePermission, o cruzamento reprova um link que na
-   *   pratica funciona. Divergencia pre-existente e fora do escopo deste
-   *   card - nao morde hoje porque canAccessRoute nao tem chamador em
-   *   producao, mas morde no dia que alguem der um guard de layout a essa
-   *   tela lendo o mapa, como /financial-management e /delivery-dashboard
-   *   ja fazem.
+   * So o logo fica fora: "/" e saida pro app, nao item de navegacao de
+   * trabalho. Todo o resto do menu lateral passa pelo cruzamento.
    */
-  const NAO_COBERTAS = new Set(["/", "/team-management"]);
+  const NAO_COBERTAS = new Set(["/"]);
 
   it.each(ROLES)("todo link mostrado para %s e alcancavel", (currentRole) => {
     role = currentRole;

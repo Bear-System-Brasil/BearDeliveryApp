@@ -67,6 +67,20 @@ describe("areas de trabalho das roles de gestao", () => {
     expect(hasRoutePermission("/delivery-dashboard", "financial")).toBe(false);
   });
 
+  it("Equipe e a mesma trinca da gestao do cardapio", () => {
+    // A rota existia so no middleware. Como rota nao mapeada e bloqueada por
+    // padrao aqui, qualquer guard de front que lesse este mapa negaria a
+    // tela a quem o middleware libera.
+    for (const role of ["owner", "admin", "manager"]) {
+      expect(hasRoutePermission("/team-management", role)).toBe(true);
+    }
+
+    expect(hasRoutePermission("/team-management", "cook")).toBe(false);
+    expect(hasRoutePermission("/team-management", "delivery")).toBe(false);
+    expect(hasRoutePermission("/team-management", "financial")).toBe(false);
+    expect(hasRoutePermission("/team-management", "client")).toBe(false);
+  });
+
   it("cliente nao entra em area de trabalho nenhuma", () => {
     for (const area of AREAS) {
       expect(hasRoutePermission(area, "client")).toBe(false);
