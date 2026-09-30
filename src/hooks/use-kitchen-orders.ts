@@ -380,6 +380,16 @@ export function useKitchenOrders() {
     [removeFromColumn, insertIntoColumn, coversNow],
   );
 
+  // O socket é aberto uma vez só (ver efeito abaixo) e os handlers dele
+  // guardavam o `applyOrderSnapshot` da primeira renderização - com o
+  // período e a janela de datas de "Hoje". Trocando para "7 dias" ou
+  // "Tudo", pedido concluído em outro aparelho saía de Prontos e não
+  // entrava em Concluídos. A ref entrega sempre a versão atual.
+  const applyOrderSnapshotRef = useRef(applyOrderSnapshot);
+  useEffect(() => {
+    applyOrderSnapshotRef.current = applyOrderSnapshot;
+  }, [applyOrderSnapshot]);
+
   // ─── Tempo real: Socket.IO no namespace /orders ────────────────────────────
   // Sempre conectado enquanto autenticado: Novos/Em Preparo/Prontos são
   // sempre ao vivo, não importa qual período esteja selecionado pra
@@ -414,8 +424,12 @@ export function useKitchenOrders() {
     socket.on("disconnect", () => setIsLive(false));
     socket.on("connect_error", () => setIsLive(false));
 
-    socket.on("orderCreated", (order: KitchenOrder) => applyOrderSnapshot(order));
-    socket.on("orderStatusUpdated", (order: KitchenOrder) => applyOrderSnapshot(order));
+    socket.on("orderCreated", (order: KitchenOrder) =>
+      applyOrderSnapshotRef.current(order),
+    );
+    socket.on("orderStatusUpdated", (order: KitchenOrder) =>
+      applyOrderSnapshotRef.current(order),
+    );
 
     return () => {
       socket.disconnect();

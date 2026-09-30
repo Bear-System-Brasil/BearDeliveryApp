@@ -56,6 +56,11 @@ export const STORAGE_KEYS = {
   // Cart
   CART_ORDER_ID: 'cart-order-id',
 
+  // Checkout: troca temporária do endereço padrão durante a finalização de
+  // uma entrega. Guardada para ser desfeita se a aba fechar no meio do
+  // caminho - ver src/lib/default-address.ts.
+  PENDING_DEFAULT_ADDRESS: 'pending-default-address',
+
   // Session temporary data
   SESSION_CONTEXT: 'session-context',
   SEARCH_FILTERS: 'search-filters',

@@ -116,8 +116,11 @@ export const useRestaurantRegistration = () => {
     const lowerMsg = errorMessage.toLowerCase()
     if (lowerMsg.includes('already exists') || lowerMsg.includes('já existe') || lowerMsg.includes('unique')) {
       errorMessage = 'Este email, CNPJ ou telefone já está cadastrado no sistema.'
-    } else if (lowerMsg.includes('invalid') || lowerMsg.includes('cnpj')) {
-      errorMessage = 'CNPJ inválido. Verifique o número digitado ou use o botão "Gerar CNPJ" para testes.'
+    } else if (lowerMsg.includes('cnpj')) {
+      // Só quando o erro é do CNPJ: antes qualquer "invalid" (telefone,
+      // e-mail) virava "CNPJ inválido", e o texto citava um botão "Gerar
+      // CNPJ" que não existe na tela.
+      errorMessage = 'CNPJ inválido. Verifique o número digitado.'
     }
 
     return errorMessage

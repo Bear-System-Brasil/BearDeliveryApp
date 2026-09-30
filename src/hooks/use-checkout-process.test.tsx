@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -13,8 +15,54 @@ const finishOrder = vi.fn();
 const openCart = vi.fn();
 const paymentsCreate = vi.fn();
 const deleteUserAddress = vi.fn();
-const updateUserAddress = vi.fn();
 const toastError = vi.fn();
+
+/**
+ * Estado do "banco" de endereços. O hook lê a lista pelo mock de
+ * useUserAddresses (congelada, para não recriar referência a cada render);
+ * a checagem de estado dentro de default-address.ts lê daqui, que o PATCH
+ * altera. Sem isso a conferência veria sempre a lista de antes e reprovaria
+ * trocas que deram certo.
+ */
+let addressBook: { id: string; isDefault: boolean }[] = [];
+
+type PatchResult = { success: boolean; data?: object; message?: string };
+
+const patchAddress = async (
+  id: string,
+  body: { isDefault?: boolean },
+): Promise<PatchResult> => {
+  const address = addressBook.find((item) => item.id === id);
+  if (address && body.isDefault !== undefined) {
+    address.isDefault = body.isDefault;
+  }
+  return { success: true, data: {} };
+};
+
+const listAddresses = async () => ({
+  success: true,
+  data: addressBook.map((address) => ({ ...address })),
+});
+
+const updateUserAddress = vi.fn(patchAddress);
+const getUserAddresses = vi.fn(listAddresses);
+
+/**
+ * Repõe a implementação, e não só o histórico: um `mockResolvedValue` de um
+ * teste sobrevive ao `mockClear` e vazaria para o teste seguinte, que então
+ * rodaria contra um backend que não grava nada.
+ */
+const resetAddressMocks = () => {
+  updateUserAddress.mockReset();
+  updateUserAddress.mockImplementation(patchAddress);
+  getUserAddresses.mockReset();
+  getUserAddresses.mockImplementation(listAddresses);
+};
+
+/** Repõe o banco a partir da lista que o hook vai enxergar. */
+const seedAddressBook = (query: { data: { id: string; isDefault: boolean }[] }) => {
+  addressBook = query.data.map(({ id, isDefault }) => ({ id, isDefault }));
+};
 
 const CART_ITEMS = [
   { id: "line-1", productId: "p1", name: "xTudo", price: 35.9, quantity: 1 },
@@ -44,6 +92,16 @@ const ADDRESSES_WITH_DEFAULT = {
 // os dois pontos de criação usam isDefault: false.
 const ADDRESSES_WITHOUT_DEFAULT = {
   data: [{ ...ADDRESS_BASE, isDefault: false }],
+  isLoading: false,
+};
+
+// Dois endereços: o padrão é a casa, o pedido vai para o trabalho. É o caso
+// em que a entrega saía no endereço errado sem ninguém perceber.
+const ADDRESSES_TWO = {
+  data: [
+    { ...ADDRESS_BASE, id: "addr-casa", isDefault: true },
+    { ...ADDRESS_BASE, id: "addr-trabalho", isDefault: false },
+  ],
   isLoading: false,
 };
 
@@ -105,7 +163,12 @@ vi.mock("@/services/api", () => ({
   apiService: {
     orders: { finishOrder, openCart },
     payments: { create: paymentsCreate },
-    address: { deleteUserAddress, updateUserAddress, createUserAddress: vi.fn() },
+    address: {
+      deleteUserAddress,
+      updateUserAddress,
+      getUserAddresses,
+      createUserAddress: vi.fn(),
+    },
   },
   PaymentMethod: {
     CASH: "CASH",
@@ -119,13 +182,34 @@ vi.mock("@/services/api", () => ({
 
 const { useCheckoutProcess } = await import("./use-checkout-process");
 
+// Cliente único e estável: um novo a cada render reiniciaria as queries em
+// laço. Só serve para o hook poder invalidar o cache de endereços.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+const Wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+);
+
+const renderCheckout = () =>
+  renderHook(() => useCheckoutProcess(), { wrapper: Wrapper });
+
 /** Corpo com que o finishOrder foi chamado (3º argumento). */
 const finishBody = () => finishOrder.mock.calls[0]?.[2];
+
+/** Sequência real de marcações/desmarcações de padrão, na ordem. */
+const defaultCalls = () =>
+  updateUserAddress.mock.calls.map(
+    ([id, body]) => `${id}:${body.isDefault ? "on" : "off"}`,
+  );
+
+const SWAP_KEY = "pending-default-address";
 
 type Hook = ReturnType<typeof useCheckoutProcess>;
 
 async function submitWith(setup: (h: Hook) => void) {
-  const { result } = renderHook(() => useCheckoutProcess());
+  const { result } = renderCheckout();
 
   // O endereço padrão é auto-selecionado por efeito - esperar evita o
   // caminho de criação de endereço, que não é o que estes testes cobrem.
@@ -147,9 +231,9 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
     paymentsCreate.mockReset();
     paymentsCreate.mockResolvedValue({ success: true, data: {} });
     deleteUserAddress.mockReset();
-    updateUserAddress.mockReset();
-    updateUserAddress.mockResolvedValue({ success: true, data: {} });
+    resetAddressMocks();
     addressesQuery = ADDRESSES_WITH_DEFAULT;
+    seedAddressBook(ADDRESSES_WITH_DEFAULT);
   });
 
   it("manda DELIVERY quando o pedido é entrega", async () => {
@@ -251,9 +335,40 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
   });
 });
 
+describe("useCheckoutProcess - CEP do endereço novo", () => {
+  it("não deixa avançar com CEP incompleto", async () => {
+    const { result } = renderCheckout();
+
+    act(() => {
+      result.current.setOrderType("delivery");
+      result.current.setAddressMode("new");
+      Object.entries({
+        name: "Cliente",
+        phone: "11999999999",
+        zipCode: "0100-10",
+        street: "Praça da Sé",
+        number: "1",
+        neighborhood: "Sé",
+        city: "São Paulo",
+        state: "SP",
+      }).forEach(([field, value]) =>
+        result.current.handleInputChange(field, value),
+      );
+    });
+
+    // O POST aceita o CEP pela metade; o PATCH não. Deixar entrar aqui
+    // condena aquele endereço a falhar em toda edição futura, inclusive na
+    // troca de endereço padrão.
+    expect(result.current.isDeliveryValid()).toBe(false);
+
+    act(() => result.current.handleInputChange("zipCode", "01001-000"));
+    expect(result.current.isDeliveryValid()).toBe(true);
+  });
+});
+
 describe("useCheckoutProcess - isFormValid e o troco", () => {
   it("libera o valor exato do total e barra abaixo dele", async () => {
-    const { result } = renderHook(() => useCheckoutProcess());
+    const { result } = renderCheckout();
 
     act(() => {
       result.current.setPaymentMethod("cash");
@@ -268,10 +383,12 @@ describe("useCheckoutProcess - isFormValid e o troco", () => {
 });
 
 /**
- * O backend monta a entrega a partir do endereço PADRÃO do cliente, e nenhum
- * endereço criado pelo checkout nasce padrão. Sem um padrão, o finalizar
- * falha com "Pedido não encontrado" - mensagem que fala de pedido para um
- * problema de endereço, e que custou uma investigação inteira.
+ * O corpo do finalizar não aceita `deliveryAddressId`: o backend monta a
+ * entrega a partir do endereço PADRÃO do cliente. Então o checkout promove o
+ * endereço do pedido a padrão só durante a finalização e devolve o anterior
+ * logo depois. Sem a promoção, quem só cadastrou endereço por aqui não tem
+ * padrão e o finalizar quebra; sem a volta, o cliente perde a preferência
+ * dele a cada compra.
  */
 describe("useCheckoutProcess - endereço padrão da entrega", () => {
   beforeEach(() => {
@@ -279,28 +396,31 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
     finishOrder.mockResolvedValue({ success: true, data: { id: "order-1" } });
     paymentsCreate.mockReset();
     paymentsCreate.mockResolvedValue({ success: true, data: {} });
-    updateUserAddress.mockReset();
-    updateUserAddress.mockResolvedValue({ success: true, data: {} });
+    resetAddressMocks();
+    deleteUserAddress.mockReset();
+    deleteUserAddress.mockResolvedValue({ success: true, data: {} });
     toastError.mockReset();
     addressesQuery = ADDRESSES_WITH_DEFAULT;
+    seedAddressBook(ADDRESSES_WITH_DEFAULT);
+    localStorage.clear();
   });
 
   it("promove o endereço do pedido a padrão quando o cliente não tem nenhum", async () => {
     addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+    seedAddressBook(ADDRESSES_WITHOUT_DEFAULT);
 
     await submitWith((h) => {
       h.setOrderType("delivery");
       h.setPaymentMethod("pix");
     });
 
-    expect(updateUserAddress).toHaveBeenCalledWith("addr-1", {
-      isDefault: true,
-    });
+    expect(defaultCalls()).toEqual(["addr-1:on"]);
     expect(finishOrder).toHaveBeenCalledTimes(1);
   });
 
-  it("não toca no padrão de quem já escolheu um no perfil", async () => {
+  it("não mexe em nada quando o endereço do pedido já é o padrão", async () => {
     addressesQuery = ADDRESSES_WITH_DEFAULT;
+    seedAddressBook(ADDRESSES_WITH_DEFAULT);
 
     await submitWith((h) => {
       h.setOrderType("delivery");
@@ -311,8 +431,68 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
     expect(finishOrder).toHaveBeenCalledTimes(1);
   });
 
+  it("troca o padrão pelo endereço escolhido e devolve o anterior depois", async () => {
+    addressesQuery = ADDRESSES_TWO;
+    seedAddressBook(ADDRESSES_TWO);
+
+    const { result } = renderCheckout();
+    await waitFor(() =>
+      expect(result.current.selectedAddressId).toBe("addr-casa"),
+    );
+
+    act(() => {
+      result.current.setOrderType("delivery");
+      result.current.setPaymentMethod("pix");
+      result.current.handleAddressSelect("addr-trabalho");
+    });
+
+    await act(async () => {
+      await result.current.handleSubmitOrder();
+    });
+
+    // A entrega sai no trabalho, e a casa volta a ser o padrão do cliente.
+    expect(defaultCalls()).toEqual([
+      "addr-casa:off",
+      "addr-trabalho:on",
+      "addr-trabalho:off",
+      "addr-casa:on",
+    ]);
+    expect(finishOrder).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(SWAP_KEY)).toBeNull();
+  });
+
+  it("devolve o padrão anterior quando o finalizar falha", async () => {
+    addressesQuery = ADDRESSES_TWO;
+    seedAddressBook(ADDRESSES_TWO);
+    finishOrder.mockResolvedValue({ success: false, message: "boom" });
+
+    const { result } = renderCheckout();
+    await waitFor(() =>
+      expect(result.current.selectedAddressId).toBe("addr-casa"),
+    );
+
+    act(() => {
+      result.current.setOrderType("delivery");
+      result.current.setPaymentMethod("pix");
+      result.current.handleAddressSelect("addr-trabalho");
+    });
+
+    await act(async () => {
+      await result.current.handleSubmitOrder();
+    });
+
+    // Um pedido que nem foi criado não pode custar ao cliente a preferência
+    // de endereço dele.
+    expect(defaultCalls().slice(-2)).toEqual([
+      "addr-trabalho:off",
+      "addr-casa:on",
+    ]);
+    expect(localStorage.getItem(SWAP_KEY)).toBeNull();
+  });
+
   it("não promove nada em retirada no local", async () => {
     addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+    seedAddressBook(ADDRESSES_WITHOUT_DEFAULT);
 
     await submitWith((h) => {
       h.setOrderType("pickup");
@@ -326,7 +506,10 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
 
   it("falha com mensagem própria se não conseguir definir o padrão", async () => {
     addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+    seedAddressBook(ADDRESSES_WITHOUT_DEFAULT);
     updateUserAddress.mockResolvedValue({ success: false, message: "boom" });
+    // mockResolvedValue substitui a implementação: nada é gravado, que é
+    // exatamente o cenário deste teste.
 
     await submitWith((h) => {
       h.setOrderType("delivery");
@@ -336,8 +519,53 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
     // Sem padrão o finalizar falharia com "Pedido não encontrado", que não
     // explica nada - então nem chega a ser chamado.
     expect(finishOrder).not.toHaveBeenCalled();
+    // A razão do backend chega à tela: é o que separa "a regra dele barrou"
+    // de "mandamos algo errado" sem precisar abrir o DevTools.
     expect(toastError).toHaveBeenCalledWith(
-      "Não foi possível definir o endereço de entrega. Tente novamente ou escolha outro endereço.",
+      "Não foi possível usar este endereço na entrega: boom",
     );
+  });
+
+  it("desmarca o endereço temporário antes de descartá-lo", async () => {
+    addressesQuery = ADDRESSES_WITHOUT_DEFAULT;
+    seedAddressBook(ADDRESSES_WITHOUT_DEFAULT);
+
+    await submitWith((h) => {
+      h.setOrderType("delivery");
+      h.setPaymentMethod("pix");
+      // "Salvar este endereço para pedidos futuros" desmarcado.
+      h.setSaveAddress(false);
+      h.setAddressMode("new");
+    });
+
+    // Sem o "off", o cliente ficaria com um endereço padrão apagado - e o
+    // próximo pedido de entrega sairia desse endereço morto.
+    expect(defaultCalls()).toEqual(["addr-1:on", "addr-1:off"]);
+    expect(deleteUserAddress).toHaveBeenCalledWith("addr-1");
+  });
+
+  it("desfaz na montagem uma troca que ficou pela metade", async () => {
+    // Aba fechada entre a promoção e a volta: o padrão do cliente ficou no
+    // endereço de um pedido antigo.
+    seedAddressBook(ADDRESSES_TWO);
+    addressBook = [
+      { id: "addr-casa", isDefault: false },
+      { id: "addr-trabalho", isDefault: true },
+    ];
+    localStorage.setItem(
+      SWAP_KEY,
+      JSON.stringify({
+        previousDefaultId: "addr-casa",
+        promotedId: "addr-trabalho",
+        userId: "user-1",
+      }),
+    );
+
+    renderCheckout();
+
+    await waitFor(() =>
+      expect(defaultCalls()).toEqual(["addr-trabalho:off", "addr-casa:on"]),
+    );
+    expect(localStorage.getItem(SWAP_KEY)).toBeNull();
   });
 });
