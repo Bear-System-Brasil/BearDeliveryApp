@@ -403,7 +403,7 @@ describe("useCompanyProfileManagement", () => {
       );
     });
 
-    it("como padrão, desmarca o padrão antigo mandando o endereço dele inteiro", async () => {
+    it("como padrão, desmarca o padrão antigo mandando só a flag", async () => {
       serverAddresses = [
         storeAddress("antigo", { isDefault: true, complement: "Loja 2", latitude: -25.1, longitude: -49.1 }),
         storeAddress("outro"),
@@ -418,20 +418,46 @@ describe("useCompanyProfileManagement", () => {
       });
 
       expect(api.address.updateCompanyAddress).toHaveBeenCalledTimes(1);
-      expect(api.address.updateCompanyAddress).toHaveBeenCalledWith("antigo", {
-        zipCode: "80000000",
-        state: "PR",
-        city: "Curitiba",
-        neighborhood: "Centro",
-        street: "Rua A",
-        number: "10",
-        complement: "Loja 2",
-        reference: undefined,
-        latitude: -25.1,
-        longitude: -49.1,
-        isDefault: false,
-      });
+      expect(api.address.updateCompanyAddress).toHaveBeenCalledWith("antigo", { isDefault: false });
       expect(api.address.createCompanyAddress.mock.calls[0][0].isDefault).toBe(true);
+      expect(toast.warning).not.toHaveBeenCalled();
+    });
+
+    it("se só a flag for recusada, tenta de novo sem reenviar CEP incompleto nem complemento", async () => {
+      serverAddresses = [
+        storeAddress("antigo", { isDefault: true, zipCode: "8000", complement: "301", reference: "Bar" }),
+      ];
+      api.address.updateCompanyAddress
+        .mockResolvedValueOnce({ success: false, message: "recusado" })
+        .mockResolvedValueOnce({ success: true });
+      api.address.createCompanyAddress.mockResolvedValue({ success: true, data: storeAddress("novo") });
+      const { result } = await renderCompany();
+      fillAddress(result, { ...addressForm, isDefault: true });
+
+      await act(async () => {
+        await result.current.handleSaveAddress();
+      });
+
+      expect(api.address.updateCompanyAddress).toHaveBeenCalledTimes(2);
+      const retry = api.address.updateCompanyAddress.mock.calls[1][1];
+      expect(retry).toMatchObject({ isDefault: false, street: "Rua A", number: "10" });
+      expect(retry.zipCode).toBeUndefined();
+      expect(retry.complement).toBeUndefined();
+      expect(retry.reference).toBeUndefined();
+      expect(toast.warning).not.toHaveBeenCalled();
+    });
+
+    it("endereço apagado (isActive: false) não é desmarcado", async () => {
+      serverAddresses = [storeAddress("apagado", { isDefault: true, isActive: false })];
+      api.address.createCompanyAddress.mockResolvedValue({ success: true, data: storeAddress("novo") });
+      const { result } = await renderCompany();
+      fillAddress(result, { ...addressForm, isDefault: true });
+
+      await act(async () => {
+        await result.current.handleSaveAddress();
+      });
+
+      expect(api.address.updateCompanyAddress).not.toHaveBeenCalled();
     });
 
     it("se não desmarcar o antigo, salva e avisa", async () => {
@@ -449,6 +475,41 @@ describe("useCompanyProfileManagement", () => {
       expect(toast.warning).toHaveBeenCalledWith(
         "Não conseguimos desmarcar todos os endereços padrão antigos. Confira a lista de endereços.",
       );
+    });
+
+    it("como padrão, desmarca o antigo só depois de criar, e nunca o recém-criado", async () => {
+      serverAddresses = [storeAddress("antigo", { isDefault: true })];
+      api.address.updateCompanyAddress.mockResolvedValue({ success: true });
+      api.address.createCompanyAddress.mockImplementation(async () => {
+        // A listagem depois de criar já traz o novo como padrão.
+        serverAddresses = [...serverAddresses, storeAddress("novo", { isDefault: true })];
+        return { success: true, data: storeAddress("novo", { isDefault: true }) };
+      });
+      const { result } = await renderCompany();
+      fillAddress(result, { ...addressForm, isDefault: true });
+
+      await act(async () => {
+        await result.current.handleSaveAddress();
+      });
+
+      expect(api.address.createCompanyAddress.mock.invocationCallOrder[0]).toBeLessThan(
+        api.address.updateCompanyAddress.mock.invocationCallOrder[0],
+      );
+      expect(api.address.updateCompanyAddress.mock.calls.map(([id]) => id)).toEqual(["antigo"]);
+    });
+
+    it("criação recusada não mexe no padrão atual", async () => {
+      serverAddresses = [storeAddress("antigo", { isDefault: true })];
+      api.address.createCompanyAddress.mockResolvedValue({ success: false, message: "CEP inválido" });
+      const { result } = await renderCompany();
+      fillAddress(result, { ...addressForm, isDefault: true });
+
+      await act(async () => {
+        await result.current.handleSaveAddress();
+      });
+
+      expect(api.address.updateCompanyAddress).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith("CEP inválido");
     });
 
     it("recusa do backend mantém o formulário aberto", async () => {
@@ -534,8 +595,23 @@ describe("useCompanyProfileManagement", () => {
         await hook.result.current.handleSaveAddress();
       });
 
+      // Salva primeiro; só então desmarca o outro padrão.
       const ids = api.address.updateCompanyAddress.mock.calls.map(([id]) => id);
-      expect(ids).toEqual(["a2", "a1"]);
+      expect(ids).toEqual(["a1", "a2"]);
+    });
+
+    it("edição recusada não desmarca o outro padrão", async () => {
+      serverAddresses = [storeAddress("a1"), storeAddress("a2", { isDefault: true })];
+      api.address.updateCompanyAddress.mockResolvedValue({ success: false, message: "complement too short" });
+      const hook = await renderCompany();
+      act(() => hook.result.current.handleEditAddress(hook.result.current.addresses[0]));
+      fillAddress(hook.result, { isDefault: true });
+
+      await act(async () => {
+        await hook.result.current.handleSaveAddress();
+      });
+
+      expect(api.address.updateCompanyAddress.mock.calls.map(([id]) => id)).toEqual(["a1"]);
     });
 
     it("cancelar limpa a edição", async () => {
