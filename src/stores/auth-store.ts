@@ -1,4 +1,5 @@
 import type { RawAuthUser } from "@/services/api";
+import { isCompanyStaffRole } from "@/utils/role-helpers";
 import { STORAGE_KEYS } from "@/utils/storage-manager";
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
@@ -27,7 +28,9 @@ export interface User {
  */
 export function normalizeAuthUser(raw: RawAuthUser): User {
   const role = raw.role || "client";
-  const isCompanyUser = ["owner", "admin", "manager", "cook", "delivery"].includes(role);
+  // Mesma lista de staff do resto do app: a cópia local que existia aqui
+  // ficou sem `financial`, que era normalizado com campos de cliente.
+  const isCompanyUser = isCompanyStaffRole(role);
 
   if (isCompanyUser) {
     return {
