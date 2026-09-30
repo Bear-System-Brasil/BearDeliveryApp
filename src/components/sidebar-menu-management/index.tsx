@@ -126,11 +126,14 @@ const navGroups: { label: string; links: NavLink[] }[] = [
         icon: Users,
         roles: ["owner", "admin", "manager", "financial"],
       },
+      // Preferencias de quem usa a area, e nao cadastro da empresa: o
+      // ROUTE_PERMISSIONS sempre liberou a tela pro financeiro, e so o link
+      // ficava escondido dele - acesso sem caminho.
       {
         href: "/financial-management/settings",
         label: "Configurações",
         icon: Settings,
-        roles: ["owner", "admin"],
+        roles: ["owner", "admin", "financial"],
       },
     ],
   },

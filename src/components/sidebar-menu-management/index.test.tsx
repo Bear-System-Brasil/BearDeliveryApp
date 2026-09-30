@@ -97,6 +97,19 @@ describe("Sidebar da gestao - Entregas", () => {
   });
 });
 
+describe("Sidebar da gestao - Financeiro", () => {
+  it("o financeiro ve Configuracoes, que e preferencia de quem usa a area", () => {
+    // O mapa sempre liberou a tela pro financeiro; so o link ficava
+    // escondido dele - acesso sem caminho.
+    role = "financial";
+    render(<Sidebar isOpen onClose={() => {}} />);
+
+    expect(
+      screen.getByRole("link", { name: "Configurações" }),
+    ).toHaveAttribute("href", "/financial-management/settings");
+  });
+});
+
 describe("Sidebar da gestao - menu e permissao nao divergem", () => {
   const ROLES = ["owner", "admin", "manager", "cook", "delivery", "financial"];
 
