@@ -962,6 +962,21 @@ describe("useCartActions", () => {
       expect(backend.quantity).toBe(0);
     });
 
+    it("sair da tela com uma rajada no debounce envia a rajada em vez de descartá-la", async () => {
+      const backend = fakeBackend(4);
+      const { result, unmount } = setup(4);
+
+      await click(result, 1);
+      await act(async () => {
+        unmount();
+        await sleep(0);
+      });
+
+      expect(backend.posts.map((p) => p.quantity)).toEqual([1]);
+      await release(backend.posts[0]);
+      expect(backend.quantity).toBe(5);
+    });
+
     it("falha numa rajada reverte só ela e não trava a rajada seguinte", async () => {
       const backend = fakeBackend(4);
       const { result } = setup(4);

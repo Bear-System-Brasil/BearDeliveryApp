@@ -736,8 +736,8 @@ export const useCartActions = () => {
     const finishBurst = burstFinishers.current.get(itemId) ?? (() => {});
     burstFinishers.current.delete(itemId);
 
-    // Lê dos stores, não do render: o timer roda com o closure do render
-    // do último clique
+    // Lê dos stores, não do render: no unmount esta função roda com o
+    // closure do último render, que pode estar atrasado
     const userId = useAuthStore.getState().user?.id;
     const currentOrderId = useCartStore.getState().orderId;
     const currentItem = useCartStore
@@ -811,6 +811,10 @@ export const useCartActions = () => {
 
     request.finally(finishBurst);
   };
+
+  // O cleanup do unmount roda com o closure do primeiro render
+  const sendQuantityBurstRef = useRef(sendQuantityBurst);
+  sendQuantityBurstRef.current = sendQuantityBurst;
 
   /**
    * Atualiza a quantidade de um item (OPTIMISTIC + DEBOUNCED)
@@ -943,9 +947,9 @@ export const useCartActions = () => {
     });
   }, [syncCartFromBackend, user?.id]);
 
-  // CLEANUP: apenas os timers de debounce, ao desmontar. A rajada que
-  // estava no debounce é descartada - e sai da lista de escritas
-  // pendentes, senão o sync esperaria por ela para sempre.
+  // CLEANUP: ao desmontar, envia na hora as rajadas que ainda estavam no
+  // debounce - descartar o timer perdia o clique feito logo antes de sair
+  // da tela, e a quantidade voltava no próximo sync (LDMF-247).
   // NÃO abortar `pendingRequests` aqui: esses AbortControllers são de
   // chamadas que gravam no backend (Redis) + store global (Zustand), não
   // estado local do componente - não há "setState em componente
@@ -961,14 +965,12 @@ export const useCartActions = () => {
   // navegação.
   useEffect(() => {
     const timers = updateTimers.current;
-    const bases = debounceBaseQuantities.current;
-    const finishers = burstFinishers.current;
     return () => {
-      timers.forEach((timer) => clearTimeout(timer));
+      timers.forEach((timer, itemId) => {
+        clearTimeout(timer);
+        sendQuantityBurstRef.current(itemId);
+      });
       timers.clear();
-      bases.clear();
-      finishers.forEach((finish) => finish());
-      finishers.clear();
     };
   }, []);
 
