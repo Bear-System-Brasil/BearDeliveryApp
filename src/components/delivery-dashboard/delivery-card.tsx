@@ -118,8 +118,9 @@ function PaymentRow({ payment }: { payment: PaymentSummary | null }) {
     );
   }
 
-  // Com troco, o que importa é o par "recebe X, devolve Y" - o valor da
-  // conta em si ele não precisa fazer de cabeça na porta.
+  // Com troco, os três números na ordem em que a porta acontece: o cliente
+  // entrega, ele devolve o troco, e sobra o valor do pedido. Sem a terceira
+  // linha ele precisava subtrair de cabeça pra saber com quanto ficou.
   if (payment.changeDue !== null && payment.paysWith !== null) {
     return (
       <div className="flex items-start gap-2.5 rounded-xl bg-emerald-50 px-3 py-2.5 dark:bg-emerald-950/40">
@@ -133,6 +134,13 @@ function PaymentRow({ payment }: { payment: PaymentSummary | null }) {
           </p>
           <p className="mt-0.5 text-[16px] font-extrabold text-emerald-900 dark:text-emerald-200">
             Levar {formatCurrency(payment.changeDue)} de troco
+          </p>
+          {/* `amountDue`, não `order.totalValue`: é o que fecha a conta
+              (paga - troco = fica) e o que sobra com ele. Num pedido com
+              parte já paga os dois diferem, e aí o total aparece separado
+              no bloco de valores, que não some nesse caso. */}
+          <p className="mt-1 text-[13px] font-semibold text-emerald-800/80 dark:text-emerald-300/80">
+            Valor do pedido {formatCurrency(payment.amountDue)}
           </p>
         </div>
       </div>
