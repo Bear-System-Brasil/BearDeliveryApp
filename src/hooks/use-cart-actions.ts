@@ -149,6 +149,11 @@ export const useCartActions = () => {
       const cartKey = `cart:${user.id}`;
       const response = await apiService.orders.viewOrder(user.id, cartKey);
 
+      // A conta pode ter trocado (logout, outra conta entrando) enquanto a
+      // leitura estava em voo - aplicar a resposta agora poria o carrinho
+      // da conta anterior na sessão da seguinte (LDMF-239).
+      if (useAuthStore.getState().user?.id !== user.id) return;
+
       if (response.success && response.data) {
         const backendCart = response.data as BackendCart;
         const orderId = backendCart.id;

@@ -511,6 +511,43 @@ describe("useCartActions", () => {
     });
   });
 
+  describe("syncCartFromBackend - troca de conta (LDMF-239)", () => {
+    it("descarta a resposta que chega depois do logout", async () => {
+      login();
+      const { result } = renderCartActions();
+
+      let resolveView: (value: Awaited<ReturnType<typeof apiService.orders.viewOrder>>) => void = () => {};
+      vi.mocked(apiService.orders.viewOrder).mockReturnValue(
+        new Promise((resolve) => {
+          resolveView = resolve;
+        }),
+      );
+
+      let sync: Promise<void> = Promise.resolve();
+      act(() => {
+        sync = result.current.syncCartFromBackend();
+      });
+      act(() => useAuthStore.getState().logout());
+
+      await act(async () => {
+        resolveView({
+          success: true,
+          data: {
+            id: "cart:user-1",
+            companyId: "r1",
+            orderedItems: [
+              { productId: "prod-1", unitPrice: 30, quantity: 1, product: { name: "Pizza" } },
+            ],
+          } as unknown as Order,
+        });
+        await sync;
+      });
+
+      expect(useCartStore.getState().items).toEqual([]);
+      expect(useCartStore.getState().orderId).toBeNull();
+    });
+  });
+
   describe("handleRemoveFromCart", () => {
     it("remove otimisticamente e, se a API falhar, devolve o item ao carrinho", async () => {
       login();
