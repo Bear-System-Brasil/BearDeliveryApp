@@ -650,9 +650,11 @@ export const useCartActions = () => {
 
   /**
    * Encerra a rajada de "+"/"–" de uma linha sem enviá-la (a linha vai ser
-   * removida).
+   * removida). Devolve a quantidade de antes da rajada - é o que o backend
+   * vai ter depois da fila, já que a diferença dela nunca saiu.
    */
   const cancelQuantityBurst = (itemId: string) => {
+    const unsentBase = debounceBaseQuantities.current.get(itemId);
     if (updateTimers.current.has(itemId)) {
       clearTimeout(updateTimers.current.get(itemId)!);
       updateTimers.current.delete(itemId);
@@ -660,6 +662,7 @@ export const useCartActions = () => {
     debounceBaseQuantities.current.delete(itemId);
     burstFinishers.current.get(itemId)?.();
     burstFinishers.current.delete(itemId);
+    return unsentBase;
   };
 
   /**
@@ -672,7 +675,7 @@ export const useCartActions = () => {
       pendingRequests.current.get(itemId)?.abort();
       pendingRequests.current.delete(itemId);
     }
-    cancelQuantityBurst(itemId);
+    const unsentBase = cancelQuantityBurst(itemId);
 
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
@@ -691,11 +694,13 @@ export const useCartActions = () => {
     // ===== API CALL EM BACKGROUND =====
     // Backend só entende productId, não a linha específica (produto +
     // tamanho/complemento) - ver nota em buildCartItemKey.
-    // Entra na fila da linha para sair depois de qualquer "+"/"–" ainda em
-    // voo (LDMF-247).
+    // Remove o que o backend vai ter, não o que a tela mostra: com uma
+    // rajada ainda no debounce (ex.: "–" de 3 até 0), a tela já está à
+    // frente do backend (LDMF-247). Entra na fila da linha para sair depois
+    // de qualquer "+"/"–" ainda em voo.
     const userId = user.id;
     const currentOrderId = orderId;
-    const quantityToRemove = item.quantity;
+    const quantityToRemove = unsentBase ?? item.quantity;
     const request = enqueueQuantityRequest(itemId, () =>
       apiService.orderItems
         .removeProductFromCart(

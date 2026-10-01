@@ -927,6 +927,24 @@ describe("useCartActions", () => {
       expect(shownQuantity()).toBe(5);
     });
 
+    it("\"–\" até zero numa rajada só remove a quantidade que o backend tem, não a da tela", async () => {
+      const backend = fakeBackend(3);
+      const { result } = setup(3);
+
+      await click(result, -1); // 2
+      await click(result, -1); // 1
+      await click(result, -1); // 0 -> remove a linha
+
+      expect(useCartStore.getState().items).toEqual([]);
+      expect(backend.deletes.map((d) => d.quantity)).toEqual([3]);
+      await release(backend.deletes[0]);
+
+      await act(() => sleep(350));
+      expect(backend.posts).toHaveLength(0);
+      expect(backend.deletes).toHaveLength(1); // a rajada descartada não sai depois
+      expect(backend.quantity).toBe(0);
+    });
+
     it("remover a linha com um \"+\" em voo espera o POST antes do DELETE", async () => {
       const backend = fakeBackend(4);
       const { result } = setup(4);
