@@ -110,18 +110,23 @@ export function NewDishesSection({
     if (!rail || rail.clientWidth === 0) return;
 
     const count = Math.max(1, Math.ceil(rail.scrollWidth / rail.clientWidth));
-    setPageCount(count);
-    setPage(
-      Math.min(count - 1, Math.round(rail.scrollLeft / rail.clientWidth)),
-    );
     // As setas olham o scroll, não a página: `page` arredonda e fica em 0
     // até passar de meia tela (escondia a seta de voltar no 2º e 3º card) e
     // não chegava à última página no fim (a de avançar nunca sumia).
     // 1px de folga para scroll fracionário.
-    setCanScrollBack(rail.scrollLeft > 1);
-    setCanScrollForward(
-      rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 1,
+    const back = rail.scrollLeft > 1;
+    const forward = rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 1;
+
+    setPageCount(count);
+    // A última página costuma ser parcial: no fim do scroll o arredondamento
+    // não chega a ela, então o último ponto nunca acendia.
+    setPage(
+      forward
+        ? Math.min(count - 1, Math.round(rail.scrollLeft / rail.clientWidth))
+        : count - 1,
     );
+    setCanScrollBack(back);
+    setCanScrollForward(forward);
   }, []);
 
   useEffect(() => {

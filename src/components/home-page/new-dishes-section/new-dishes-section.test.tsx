@@ -283,5 +283,18 @@ describe("NewDishesSection", () => {
 
       expect(isHiddenOnDesktop(forward)).toBe(true);
     });
+
+    it("acende o último ponto no fim do trilho", () => {
+      const { scrollTo, activeDot } = renderRail();
+
+      scrollTo(0);
+      expect(activeDot()).toBe(0);
+
+      scrollTo(1000);
+      expect(activeDot()).toBe(1);
+
+      scrollTo(1240);
+      expect(activeDot()).toBe(2);
+    });
   });
 });
