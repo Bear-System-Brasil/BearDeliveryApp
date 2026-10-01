@@ -1,4 +1,5 @@
 import type { Category } from "@/services/api";
+import { useAuthStore } from "@/stores";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -7,6 +8,14 @@ import {
   useDeleteCategory,
   useUpdateCategory,
 } from "./use-categories";
+
+/**
+ * Quem pode excluir categoria. O DELETE /categories/:id é Deny pra manager
+ * no backend (RBAC 5.4), embora ele crie e edite - mostrar o botão pra ele
+ * só levava a um 403. Lista de quem pode, e não de quem não pode, pra role
+ * nova não herdar o botão por omissão.
+ */
+const CATEGORY_DELETE_ROLES = ["owner", "admin"];
 
 interface CategoryFormData {
   name: string;
@@ -18,6 +27,8 @@ export const useCategoryManagement = () => {
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
+  const { user } = useAuthStore();
+  const canDelete = CATEGORY_DELETE_ROLES.includes(user?.role ?? "");
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -114,6 +125,7 @@ export const useCategoryManagement = () => {
   };
 
   const handleRequestDelete = (category: Category) => {
+    if (!canDelete) return;
     setDeleteTarget(category);
   };
 
@@ -122,7 +134,7 @@ export const useCategoryManagement = () => {
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || !canDelete) return;
 
     try {
       await deleteCategory.mutateAsync(deleteTarget.id);
@@ -152,6 +164,7 @@ export const useCategoryManagement = () => {
     handleRequestDelete,
     handleConfirmDelete,
     handleCancelDelete,
+    canDelete,
     updateFormField,
     isSaving: createCategory.isPending || updateCategory.isPending,
     isDeleting: deleteCategory.isPending,
