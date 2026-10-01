@@ -1,0 +1,135 @@
+import { render, screen } from "@testing-library/react";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { hasRoutePermission } from "@/utils/permissions";
+
+/**
+ * O menu lateral da gestao e o unico menu que existe dentro das telas de
+ * trabalho: o AdminPageLayout renderiza este Sidebar e nao o MainHeader,
+ * entao o menu do app com as areas nao esta ali. Item que falta aqui e
+ * caminho que nao existe - foi o caso de Entregas.
+ *
+ * E item que sobra e pior: leva direto pro "Acesso Negado". O ultimo teste
+ * cruza cada link com o mapa de permissoes, pra que os dois lados nao
+ * divirjam em silencio.
+ */
+
+// Lido a cada render pelo mock de useAuth.
+let role = "owner";
+
+vi.mock("@/contexts/auth-provider", () => ({
+  useAuth: () => ({
+    user: { id: "u1", role },
+    logout: vi.fn(),
+  }),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/menu-management",
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
+vi.mock("../ui/bear-delivery-logo", () => ({
+  BearDeliveryLogo: () => <span>BearDelivery</span>,
+}));
+
+const { default: Sidebar } = await import("./index");
+
+beforeAll(() => {
+  // jsdom nao implementa matchMedia, e o Sidebar decide por ele se renderiza
+  // a versao fixa de desktop ou a folha do mobile. Desktop e o caso que
+  // importa aqui: e nele que a BottomBar nao existe.
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }),
+  });
+});
+
+beforeEach(() => {
+  role = "owner";
+});
+
+/** Rotas dos links visiveis, na ordem em que aparecem. */
+const visibleHrefs = () =>
+  screen
+    .getAllByRole("link")
+    .map((link) => link.getAttribute("href"))
+    .filter((href): href is string => !!href);
+
+describe("Sidebar da gestao - Entregas", () => {
+  it.each(["owner", "admin", "manager"])(
+    "%s tem link direto pra area de entregas",
+    (currentRole) => {
+      role = currentRole;
+      render(<Sidebar isOpen onClose={() => {}} />);
+
+      expect(
+        screen.getByRole("link", { name: "Entregas" }),
+      ).toHaveAttribute("href", "/delivery-dashboard");
+    },
+  );
+
+  it("fica junto da operacao do dia a dia, e nao no fim da lista", () => {
+    render(<Sidebar isOpen onClose={() => {}} />);
+
+    const hrefs = visibleHrefs();
+
+    // Pedidos, Cozinha e Entregas em sequencia - é a operação do dia a dia.
+    expect(hrefs.indexOf("/delivery-dashboard")).toBe(
+      hrefs.indexOf("/kitchen") + 1,
+    );
+    expect(hrefs.indexOf("/kitchen")).toBe(
+      hrefs.indexOf("/order-management") + 1,
+    );
+  });
+
+  it("nao aparece pra quem nao alcanca a area", () => {
+    role = "cook";
+    render(<Sidebar isOpen onClose={() => {}} />);
+
+    expect(
+      screen.queryByRole("link", { name: "Entregas" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("Sidebar da gestao - Financeiro", () => {
+  it("o financeiro ve Configuracoes, que e preferencia de quem usa a area", () => {
+    // O mapa sempre liberou a tela pro financeiro; so o link ficava
+    // escondido dele - acesso sem caminho.
+    role = "financial";
+    render(<Sidebar isOpen onClose={() => {}} />);
+
+    expect(
+      screen.getByRole("link", { name: "Configurações" }),
+    ).toHaveAttribute("href", "/financial-management/settings");
+  });
+});
+
+describe("Sidebar da gestao - menu e permissao nao divergem", () => {
+  const ROLES = ["owner", "admin", "manager", "cook", "delivery", "financial"];
+
+  /**
+   * So o logo fica fora: "/" e saida pro app, nao item de navegacao de
+   * trabalho. Todo o resto do menu lateral passa pelo cruzamento.
+   */
+  const NAO_COBERTAS = new Set(["/"]);
+
+  it.each(ROLES)("todo link mostrado para %s e alcancavel", (currentRole) => {
+    role = currentRole;
+    render(<Sidebar isOpen onClose={() => {}} />);
+
+    for (const href of visibleHrefs()) {
+      if (NAO_COBERTAS.has(href)) continue;
+
+      expect(
+        hasRoutePermission(href, currentRole),
+        `${currentRole} nao alcanca ${href}`,
+      ).toBe(true);
+    }
+  });
+});

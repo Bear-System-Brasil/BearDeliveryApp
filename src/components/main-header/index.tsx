@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/auth-provider";
 import { useAuthStore, useCartStore } from "@/stores";
-import { getWorkspaceLink } from "@/constants/workspace-links";
+import { getWorkspaceLinks } from "@/constants/workspace-links";
 import {
   OPEN_LOCATION_SHEET_EVENT,
   type OpenLocationSheetMode,
@@ -83,8 +83,26 @@ interface MainHeaderProps {
 
   // estilo do container
   fixed?: boolean;
+  /**
+   * Posicao do container, quando `fixed` (flutuante no topo) nao serve.
+   *
+   * "static" existe para a area de entregas: as telas de la tem cabecalho
+   * proprio `sticky top-0` com as acoes da tela, e um cabecalho de app
+   * flutuante ou sticky o cobriria no scroll. Estatico, os dois convivem sem
+   * um esconder o outro.
+   *
+   * Quando ausente, `fixed` continua decidindo - nenhuma chamada existente
+   * muda de comportamento.
+   */
+  position?: "fixed" | "sticky" | "static";
   className?: string;
 }
+
+const POSITION_CLASS = {
+  fixed: "fixed top-1 left-1 right-1 z-50",
+  sticky: "sticky top-0 z-50",
+  static: "relative z-50",
+} as const;
 
 export function MainHeader({
   cartItems,
@@ -103,6 +121,7 @@ export function MainHeader({
   logoSmall = false,
   logoHref = "/",
   fixed = true,
+  position,
   className,
 }: MainHeaderProps) {
   const router = useRouter();
@@ -120,7 +139,10 @@ export function MainHeader({
   const resolvedShowNotifications = showNotifications ?? showNav;
   const resolvedShowMenu = showMenu ?? showNav;
   const resolvedShowStoreCta = showStoreCta ?? showNav;
-  const workspaceLink = getWorkspaceLink(user?.role);
+  // Todas as áreas da role, e não uma só: quem administra o restaurante
+  // enxerga Gestão, Cozinha, Pedidos, Entregas e Financeiro. Aqui cabe a
+  // lista inteira - é um menu vertical, ao contrário da barra inferior.
+  const workspaceLinks = getWorkspaceLinks(user?.role);
   const isStaffAccount = isAuthenticated && isCompanyStaffRole(user?.role);
 
   const [isMounted, setIsMounted] = useState(false);
@@ -271,7 +293,7 @@ export function MainHeader({
   return (
     <header
       className={clsx(
-        fixed ? "fixed top-1 left-1 right-1 z-50" : "sticky top-0 z-50",
+        POSITION_CLASS[position ?? (fixed ? "fixed" : "sticky")],
         "bg-background/80 backdrop-blur-md border border-brand-100/50 dark:border-brand-900/50",
         "rounded-xl sm:rounded-2xl shadow-2xl overflow-hidden",
         className,
@@ -588,26 +610,20 @@ export function MainHeader({
                             Cadastrar meu restaurante
                           </Button>
                         )}
-                        {getWorkspaceLink(user?.role) && (
+                        {workspaceLinks.map((area) => (
                           <Button
+                            key={area.href}
                             variant="outline"
                             className="w-full justify-start rounded-xl"
                             onClick={() => {
-                              router.push(getWorkspaceLink(user?.role)!.href);
+                              router.push(area.href);
                               setMobileMenuOpen(false);
                             }}
                           >
-                            {(() => {
-                              const L = getWorkspaceLink(user?.role)!;
-                              return (
-                                <>
-                                  <L.icon className="h-4 w-4 mr-2" />
-                                  {L.label}
-                                </>
-                              );
-                            })()}
+                            <area.icon className="h-4 w-4 mr-2" />
+                            {area.label}
                           </Button>
-                        )}
+                        ))}
                         <button
                           type="button"
                           onClick={() => {

@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/auth-provider";
 import { useCartActions } from "@/hooks";
 import { useAuthStore } from "@/stores";
 import { isBottomBarHidden } from "@/constants/bottom-bar-routes";
-import { getWorkspaceLink } from "@/constants/workspace-links";
+import { getPrimaryWorkspaceLink } from "@/constants/workspace-links";
 import { getProfileRoute, isCompanyStaffRole } from "@/utils/role-helpers";
 
 type BottomTabId =
@@ -123,7 +123,11 @@ export function BottomBar({ activeTab }: BottomBarProps) {
   // Os dois destinos saem da role, não de constantes de owner/admin: um
   // financial mandado pra /menu-management ou /company-profile bate em
   // "Acesso Negado", já que o middleware nega as duas.
-  const workspace = getWorkspaceLink(user?.role);
+  //
+  // Só a área principal entra aqui. Quem administra o restaurante enxerga
+  // cinco áreas, e a barra tem três colunas - as outras ficam no menu do
+  // cabeçalho, que é lista vertical e comporta.
+  const workspace = getPrimaryWorkspaceLink(user?.role);
   const staffTabs: Tab[] = [
     { id: "home", label: "Início", icon: Home, href: "/" },
     {
