@@ -450,7 +450,7 @@ function MenuManagementContent() {
               <TabsTrigger
                 key={category.id}
                 value={category.id}
-                className="h-[30px] shrink-0 rounded-full border border-border bg-card px-[13px] py-0 text-xs font-semibold text-foreground shadow-none transition-colors data-[state=active]:border-zinc-900 data-[state=active]:bg-zinc-900 data-[state=active]:text-white data-[state=active]:shadow-none"
+                className="h-[30px] shrink-0 rounded-full border border-border bg-card px-[13px] py-0 text-xs font-semibold text-foreground shadow-none transition-colors data-[state=active]:border-selected data-[state=active]:bg-selected data-[state=active]:text-selected-foreground data-[state=active]:shadow-none"
               >
                 {category.name}
               </TabsTrigger>
