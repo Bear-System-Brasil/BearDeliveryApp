@@ -6,7 +6,6 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import {
   useAllCategories,
   useCartActions,
@@ -52,14 +51,6 @@ export type ExtraGroup = {
   basePrice?: number;
 };
 
-type CustomOrderType = {
-  specialInstructions: string;
-};
-
-const initialCustomOrder = (): CustomOrderType => ({
-  specialInstructions: "",
-});
-
 /**
  * Teto por complemento, aplicado a cada um de forma independente: dá pra
  * levar 4 de cada tipo, e não há limite de quantos tipos o cliente escolhe.
@@ -73,9 +64,6 @@ export function CustomizeOrder({
 }: Props) {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  // Observações já abertas ao abrir o prato: o cliente não precisa achar o
-  // "+" pra pedir sem cebola. O botão vira só um jeito de recolher.
-  const [notesOpen, setNotesOpen] = useState(true);
   // Tamanho é escolha única (ids); complemento agora carrega quantidade,
   // então mora em `addOnQuantities` (id -> quantidade, 0 = fora do pedido).
   const [selections, setSelections] = useState<Record<string, string[]>>({
@@ -120,10 +108,6 @@ export function CustomizeOrder({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageApi, productData.id]);
-
-  const [customOrder, setCustomOrder] = useState<CustomOrderType>(
-    initialCustomOrder(),
-  );
 
   const { data: restaurant, isLoading: restaurantLoading } = useRestaurant(
     productData.companyId,
@@ -244,9 +228,7 @@ export function CustomizeOrder({
   };
 
   const resetState = () => {
-    setCustomOrder(initialCustomOrder());
     setQuantity(1);
-    setNotesOpen(true);
     setSelections({ variation: [], addon: [] });
     setAddOnQuantities({});
     setAddAfterLogin(false);
@@ -296,7 +278,6 @@ export function CustomizeOrder({
         image: productData.imageURL?.[0]?.url || "/placeholder.svg",
         restaurantId: restaurant.id,
         restaurantName: restaurant.tradeName,
-        specialInstructions: customOrder.specialInstructions,
         quantity,
         variations: selectedVariationId
           ? [{ productVariationId: selectedVariationId }]
@@ -467,32 +448,6 @@ export function CustomizeOrder({
                   maxQuantity={ADD_ON_MAX_QUANTITY}
                 />
               ))
-            )}
-          </div>
-
-          <div className="mt-3">
-            <button
-              type="button"
-              aria-expanded={notesOpen}
-              onClick={() => setNotesOpen((prev) => !prev)}
-              className="text-[11.5px] font-bold text-brand-500"
-            >
-              {notesOpen ? "− Observações" : "+ Observações"}
-            </button>
-
-            {notesOpen && (
-              <Textarea
-                placeholder="Ex: sem cebola, bem passado…"
-                value={customOrder.specialInstructions}
-                onChange={(e) =>
-                  setCustomOrder((prev) => ({
-                    ...prev,
-                    specialInstructions: e.target.value,
-                  }))
-                }
-                rows={2}
-                className="mt-2 resize-none rounded-[9px] border border-border bg-muted text-[12.5px] shadow-none focus-visible:ring-brand-400"
-              />
             )}
           </div>
         </div>

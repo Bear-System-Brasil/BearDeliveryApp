@@ -253,13 +253,5 @@ describe("apiService (via apiRequest)", () => {
         await captureBody({ variations: [{ productVariationId: "v1" }] }),
       ).toHaveProperty("variations", [{ productVariationId: "v1" }]);
     });
-
-    it("remove espaços da observação e omite quando fica vazia", async () => {
-      expect(await captureBody({ observations: "   " })).not.toHaveProperty("observations");
-      expect(await captureBody({ observations: "  sem cebola  " })).toHaveProperty(
-        "observations",
-        "sem cebola",
-      );
-    });
   });
 });

@@ -494,7 +494,6 @@ export const useCartActions = () => {
         const extras = {
           addOns: item.addOns,
           variations: item.variations,
-          observations: item.specialInstructions,
         };
 
         let response = await apiService.orderItems.addProductToCart(

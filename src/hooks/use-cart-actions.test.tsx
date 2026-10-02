@@ -158,10 +158,14 @@ describe("useCartActions", () => {
           "prod-1",
           "user-1",
           1,
-          expect.objectContaining({ observations: undefined }),
+          expect.anything(),
           expect.anything(),
         );
       });
+      // O backend não recebe observação do prato (LDMF-254): não vai no POST
+      expect(
+        vi.mocked(apiService.orderItems.addProductToCart).mock.calls[0][4],
+      ).not.toHaveProperty("observations");
     });
 
     it("reusa o orderId existente, sem criar um novo carrinho", async () => {
@@ -371,38 +375,7 @@ describe("useCartActions", () => {
       expect(useCartStore.getState().items).toHaveLength(1);
     });
 
-    it("manda a observação do prato para o backend como observations", async () => {
-      login();
-      act(() => useCartStore.getState().setOrderId("order-1"));
-      vi.mocked(apiService.orderItems.addProductToCart).mockResolvedValue({ success: true });
-
-      const { result } = renderCartActions();
-
-      await act(async () => {
-        await result.current.handleAddToCart({
-          id: "prod-1",
-          name: "Pizza",
-          price: 30,
-          restaurantId: "r1",
-          restaurantName: "Pizzaria",
-          specialInstructions: "sem cebola",
-        });
-      });
-
-      await waitFor(() => {
-        expect(apiService.orderItems.addProductToCart).toHaveBeenCalledWith(
-          "order-1",
-          "prod-1",
-          "user-1",
-          1,
-          expect.objectContaining({ observations: "sem cebola" }),
-          expect.anything(),
-        );
-      });
-      expect(useCartStore.getState().items[0].specialInstructions).toBe("sem cebola");
-    });
-
-    it("o reenvio depois do 404 mantém a observação do prato", async () => {
+    it("o reenvio depois do 404 mantém os complementos do prato", async () => {
       login();
       act(() => useCartStore.getState().setOrderId("order-morto"));
       vi.mocked(apiService.orderItems.addProductToCart)
@@ -422,7 +395,7 @@ describe("useCartActions", () => {
           price: 30,
           restaurantId: "r1",
           restaurantName: "Pizzaria",
-          specialInstructions: "bem passada",
+          addOns: [{ productAddOnsId: "addon-1", quantity: 2 }],
         });
       });
 
@@ -434,7 +407,9 @@ describe("useCartActions", () => {
         "prod-1",
         "user-1",
         1,
-        expect.objectContaining({ observations: "bem passada" }),
+        expect.objectContaining({
+          addOns: [{ productAddOnsId: "addon-1", quantity: 2 }],
+        }),
         expect.anything(),
       ]);
     });
