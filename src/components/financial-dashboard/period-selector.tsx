@@ -50,7 +50,7 @@ export function PeriodSelector({
             className={cn(
               "h-8 cursor-pointer rounded-[8px] px-3 text-[12px] font-bold transition-colors",
               period === option
-                ? "bg-zinc-900 text-white"
+                ? "bg-selected text-selected-foreground"
                 : "border border-border bg-card text-foreground hover:bg-muted",
             )}
           >
