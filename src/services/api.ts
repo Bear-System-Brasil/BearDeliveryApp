@@ -2273,8 +2273,6 @@ export const apiService = {
       extras?: {
         addOns?: { productAddOnsId: string; quantity: number }[];
         variations?: { productVariationId: string }[];
-        /** Observação do prato (ex.: "sem cebola, bem passado"). */
-        observations?: string;
       },
       signal?: AbortSignal,
     ) =>
@@ -2288,9 +2286,6 @@ export const apiService = {
           ...(extras?.addOns?.length ? { addOns: extras.addOns } : {}),
           ...(extras?.variations?.length
             ? { variations: extras.variations }
-            : {}),
-          ...(extras?.observations?.trim()
-            ? { observations: extras.observations.trim() }
             : {}),
         },
         true,

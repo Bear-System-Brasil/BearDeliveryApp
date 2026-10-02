@@ -108,8 +108,6 @@ interface BackendCartItem {
   product?: { name?: string; imageURL?: { url: string }[] };
   addOns?: BackendCartAddOn[];
   variations?: BackendCartVariation[];
-  /** Observação do prato (ex.: "sem cebola, bem passado"). */
-  observations?: string;
 }
 
 interface BackendCart {
@@ -363,7 +361,6 @@ export const useCartActions = () => {
               restaurantId: companyId,
               restaurantName: restaurant?.name || "Restaurante",
               customizations: item.addIngredient || undefined,
-              specialInstructions: item.observations || existing?.specialInstructions,
               variationLabel: variationLabel || existing?.variationLabel,
               addOnLabels: addOnLabels.length
                 ? addOnLabels
@@ -395,7 +392,6 @@ export const useCartActions = () => {
     restaurantId: string;
     restaurantName: string;
     image?: string;
-    specialInstructions?: string;
     addOns?: { productAddOnsId: string; quantity: number }[];
     variations?: { productVariationId: string }[];
     variationLabel?: string;
@@ -482,7 +478,6 @@ export const useCartActions = () => {
         price: item.price,
         quantity: item.quantity || 1,
         imageUrl: item.image,
-        specialInstructions: item.specialInstructions,
         restaurantId: item.restaurantId,
         restaurantName: item.restaurantName,
         variationLabel: item.variationLabel,
@@ -563,7 +558,6 @@ export const useCartActions = () => {
         const extras = {
           addOns: item.addOns,
           variations: item.variations,
-          observations: item.specialInstructions,
         };
 
         let response = await apiService.orderItems.addProductToCart(
