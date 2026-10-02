@@ -1210,7 +1210,7 @@ export default function CashRegisterPage() {
                 className={cn(
                   "h-[30px] rounded-[8px] text-[11px] font-bold transition-colors",
                   movementType === opt.value
-                    ? "bg-zinc-900 text-white"
+                    ? "bg-selected text-selected-foreground"
                     : "bg-muted text-foreground hover:bg-muted",
                 )}
               >
