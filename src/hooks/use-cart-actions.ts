@@ -29,10 +29,50 @@ const SYNC_THROTTLE_MS = 3000;
 // essas promessas assentarem antes de confiar numa leitura do backend.
 let pendingAddPromises: Promise<unknown>[] = [];
 
-const waitForPendingAdds = async () => {
-  if (!pendingAddPromises.length) return;
-  await Promise.allSettled(pendingAddPromises);
+// Rajadas de "+"/"–" que o backend ainda não confirmou: debounce correndo,
+// requisição na fila ou em voo. Mesmo papel de `pendingAddPromises` - uma
+// leitura do backend feita agora traria a quantidade de antes da rajada e
+// sobrescreveria a tela (LDMF-247).
+let pendingQuantityWrites: Promise<unknown>[] = [];
+
+// Muda a cada escrita local no carrinho. O sync compara antes e depois da
+// leitura: se mudou, a resposta nasceu velha e é descartada.
+let cartWriteVersion = 0;
+
+// Fila de requisições de quantidade por linha. A rajada seguinte espera a
+// anterior terminar em vez de abortá-la - o abort não garante que o backend
+// deixou de aplicar, nem que aplicou, e o POST soma: o incremento abortado
+// se perdia (LDMF-247).
+const quantityQueues = new Map<string, Promise<void>>();
+
+const trackQuantityWrite = (promise: Promise<unknown>) => {
+  pendingQuantityWrites.push(promise);
+  promise.finally(() => {
+    pendingQuantityWrites = pendingQuantityWrites.filter((p) => p !== promise);
+  });
 };
+
+const enqueueQuantityRequest = (itemId: string, send: () => Promise<void>) => {
+  const previous = quantityQueues.get(itemId) ?? Promise.resolve();
+  const request = previous.then(send);
+  quantityQueues.set(itemId, request);
+  request.finally(() => {
+    if (quantityQueues.get(itemId) === request) quantityQueues.delete(itemId);
+  });
+  return request;
+};
+
+const waitForPendingWrites = async () => {
+  // Em laço: uma escrita nova pode entrar enquanto as anteriores assentam
+  while (pendingAddPromises.length || pendingQuantityWrites.length) {
+    await Promise.allSettled([...pendingAddPromises, ...pendingQuantityWrites]);
+  }
+};
+
+const hasPendingWrites = () =>
+  pendingAddPromises.length > 0 || pendingQuantityWrites.length > 0;
+
+const SYNC_MAX_ATTEMPTS = 3;
 
 /**
  * O carrinho no Redis devolve addOns/variations com o nome da relação
@@ -135,22 +175,46 @@ export const useCartActions = () => {
   // clique anterior" - senão cliques rápidos mandam só o último incremento.
   const debounceBaseQuantities = useRef<Map<string, number>>(new Map());
 
+  // Resolve a promessa de "rajada pendente" (ver pendingQuantityWrites)
+  // quando a requisição dela termina ou a rajada é descartada.
+  const burstFinishers = useRef<Map<string, () => void>>(new Map());
+
   /**
    * Busca carrinho do backend e atualiza estado local
    * IMPORTANTE: Erro 404 é ESPERADO quando o usuário não tem carrinho ativo
    * (ex: primeira vez acessando ou após finalizar pedido)
    */
   const syncCartFromBackend = async () => {
-    if (!user?.id) return;
+    for (let attempt = 0; attempt < SYNC_MAX_ATTEMPTS; attempt++) {
+      if (await readCartFromBackend()) return;
+    }
+  };
+
+  /**
+   * Uma leitura do carrinho. Devolve false quando a resposta foi descartada
+   * por ter nascido velha - houve escrita local durante a leitura.
+   */
+  const readCartFromBackend = async (): Promise<boolean> => {
+    if (!user?.id) return true;
 
     try {
+      // Escrita local ainda não confirmada: ler agora traria o carrinho de
+      // antes dela e sobrescreveria o estado otimista.
+      await waitForPendingWrites();
+      const versionAtRead = cartWriteVersion;
+      const isStale = () =>
+        cartWriteVersion !== versionAtRead || hasPendingWrites();
+
       const cartKey = `cart:${user.id}`;
       const response = await apiService.orders.viewOrder(user.id, cartKey);
 
       // A conta pode ter trocado (logout, outra conta entrando) enquanto a
       // leitura estava em voo - aplicar a resposta agora poria o carrinho
       // da conta anterior na sessão da seguinte (LDMF-239).
-      if (useAuthStore.getState().user?.id !== user.id) return;
+      if (useAuthStore.getState().user?.id !== user.id) return true;
+
+      // Clique em "+"/"–" ou item adicionado durante a leitura (LDMF-247)
+      if (isStale()) return false;
 
       if (response.success && response.data) {
         const backendCart = response.data as BackendCart;
@@ -221,6 +285,9 @@ export const useCartActions = () => {
               );
             }
           }
+
+          // O catálogo também é uma espera: confere de novo antes de escrever
+          if (isStale()) return false;
 
           const cartItems = orderedItems.map((item) => {
             // item.unitPrice é só o preço base do produto - os extras de
@@ -311,6 +378,7 @@ export const useCartActions = () => {
     } catch (error) {
       // 404 é esperado quando não há carrinho ativo
     }
+    return true;
   };
 
   /**
@@ -442,6 +510,7 @@ export const useCartActions = () => {
       }
 
       // Atualizar estado local imediatamente
+      cartWriteVersion++;
       setItems(newItems);
       // Primeira nota do motivo, curtinha e baixa. É a única micro-interação
       // com som no app: se cada toque apitasse, o som deixaria de significar
@@ -554,7 +623,7 @@ export const useCartActions = () => {
 
       // Registrado pra quem for sincronizar do backend (ex: ao entrar em
       // /cart) esperar essa escrita assentar antes de ler - ver
-      // waitForPendingAdds.
+      // waitForPendingWrites.
       pendingAddPromises.push(backgroundAdd);
       backgroundAdd.finally(() => {
         pendingAddPromises = pendingAddPromises.filter(
@@ -574,6 +643,23 @@ export const useCartActions = () => {
   };
 
   /**
+   * Encerra a rajada de "+"/"–" de uma linha sem enviá-la (a linha vai ser
+   * removida). Devolve a quantidade de antes da rajada - é o que o backend
+   * vai ter depois da fila, já que a diferença dela nunca saiu.
+   */
+  const cancelQuantityBurst = (itemId: string) => {
+    const unsentBase = debounceBaseQuantities.current.get(itemId);
+    if (updateTimers.current.has(itemId)) {
+      clearTimeout(updateTimers.current.get(itemId)!);
+      updateTimers.current.delete(itemId);
+    }
+    debounceBaseQuantities.current.delete(itemId);
+    burstFinishers.current.get(itemId)?.();
+    burstFinishers.current.delete(itemId);
+    return unsentBase;
+  };
+
+  /**
    * Remove um item do carrinho (OPTIMISTIC - instantâneo)
    */
   const handleRemoveFromCart = async (itemId: string) => {
@@ -583,16 +669,13 @@ export const useCartActions = () => {
       pendingRequests.current.get(itemId)?.abort();
       pendingRequests.current.delete(itemId);
     }
-    if (updateTimers.current.has(itemId)) {
-      clearTimeout(updateTimers.current.get(itemId)!);
-      updateTimers.current.delete(itemId);
-    }
-    debounceBaseQuantities.current.delete(itemId);
+    const unsentBase = cancelQuantityBurst(itemId);
 
     const item = items.find((i) => i.id === itemId);
     if (!item) return;
 
     // ===== OPTIMISTIC UPDATE =====
+    cartWriteVersion++;
     const newItems = items.filter((i) => i.id !== itemId);
     setItems(newItems);
 
@@ -605,19 +688,127 @@ export const useCartActions = () => {
     // ===== API CALL EM BACKGROUND =====
     // Backend só entende productId, não a linha específica (produto +
     // tamanho/complemento) - ver nota em buildCartItemKey.
-    apiService.orderItems
-      .removeProductFromCart(user.id, orderId, item.productId, item.quantity)
-      .catch((error) => {
-        const currentItems = useCartStore.getState().items;
-        setItems([...currentItems, item]);
+    // Remove o que o backend vai ter, não o que a tela mostra: com uma
+    // rajada ainda no debounce (ex.: "–" de 3 até 0), a tela já está à
+    // frente do backend (LDMF-247). Entra na fila da linha para sair depois
+    // de qualquer "+"/"–" ainda em voo.
+    const userId = user.id;
+    const currentOrderId = orderId;
+    const quantityToRemove = unsentBase ?? item.quantity;
+    const request = enqueueQuantityRequest(itemId, () =>
+      apiService.orderItems
+        .removeProductFromCart(
+          userId,
+          currentOrderId,
+          item.productId,
+          quantityToRemove,
+        )
+        .then(() => undefined)
+        .catch(() => {
+          const currentItems = useCartStore.getState().items;
+          setItems([...currentItems, item]);
 
-        if (currentItems.length === 0) {
-          setRestaurant({ id: item.restaurantId, name: item.restaurantName });
-        }
+          if (currentItems.length === 0) {
+            setRestaurant({ id: item.restaurantId, name: item.restaurantName });
+          }
 
-        toast.error("Erro ao remover. Tente novamente.");
-      });
+          toast.error("Erro ao remover. Tente novamente.");
+        }),
+    );
+    trackQuantityWrite(request);
   };
+
+  /**
+   * Envia a rajada de "+"/"–" de uma linha: a diferença entre a quantidade
+   * atual e a de antes da rajada. Entra na fila da linha - se a rajada
+   * anterior ainda está em voo, espera ela terminar.
+   */
+  const sendQuantityBurst = (itemId: string) => {
+    updateTimers.current.delete(itemId);
+    const baseQuantity = debounceBaseQuantities.current.get(itemId);
+    debounceBaseQuantities.current.delete(itemId);
+    const finishBurst = burstFinishers.current.get(itemId) ?? (() => {});
+    burstFinishers.current.delete(itemId);
+
+    // Lê dos stores, não do render: no unmount esta função roda com o
+    // closure do último render, que pode estar atrasado
+    const userId = useAuthStore.getState().user?.id;
+    const currentOrderId = useCartStore.getState().orderId;
+    const currentItem = useCartStore
+      .getState()
+      .items.find((i) => i.id === itemId);
+
+    if (!userId || !currentOrderId || !currentItem || baseQuantity === undefined) {
+      finishBurst();
+      return;
+    }
+
+    const diff = currentItem.quantity - baseQuantity;
+    if (diff === 0) {
+      finishBurst();
+      return;
+    }
+
+    // Reverte subtraindo o `diff` que ESSA rajada tentou aplicar, do valor
+    // atual - preserva a rajada seguinte, que já mudou a tela por cima.
+    const revertQuantity = (message?: string) => {
+      const currentItems = useCartStore.getState().items;
+      const revertedItems = currentItems.map((i) =>
+        i.id === itemId
+          ? { ...i, quantity: Math.max(1, i.quantity - diff) }
+          : i,
+      );
+      setItems(revertedItems);
+      toast.error(message || "Erro ao atualizar. Tente novamente.");
+    };
+
+    const request = enqueueQuantityRequest(itemId, async () => {
+      // Só o timeout aborta: uma requisição travada não pode segurar a fila
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), 10000);
+
+      try {
+        // Backend só entende productId, não a linha específica (produto +
+        // tamanho/complemento) - ver nota em buildCartItemKey. No incremento
+        // dá pra reduzir a ambiguidade mandando addOns/variations (o endpoint
+        // já aceita, é o mesmo usado em handleAddToCart); no decremento não -
+        // DELETE /order-item/cart/:orderId/products/:productId/:quantity não
+        // tem como receber extras.
+        const response =
+          diff > 0
+            ? await apiService.orderItems.addProductToCart(
+              currentOrderId,
+              currentItem.productId,
+              userId,
+              diff,
+              { addOns: currentItem.addOns, variations: currentItem.variations },
+              abortController.signal,
+            )
+            : await apiService.orderItems.removeProductFromCart(
+              userId,
+              currentOrderId,
+              currentItem.productId,
+              Math.abs(diff),
+              abortController.signal,
+            );
+
+        if (!response.success) {
+          revertQuantity(response.message);
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar quantidade:", error);
+        revertQuantity();
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    });
+
+    request.finally(finishBurst);
+  };
+
+  // O cleanup do unmount roda com o closure do primeiro render
+  const sendQuantityBurstRef = useRef(sendQuantityBurst);
+  sendQuantityBurstRef.current = sendQuantityBurst;
 
   /**
    * Atualiza a quantidade de um item (OPTIMISTIC + DEBOUNCED)
@@ -635,12 +826,21 @@ export const useCartActions = () => {
       return;
     }
 
-    // Primeiro clique da rajada: guarda a quantidade antes dela
+    // Primeiro clique da rajada: guarda a quantidade antes dela e marca a
+    // rajada como pendente até a requisição dela terminar - o sync espera
     if (!debounceBaseQuantities.current.has(itemId)) {
       debounceBaseQuantities.current.set(itemId, item.quantity);
+      let finishBurst = () => {};
+      trackQuantityWrite(
+        new Promise<void>((resolve) => {
+          finishBurst = resolve;
+        }),
+      );
+      burstFinishers.current.set(itemId, finishBurst);
     }
 
     // ===== OPTIMISTIC UPDATE IMEDIATO =====
+    cartWriteVersion++;
     const newItems = items.map((i) =>
       i.id === itemId ? { ...i, quantity: newQuantity } : i,
     );
@@ -652,93 +852,7 @@ export const useCartActions = () => {
       clearTimeout(updateTimers.current.get(itemId)!);
     }
 
-    const timer = setTimeout(() => {
-      updateTimers.current.delete(itemId);
-      const baseQuantity =
-        debounceBaseQuantities.current.get(itemId) ?? item.quantity;
-      debounceBaseQuantities.current.delete(itemId);
-
-      // Calcular diferença com base no estado atual do store
-      const currentItems = useCartStore.getState().items;
-      const currentItem = currentItems.find((i) => i.id === itemId);
-
-      if (!currentItem) return; // Item foi removido
-
-      const diff = currentItem.quantity - baseQuantity;
-      if (diff === 0) return; // Sem mudanças
-
-      // CONTRAMEDIDA: Cancelar requisição anterior se houver
-      if (pendingRequests.current.has(itemId)) {
-        pendingRequests.current.get(itemId)?.abort();
-      }
-
-      const abortController = new AbortController();
-      pendingRequests.current.set(itemId, abortController);
-
-      const timeoutId = setTimeout(() => abortController.abort(), 10000);
-
-      // Backend só entende productId, não a linha específica (produto +
-      // tamanho/complemento) - ver nota em buildCartItemKey. No incremento
-      // dá pra reduzir a ambiguidade mandando addOns/variations (o endpoint
-      // já aceita, é o mesmo usado em handleAddToCart); no decremento não -
-      // DELETE /order-item/cart/:orderId/products/:productId/:quantity não
-      // tem como receber extras.
-      const apiCall =
-        diff > 0
-          ? apiService.orderItems.addProductToCart(
-            orderId,
-            item.productId,
-            user.id,
-            diff,
-            { addOns: item.addOns, variations: item.variations },
-            abortController.signal,
-          )
-          : apiService.orderItems.removeProductFromCart(
-            user.id,
-            orderId,
-            item.productId,
-            Math.abs(diff),
-            abortController.signal,
-          );
-
-      // Reverte subtraindo o `diff` que ESSA chamada tentou aplicar, do
-      // valor atual - não pulando pro snapshot antigo (`item.quantity`), que
-      // ficaria stale se outra chamada pro mesmo item já tiver mudado a
-      // quantidade nesse meio-tempo (ver AbortController acima: o abort é
-      // best-effort e não garante que a chamada anterior nunca chegou a
-      // processar no backend).
-      const revertQuantity = (message?: string) => {
-        const currentItems = useCartStore.getState().items;
-        const revertedItems = currentItems.map((i) =>
-          i.id === itemId
-            ? { ...i, quantity: Math.max(1, i.quantity - diff) }
-            : i,
-        );
-        setItems(revertedItems);
-        toast.error(message || "Erro ao atualizar. Tente novamente.");
-      };
-
-      apiCall
-        .then((response) => {
-          clearTimeout(timeoutId);
-          pendingRequests.current.delete(itemId);
-
-          if (!response.success) {
-            revertQuantity(response.message);
-          }
-        })
-        .catch((error) => {
-          clearTimeout(timeoutId);
-          pendingRequests.current.delete(itemId);
-
-          // Ignorar erros de abort
-          if (error.name === "AbortError") return;
-
-          console.error("Erro ao atualizar quantidade:", error);
-          revertQuantity();
-        });
-    }, 300); // Debounce de 300ms
-
+    const timer = setTimeout(() => sendQuantityBurst(itemId), 300);
     updateTimers.current.set(itemId, timer);
   };
 
@@ -819,18 +933,17 @@ export const useCartActions = () => {
     if (now - lastSyncAttempt < SYNC_THROTTLE_MS) return;
     lastSyncAttempt = now;
 
-    // Espera qualquer "add ao carrinho" que ainda esteja em voo terminar de
-    // persistir antes de ler do backend - senão essa leitura chega primeiro
-    // e sobrescreve o item que acabou de ser adicionado otimisticamente
-    // (ex: tocar "Adicionar" e ir direto pra /cart em seguida).
-    waitForPendingAdds().then(() => {
-      syncCartFromBackend().catch(() => {
-        // Ignore errors - doesn't block UX
-      });
+    // O sync espera qualquer escrita em voo ("Adicionar", "+", "–") antes
+    // de ler do backend - senão a leitura chega primeiro e sobrescreve o
+    // estado otimista (ex: tocar "Adicionar" e ir direto pra /cart).
+    syncCartFromBackend().catch(() => {
+      // Ignore errors - doesn't block UX
     });
   }, [syncCartFromBackend, user?.id]);
 
-  // CLEANUP: apenas os timers de debounce, ao desmontar.
+  // CLEANUP: ao desmontar, envia na hora as rajadas que ainda estavam no
+  // debounce - descartar o timer perdia o clique feito logo antes de sair
+  // da tela, e a quantidade voltava no próximo sync (LDMF-247).
   // NÃO abortar `pendingRequests` aqui: esses AbortControllers são de
   // chamadas que gravam no backend (Redis) + store global (Zustand), não
   // estado local do componente - não há "setState em componente
@@ -842,13 +955,16 @@ export const useCartActions = () => {
   // silenciosamente (nem reverte nem avisa), e o sync do backend na
   // página seguinte lia o carrinho sem o item que acabou de ganhar o toast
   // de sucesso. Isso sabotava o próprio mecanismo (`pendingAddPromises`/
-  // `waitForPendingAdds`) feito pra essas requisições sobreviverem à
+  // `waitForPendingWrites`) feito pra essas requisições sobreviverem à
   // navegação.
   useEffect(() => {
+    const timers = updateTimers.current;
     return () => {
-      updateTimers.current.forEach((timer) => clearTimeout(timer));
-      updateTimers.current.clear();
-      debounceBaseQuantities.current.clear();
+      timers.forEach((timer, itemId) => {
+        clearTimeout(timer);
+        sendQuantityBurstRef.current(itemId);
+      });
+      timers.clear();
     };
   }, []);
 
