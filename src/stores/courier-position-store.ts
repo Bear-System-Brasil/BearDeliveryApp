@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useAuthStore } from "@/stores/auth-store";
 
 import type { Coords } from "@/types/restaurant";
 
@@ -54,6 +55,17 @@ export const useCourierPositionStore = create<CourierPositionState>((set) => ({
     set({ position: { coords, source, at: Date.now(), label } }),
   clearPosition: () => set({ position: null }),
 }));
+
+// A posição é do entregador logado: o próximo a entrar no mesmo aparelho
+// não calcula frete com a do anterior (LDMF-244). Mesmo gatilho do carrinho
+// (LDMF-239) - todo caminho que troca o usuário passa pelo auth-store.
+let boundUserId = useAuthStore.getState().user?.id ?? null;
+useAuthStore.subscribe((state) => {
+  const userId = state.user?.id ?? null;
+  if (userId === boundUserId) return;
+  boundUserId = userId;
+  useCourierPositionStore.getState().clearPosition();
+});
 
 export function isPositionFresh(
   position: CourierPosition | null,

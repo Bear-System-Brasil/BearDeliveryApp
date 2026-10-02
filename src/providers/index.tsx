@@ -4,7 +4,8 @@ import { ConfirmProvider } from '@/contexts/confirm-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { bindQueryCacheToUser } from '@/lib/query-cache-session'
 
 interface ProvidersProps {
   children: React.ReactNode
@@ -41,6 +42,9 @@ export function Providers({ children }: ProvidersProps) {
         },
       })
   )
+
+  // Cache sem dado da conta anterior depois de logout ou troca de conta
+  useEffect(() => bindQueryCacheToUser(queryClient), [queryClient])
 
   return (
     <QueryClientProvider client={queryClient}>
