@@ -14,6 +14,7 @@ import { useCartActions } from "@/hooks/use-cart-actions";
 import { useCompanyProducts } from "@/hooks/use-products";
 import { usePublicProductAddOns } from "@/hooks/use-product-add-ons";
 import { useRestaurants } from "@/hooks/use-restaurants";
+import { apiService } from "@/services/api";
 import { useAuthStore, useCartStore } from "@/stores";
 import { useEffect, useRef, useState } from "react";
 
@@ -109,7 +110,18 @@ async function rawGet(path: string): Promise<NetworkCall> {
   return call;
 }
 
-const SCENARIOS = ["A", "B", "C", "D", "E", "F"] as const;
+// POST cru, com os mesmos headers que o apiRequest manda (o proxy só injeta
+// o token com X-Auth-Required). Usado só no cenário H, cujo body o app não
+// sabe montar.
+async function rawPost(path: string, body: unknown): Promise<void> {
+  await fetch(`/api/proxy${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Auth-Required": "1" },
+    body: JSON.stringify(body),
+  });
+}
+
+const SCENARIOS = ["A", "B", "C", "D", "E", "F", "H"] as const;
 type ScenarioId = (typeof SCENARIOS)[number];
 
 const DESCRIPTIONS: Record<ScenarioId, string> = {
@@ -119,6 +131,7 @@ const DESCRIPTIONS: Record<ScenarioId, string> = {
   D: 'X com "teste A", depois X com "teste B"',
   E: "X com complemento, depois X sem complemento",
   F: 'Estado de B, depois "–" na linha (DELETE 1)',
+  H: 'X com "teste H" em "description" (não em "observations")',
 };
 
 export default function DebugCartPage() {
@@ -232,6 +245,33 @@ export default function DebugCartPage() {
 
   const clearCart = () => actionsRef.current.handleClearCart(false);
 
+  // Cenário H: o "Adicionar" do app só sabe mandar `observations`, então o
+  // body é montado aqui - os mesmos campos que apiService.orderItems.
+  // addProductToCart manda para X sem complemento nem tamanho (orderId,
+  // productId, quantity), com `description` no lugar de `observations`.
+  // O carrinho é aberto como o handleAddToCart abre (mesmo openCart e body).
+  const addXWithDescription = (description: string) => async () => {
+    let orderId = useCartStore.getState().orderId;
+    if (!orderId) {
+      const opened = await apiService.orders.openCart(user!.id, {
+        companyId: restaurant!.id,
+        discount: 0,
+        totalShipping: 0,
+        totalValue: 0,
+        status: "CART",
+      });
+      if (!opened.success || !opened.data?.id) throw new Error("falha ao abrir o carrinho");
+      orderId = opened.data.id;
+      useCartStore.getState().setOrderId(orderId);
+    }
+    await rawPost("/order-item/cart", {
+      orderId,
+      productId: product!.id,
+      quantity: 1,
+      description,
+    });
+  };
+
   const runScenario = async (id: ScenarioId) => {
     const s = `${id} - ${DESCRIPTIONS[id]}`;
     await runStep(s, "0. limpar carrinho", clearCart);
@@ -260,6 +300,13 @@ export default function DebugCartPage() {
         await runStep(s, '1. Adicionar X "teste A"', addX({ observation: "teste A" }));
         await runStep(s, '2. "+" na linha', stepQuantity(1));
         await runStep(s, '3. "–" na linha', stepQuantity(-1));
+        break;
+      case "H":
+        await runStep(
+          s,
+          '1. Adicionar X com description "teste H"',
+          addXWithDescription("teste H"),
+        );
         break;
     }
   };
