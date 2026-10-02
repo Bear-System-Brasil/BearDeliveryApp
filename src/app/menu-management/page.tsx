@@ -375,6 +375,12 @@ function MenuManagementContent() {
   };
 
   useEffect(() => {
+    if (!isModalOpen) {
+      resetImageState();
+    }
+  }, [isModalOpen, resetImageState]);
+
+  useEffect(() => {
     return () => {
       imagePreviews.forEach((url) => {
         if (url.startsWith("blob:")) URL.revokeObjectURL(url);
@@ -581,8 +587,13 @@ function MenuManagementContent() {
                   type="file"
                   accept="image/*"
                   multiple
+                  onClick={(e) => {
+                    (e.target as HTMLInputElement).value = "";
+                  }}
                   onChange={(e) => {
-                    const files = Array.from(e.target.files || []);
+                    const input = e.target;
+                    const files = Array.from(input.files || []);
+                    input.value = "";
                     if (!files.length) return;
 
                     const validFiles: File[] = [];
@@ -603,7 +614,6 @@ function MenuManagementContent() {
                         ...validFiles.map((file) => URL.createObjectURL(file)),
                       ]);
                     }
-                    e.target.value = "";
                   }}
                   className={fieldClassName}
                 />
@@ -866,7 +876,10 @@ function MenuManagementContent() {
                 Cancelar
               </Button>
               <Button
-                onClick={() => handleSaveProduct(selectedImages)}
+                onClick={async () => {
+                  await handleSaveProduct(selectedImages);
+                  resetImageState();
+                }}
                 disabled={isSaving}
                 className="h-9 w-full cursor-pointer rounded-[9px] bg-brand-500 text-sm font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/25 transition-colors hover:bg-brand-600 sm:w-auto"
               >

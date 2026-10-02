@@ -523,7 +523,20 @@ export const useMenuManagement = () => {
                   : undefined;
 
               if (url && productId) {
-                upsertProductInCache({
+                const currentUploaded = (latestWithImages?.imageURL || []).filter(
+                  (img) => !img.id.startsWith("local-") && img.url !== url,
+                );
+                const nextImages = [
+                  ...currentUploaded,
+                  {
+                    id: imageId || `uploaded-${Date.now()}`,
+                    url,
+                    productId,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  },
+                ];
+                latestWithImages = {
                   id: productId,
                   name: formData.name,
                   description: formData.description,
@@ -532,16 +545,9 @@ export const useMenuManagement = () => {
                   isAvailable: formData.available,
                   stockQuantity: formData.stockQuantity ?? 0,
                   companyId: companyId || "",
-                  imageURL: [
-                    {
-                      id: imageId || `uploaded-${Date.now()}`,
-                      url,
-                      productId,
-                      created_at: new Date().toISOString(),
-                      updated_at: new Date().toISOString(),
-                    },
-                  ],
-                } as Product);
+                  imageURL: nextImages,
+                } as Product;
+                upsertProductInCache(latestWithImages);
               }
             }
           } else {

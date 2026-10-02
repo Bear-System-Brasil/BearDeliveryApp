@@ -42,7 +42,12 @@ export function CompanyLogoUpload({
   }, [value, isMounted]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
+
+    // Limpa o valor do input imediatamente para permitir selecionar o mesmo arquivo em envios seguintes
+    input.value = "";
+
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
@@ -78,7 +83,7 @@ export function CompanyLogoUpload({
         toast.error(response.message || "Erro ao fazer upload");
         setPreview(value || null);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Erro ao fazer upload do logo");
       setPreview(value || null);
     } finally {
@@ -105,8 +110,11 @@ export function CompanyLogoUpload({
         type="file"
         accept="image/*"
         onChange={handleFileChange}
+        onClick={(e) => {
+          e.stopPropagation();
+          (e.target as HTMLInputElement).value = "";
+        }}
         className="hidden"
-        disabled={uploading}
       />
 
       {preview ? (
