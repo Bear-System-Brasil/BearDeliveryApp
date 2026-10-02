@@ -534,6 +534,24 @@ describe("useMenuManagement", () => {
       expect(toast.error).toHaveBeenCalledWith('Erro ao enviar "gigante.jpg": Arquivo muito grande');
       expect(result.current.isModalOpen).toBe(false);
     });
+
+    it("envia múltiplas fotos seguidas e preserva todas no produto", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(response(200, { url: "https://r2.test/img1.jpg", id: "i1" }))
+        .mockResolvedValueOnce(response(200, { url: "https://r2.test/img2.jpg", id: "i2" }));
+      vi.stubGlobal("fetch", fetchMock);
+      const { result } = await renderMenu();
+      fill(result, validForm);
+
+      await save(result, [file("foto1.jpg"), file("foto2.jpg")]);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const saved = result.current.allProducts.find((p) => p.id === "novo")!;
+      expect(saved.imageURL).toHaveLength(2);
+      expect(saved.imageURL![0]).toMatchObject({ id: "i1", url: "https://r2.test/img1.jpg" });
+      expect(saved.imageURL![1]).toMatchObject({ id: "i2", url: "https://r2.test/img2.jpg" });
+    });
   });
 
   describe("excluir prato", () => {
