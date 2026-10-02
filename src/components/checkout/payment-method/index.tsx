@@ -153,7 +153,7 @@ export function PaymentMethod({
                 className={cn(
                   "h-8 rounded-full px-4 text-xs font-bold",
                   needsChange
-                    ? "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                    ? "bg-selected text-selected-foreground hover:bg-selected-hover"
                     : "border-border bg-card text-foreground",
                 )}
               >
@@ -170,7 +170,7 @@ export function PaymentMethod({
                 className={cn(
                   "h-8 rounded-full px-4 text-xs font-bold",
                   !needsChange
-                    ? "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                    ? "bg-selected text-selected-foreground hover:bg-selected-hover"
                     : "border-border bg-card text-foreground",
                 )}
               >

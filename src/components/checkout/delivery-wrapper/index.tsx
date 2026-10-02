@@ -236,7 +236,7 @@ export function DeliveryWrapper() {
               className={cn(
                 "flex h-7 items-center rounded-full px-3 text-[11px] font-extrabold transition-colors",
                 step === 1
-                  ? "bg-zinc-900 text-white"
+                  ? "bg-selected text-selected-foreground"
                   : "bg-muted text-muted-foreground hover:bg-muted",
               )}
             >
@@ -247,7 +247,7 @@ export function DeliveryWrapper() {
               className={cn(
                 "flex h-7 items-center rounded-full px-3 text-[11px] font-extrabold",
                 step === 2
-                  ? "bg-zinc-900 text-white"
+                  ? "bg-selected text-selected-foreground"
                   : "bg-muted text-muted-foreground",
               )}
             >
