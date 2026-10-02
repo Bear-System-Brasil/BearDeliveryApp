@@ -46,7 +46,6 @@ export interface DeliveryInfo {
   state: string;
   complement: string;
   reference: string;
-  observations: string;
 }
 
 /** Campos que, ao mudar, invalidam a coordenada herdada de um endereço salvo. */
@@ -165,7 +164,6 @@ export const useCheckoutProcess = () => {
     state: "",
     complement: "",
     reference: "",
-    observations: "",
   });
 
   // Coordenada do endereço + de onde ela veio. Começa vazia de propósito:
