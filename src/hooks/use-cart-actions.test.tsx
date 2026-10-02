@@ -370,6 +370,182 @@ describe("useCartActions", () => {
       // o item continua no carrinho local - a 2ª tentativa deu sucesso
       expect(useCartStore.getState().items).toHaveLength(1);
     });
+
+    it("manda a observação do prato para o backend como observations", async () => {
+      login();
+      act(() => useCartStore.getState().setOrderId("order-1"));
+      vi.mocked(apiService.orderItems.addProductToCart).mockResolvedValue({ success: true });
+
+      const { result } = renderCartActions();
+
+      await act(async () => {
+        await result.current.handleAddToCart({
+          id: "prod-1",
+          name: "Pizza",
+          price: 30,
+          restaurantId: "r1",
+          restaurantName: "Pizzaria",
+          specialInstructions: "sem cebola",
+        });
+      });
+
+      await waitFor(() => {
+        expect(apiService.orderItems.addProductToCart).toHaveBeenCalledWith(
+          "order-1",
+          "prod-1",
+          "user-1",
+          1,
+          expect.objectContaining({ observations: "sem cebola" }),
+          expect.anything(),
+        );
+      });
+      expect(useCartStore.getState().items[0].specialInstructions).toBe("sem cebola");
+    });
+
+    it("o reenvio depois do 404 mantém a observação do prato", async () => {
+      login();
+      act(() => useCartStore.getState().setOrderId("order-morto"));
+      vi.mocked(apiService.orderItems.addProductToCart)
+        .mockResolvedValueOnce({ success: false, status: 404, message: "not found" })
+        .mockResolvedValueOnce({ success: true });
+      vi.mocked(apiService.orders.openCart).mockResolvedValue({
+        success: true,
+        data: orderStub("order-novo"),
+      });
+
+      const { result } = renderCartActions();
+
+      await act(async () => {
+        await result.current.handleAddToCart({
+          id: "prod-1",
+          name: "Pizza",
+          price: 30,
+          restaurantId: "r1",
+          restaurantName: "Pizzaria",
+          specialInstructions: "bem passada",
+        });
+      });
+
+      await waitFor(() => {
+        expect(apiService.orderItems.addProductToCart).toHaveBeenCalledTimes(2);
+      });
+      expect(vi.mocked(apiService.orderItems.addProductToCart).mock.calls[1]).toEqual([
+        "order-novo",
+        "prod-1",
+        "user-1",
+        1,
+        expect.objectContaining({ observations: "bem passada" }),
+        expect.anything(),
+      ]);
+    });
+  });
+
+  describe("syncCartFromBackend - observação do prato", () => {
+    // O carrinho vive no Redis e volta com o formato de BackendCart; só os
+    // campos lidos pela sincronização importam aqui.
+    const backendCart = (observations?: string) =>
+      ({
+        id: "order-1",
+        companyId: "r1",
+        orderedItems: [
+          {
+            productId: "prod-1",
+            unitPrice: 30,
+            quantity: 1,
+            product: { name: "Pizza" },
+            ...(observations !== undefined ? { observations } : {}),
+          },
+        ],
+      }) as unknown as Order;
+
+    beforeEach(() => {
+      vi.mocked(apiService.productAddOns.getAllPublic).mockResolvedValue({ success: false });
+      vi.mocked(apiService.productVariations.getAllPublic).mockResolvedValue({ success: false });
+    });
+
+    it("traz observations do backend como specialInstructions do item", async () => {
+      login();
+      const { result } = renderCartActions();
+      vi.mocked(apiService.orders.viewOrder).mockResolvedValue({
+        success: true,
+        data: backendCart("sem cebola"),
+      });
+
+      await act(async () => {
+        await result.current.syncCartFromBackend();
+      });
+
+      expect(useCartStore.getState().items).toHaveLength(1);
+      expect(useCartStore.getState().items[0].specialInstructions).toBe("sem cebola");
+    });
+
+    it("mantém a observação local quando o backend não devolve observations", async () => {
+      login();
+      act(() => useCartStore.getState().setOrderId("order-1"));
+      vi.mocked(apiService.orderItems.addProductToCart).mockResolvedValue({ success: true });
+
+      const { result } = renderCartActions();
+
+      await act(async () => {
+        await result.current.handleAddToCart({
+          id: "prod-1",
+          name: "Pizza",
+          price: 30,
+          restaurantId: "r1",
+          restaurantName: "Pizzaria",
+          specialInstructions: "sem cebola",
+        });
+      });
+
+      vi.mocked(apiService.orders.viewOrder).mockResolvedValue({
+        success: true,
+        data: backendCart(),
+      });
+
+      await act(async () => {
+        await result.current.syncCartFromBackend();
+      });
+
+      expect(useCartStore.getState().items).toHaveLength(1);
+      expect(useCartStore.getState().items[0].specialInstructions).toBe("sem cebola");
+    });
+  });
+
+  describe("syncCartFromBackend - troca de conta (LDMF-239)", () => {
+    it("descarta a resposta que chega depois do logout", async () => {
+      login();
+      const { result } = renderCartActions();
+
+      let resolveView: (value: Awaited<ReturnType<typeof apiService.orders.viewOrder>>) => void = () => {};
+      vi.mocked(apiService.orders.viewOrder).mockReturnValue(
+        new Promise((resolve) => {
+          resolveView = resolve;
+        }),
+      );
+
+      let sync: Promise<void> = Promise.resolve();
+      act(() => {
+        sync = result.current.syncCartFromBackend();
+      });
+      act(() => useAuthStore.getState().logout());
+
+      await act(async () => {
+        resolveView({
+          success: true,
+          data: {
+            id: "cart:user-1",
+            companyId: "r1",
+            orderedItems: [
+              { productId: "prod-1", unitPrice: 30, quantity: 1, product: { name: "Pizza" } },
+            ],
+          } as unknown as Order,
+        });
+        await sync;
+      });
+
+      expect(useCartStore.getState().items).toEqual([]);
+      expect(useCartStore.getState().orderId).toBeNull();
+    });
   });
 
   describe("handleRemoveFromCart", () => {
@@ -520,6 +696,307 @@ describe("useCartActions", () => {
         expect(useCartStore.getState().items[0].quantity).toBe(2); // 5 - 3
       });
       expect(toast.error).toHaveBeenCalledWith("Sem estoque suficiente");
+    });
+  });
+
+  describe("handleUpdateQuantity - corrida entre rajadas e sync (LDMF-247)", () => {
+    const LINE = "prod-1::::";
+
+    const pizza = (quantity: number): CartItem => ({
+      id: LINE,
+      productId: "prod-1",
+      name: "Pizza",
+      price: 30,
+      quantity,
+      restaurantId: "r1",
+      restaurantName: "Pizzaria",
+    });
+
+    const backendCart = (quantity: number) =>
+      ({
+        id: "order-1",
+        companyId: "r1",
+        orderedItems: [
+          { productId: "prod-1", unitPrice: 30, quantity, product: { name: "Pizza" } },
+        ],
+      }) as unknown as Order;
+
+    type Deferred = {
+      resolve: () => void;
+      fail: (message: string) => void;
+      quantity: number;
+      signal?: AbortSignal;
+    };
+
+    /**
+     * Backend falso com o contrato do order-item: POST soma a quantidade
+     * enviada, DELETE subtrai. Cada requisição fica parada até o teste
+     * liberar - é assim que o teste controla a ordem das respostas.
+     */
+    function fakeBackend(initial: number) {
+      let quantity = initial;
+      const posts: Deferred[] = [];
+      const deletes: Deferred[] = [];
+
+      vi.mocked(apiService.orderItems.addProductToCart).mockImplementation(
+        (_orderId, _productId, _userId, sent, _extras, signal) =>
+          new Promise((resolve) => {
+            posts.push({
+              quantity: sent,
+              signal,
+              resolve: () => {
+                quantity += sent;
+                resolve({ success: true });
+              },
+              fail: (message) => resolve({ success: false, message }),
+            });
+          }),
+      );
+      vi.mocked(apiService.orderItems.removeProductFromCart).mockImplementation(
+        (_userId, _orderId, _productId, sent, signal) =>
+          new Promise((resolve) => {
+            deletes.push({
+              quantity: sent,
+              signal,
+              resolve: () => {
+                quantity = Math.max(0, quantity - sent);
+                resolve({ success: true });
+              },
+              fail: (message) => resolve({ success: false, message }),
+            });
+          }),
+      );
+      vi.mocked(apiService.orders.viewOrder).mockImplementation(async () => ({
+        success: true,
+        data: backendCart(quantity),
+      }));
+
+      return {
+        posts,
+        deletes,
+        get quantity() {
+          return quantity;
+        },
+      };
+    }
+
+    function setup(quantity: number) {
+      login();
+      act(() => {
+        useCartStore.getState().setOrderId("order-1");
+        useCartStore.getState().setItems([pizza(quantity)]);
+      });
+      return renderCartActions();
+    }
+
+    // Como a página faz: handleUpdateQuantity(id, item.quantity ± 1)
+    async function click(
+      result: { current: ReturnType<typeof useCartActions> },
+      delta: 1 | -1,
+    ) {
+      await act(async () => {
+        const item = result.current.items.find((i) => i.id === LINE)!;
+        await result.current.handleUpdateQuantity(LINE, item.quantity + delta);
+      });
+    }
+
+    const shownQuantity = () =>
+      useCartStore.getState().items.find((i) => i.id === LINE)?.quantity;
+
+    // Libera a requisição e deixa a fila andar
+    async function release(request: Deferred) {
+      await act(async () => {
+        request.resolve();
+        await sleep(0);
+      });
+    }
+
+    beforeEach(() => {
+      vi.mocked(apiService.productAddOns.getAllPublic).mockResolvedValue({ success: false });
+      vi.mocked(apiService.productVariations.getAllPublic).mockResolvedValue({ success: false });
+    });
+
+    it("leitura iniciada antes dos cliques e respondida depois não sobrescreve a quantidade", async () => {
+      const backend = fakeBackend(4);
+      const { result } = setup(4);
+
+      // Leitura que sai com o backend em 4 e só responde depois dos cliques
+      let resolveStaleRead: () => void = () => {};
+      vi.mocked(apiService.orders.viewOrder).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveStaleRead = () => resolve({ success: true, data: backendCart(4) });
+          }),
+      );
+
+      let sync: Promise<void> = Promise.resolve();
+      await act(async () => {
+        sync = result.current.syncCartFromBackend();
+        await sleep(0);
+      });
+      for (let i = 0; i < 4; i++) await click(result, 1);
+      expect(shownQuantity()).toBe(8);
+
+      await act(async () => {
+        resolveStaleRead();
+        await sleep(0);
+      });
+      expect(shownQuantity()).toBe(8); // a resposta velha foi descartada
+
+      await act(() => sleep(350));
+      await release(backend.posts[0]);
+      await act(() => sync);
+
+      expect(backend.posts.map((p) => p.quantity)).toEqual([4]);
+      expect(backend.quantity).toBe(8);
+      expect(apiService.orders.viewOrder).toHaveBeenCalledTimes(2); // releu depois da escrita
+      expect(shownQuantity()).toBe(8);
+    });
+
+    it("segunda rajada espera a primeira terminar, sem abortá-la, e manda só a diferença dela", async () => {
+      const backend = fakeBackend(4);
+      const { result } = setup(4);
+
+      // Rajada 1: 4 -> 6
+      await click(result, 1);
+      await click(result, 1);
+      await act(() => sleep(350));
+      expect(backend.posts).toHaveLength(1);
+
+      // Rajada 2: 6 -> 8, com o POST da rajada 1 ainda pendente
+      await click(result, 1);
+      await click(result, 1);
+      await act(() => sleep(350));
+
+      expect(backend.posts).toHaveLength(1); // a 2ª está na fila, não saiu
+      expect(backend.posts[0].signal?.aborted).toBe(false);
+
+      await release(backend.posts[0]);
+      expect(backend.posts).toHaveLength(2);
+      expect(backend.posts.map((p) => p.quantity)).toEqual([2, 2]);
+
+      await release(backend.posts[1]);
+      expect(backend.quantity).toBe(8);
+
+      await act(() => result.current.syncCartFromBackend());
+      expect(shownQuantity()).toBe(8);
+    });
+
+    it("sync chamado com rajada ainda no debounce espera ela chegar ao backend antes de ler", async () => {
+      const backend = fakeBackend(4);
+      const { result } = setup(4);
+
+      await click(result, 1);
+      await click(result, 1);
+
+      let sync: Promise<void> = Promise.resolve();
+      await act(async () => {
+        sync = result.current.syncCartFromBackend();
+        await sleep(0);
+      });
+      expect(apiService.orders.viewOrder).not.toHaveBeenCalled();
+
+      await act(() => sleep(350));
+      expect(apiService.orders.viewOrder).not.toHaveBeenCalled(); // POST em voo
+      await release(backend.posts[0]);
+      await act(() => sync);
+
+      expect(apiService.orders.viewOrder).toHaveBeenCalledTimes(1);
+      expect(shownQuantity()).toBe(6);
+    });
+
+    it("o \"–\" também enfileira: a segunda rajada espera o DELETE da primeira", async () => {
+      const backend = fakeBackend(8);
+      const { result } = setup(8);
+
+      await click(result, -1);
+      await click(result, -1);
+      await act(() => sleep(350));
+      await click(result, -1);
+      await act(() => sleep(350));
+
+      expect(backend.deletes.map((d) => d.quantity)).toEqual([2]);
+      expect(backend.deletes[0].signal?.aborted).toBe(false);
+
+      await release(backend.deletes[0]);
+      expect(backend.deletes.map((d) => d.quantity)).toEqual([2, 1]);
+      await release(backend.deletes[1]);
+
+      await act(() => result.current.syncCartFromBackend());
+      expect(backend.quantity).toBe(5);
+      expect(shownQuantity()).toBe(5);
+    });
+
+    it("\"–\" até zero numa rajada só remove a quantidade que o backend tem, não a da tela", async () => {
+      const backend = fakeBackend(3);
+      const { result } = setup(3);
+
+      await click(result, -1); // 2
+      await click(result, -1); // 1
+      await click(result, -1); // 0 -> remove a linha
+
+      expect(useCartStore.getState().items).toEqual([]);
+      expect(backend.deletes.map((d) => d.quantity)).toEqual([3]);
+      await release(backend.deletes[0]);
+
+      await act(() => sleep(350));
+      expect(backend.posts).toHaveLength(0);
+      expect(backend.deletes).toHaveLength(1); // a rajada descartada não sai depois
+      expect(backend.quantity).toBe(0);
+    });
+
+    it("remover a linha com um \"+\" em voo espera o POST antes do DELETE", async () => {
+      const backend = fakeBackend(4);
+      const { result } = setup(4);
+
+      await click(result, 1);
+      await act(() => sleep(350));
+      await act(async () => {
+        await result.current.handleRemoveFromCart(LINE);
+      });
+
+      expect(backend.deletes).toHaveLength(0);
+      await release(backend.posts[0]);
+      expect(backend.deletes.map((d) => d.quantity)).toEqual([5]);
+      await release(backend.deletes[0]);
+      expect(backend.quantity).toBe(0);
+    });
+
+    it("sair da tela com uma rajada no debounce envia a rajada em vez de descartá-la", async () => {
+      const backend = fakeBackend(4);
+      const { result, unmount } = setup(4);
+
+      await click(result, 1);
+      await act(async () => {
+        unmount();
+        await sleep(0);
+      });
+
+      expect(backend.posts.map((p) => p.quantity)).toEqual([1]);
+      await release(backend.posts[0]);
+      expect(backend.quantity).toBe(5);
+    });
+
+    it("falha numa rajada reverte só ela e não trava a rajada seguinte", async () => {
+      const backend = fakeBackend(4);
+      const { result } = setup(4);
+
+      await click(result, 1); // rajada 1: 5
+      await act(() => sleep(350));
+      await click(result, 1); // rajada 2: 6, na fila
+      await act(() => sleep(350));
+
+      await act(async () => {
+        backend.posts[0].fail("Sem estoque suficiente");
+        await sleep(0);
+      });
+
+      expect(shownQuantity()).toBe(5); // 6 - 1 da rajada recusada
+      expect(toast.error).toHaveBeenCalledWith("Sem estoque suficiente");
+      expect(backend.posts).toHaveLength(2);
+
+      await release(backend.posts[1]);
+      expect(backend.quantity).toBe(5);
     });
   });
 

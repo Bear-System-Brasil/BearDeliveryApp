@@ -11,10 +11,9 @@
 
 /**
  * Quem trabalha no restaurante, em oposição a cliente. Responde
- * "trabalha no restaurante?". `company` é o valor legado do login de empresa.
+ * "trabalha no restaurante?".
  */
 export const COMPANY_ROLES = [
-  'company',
   'admin',
   'owner',
   'manager',
@@ -26,11 +25,11 @@ export const COMPANY_ROLES = [
 /**
  * Subconjunto que administra os dados cadastrais da empresa. Responde
  * "administra o restaurante?" e espelha quem /company-profile realmente
- * aceita (ver ROUTE_PERMISSIONS e o middleware): só owner e admin, mais o
- * `company` legado. Role de staff que não edita cadastro - manager,
- * financial, cook, delivery - fica de fora de propósito.
+ * aceita (ver ROUTE_PERMISSIONS e o middleware): só owner e admin. Role de
+ * staff que não edita cadastro - manager, financial, cook, delivery - fica
+ * de fora de propósito.
  */
-export const COMPANY_ADMIN_ROLES = ['company', 'admin', 'owner'] as const
+export const COMPANY_ADMIN_ROLES = ['admin', 'owner'] as const
 
 export const CLIENT_ROLES = ['client', 'customer', 'user'] as const
 

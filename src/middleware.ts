@@ -25,10 +25,19 @@ const PROTECTED: { prefix: string; roles?: string[]; guestAllowed?: boolean }[] 
   },
   { prefix: "/kitchen", roles: ["owner", "admin", "manager", "cook"] },
   { prefix: "/company-profile", roles: ["owner", "admin"] },
-  { prefix: "/financial-management", roles: ["owner", "admin", "financial"] },
+  {
+    prefix: "/financial-management",
+    roles: ["owner", "admin", "manager", "financial"],
+  },
   { prefix: "/reports", roles: ["owner", "admin", "financial"] },
   { prefix: "/team-management", roles: ["owner", "admin", "manager"] },
-  { prefix: "/delivery-dashboard", roles: ["delivery"] },
+  // Quem administra o restaurante tambem entra na area de entregas: o
+  // primeiro cliente e uma pessoa so, que e dono, cozinheiro e entregador.
+  // Sem isto o item "Entregas" do menu levaria direto pro "Acesso Negado".
+  {
+    prefix: "/delivery-dashboard",
+    roles: ["delivery", "owner", "admin", "manager"],
+  },
 ];
 
 export function middleware(request: NextRequest) {

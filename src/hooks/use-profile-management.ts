@@ -14,7 +14,7 @@ import {
 } from "@/lib/default-address";
 import { useAuthStore } from "@/stores";
 import { Coords } from "@/types/restaurant";
-import { onlyNumbers } from "@/utils";
+import { getErrorMessage, onlyNumbers } from "@/utils";
 import { isCompanyAdminRole } from "@/utils/role-helpers";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -200,6 +200,32 @@ export const useProfileManagement = () => {
   }, [profileData]);
 
   /**
+   * O useForm guarda os defaultValues do primeiro render. No F5 esse render
+   * acontece antes do persist hidratar o usuário, e o formulário ficava vazio
+   * até sair e voltar da tela. Reidrata sempre que os dados do usuário mudam,
+   * menos durante a edição, para não apagar o que está sendo digitado.
+   */
+  useEffect(() => {
+    if (!user || editingState.isOpen) return;
+
+    profileForm.reset({
+      name: user.name || "",
+      email: user.email || "",
+      cpf: user.cpf || "",
+      phone: user.phone || "",
+      birthDate: user.birthDate || "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    user?.name,
+    user?.email,
+    user?.cpf,
+    user?.phone,
+    user?.birthDate,
+    editingState.isOpen,
+  ]);
+
+  /**
    * Auto-fetch CEP when complete (8 digits)
    */
   useEffect(() => {
@@ -324,7 +350,7 @@ export const useProfileManagement = () => {
       editingState.close();
       toast.success("Perfil atualizado com sucesso!");
     } catch (error) {
-      toast.error("Erro ao atualizar perfil");
+      toast.error(getErrorMessage(error, "Erro ao atualizar perfil"));
     }
   };
 

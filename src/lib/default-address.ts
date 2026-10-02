@@ -1,6 +1,7 @@
 import {
   apiService,
   type Address,
+  type ApiResponse,
   type UpdateAddressRequest,
 } from "@/services/api";
 import { onlyNumbers } from "@/utils";
@@ -62,6 +63,15 @@ export function findDefaultAddress(addresses: Address[]): Address | null {
 type DefaultChange = { ok: boolean; message?: string };
 
 /**
+ * PATCH de um endereço. Cliente e empresa usam a mesma rota
+ * (PATCH /address/me/:id), cada um pelo seu método do apiService.
+ */
+type AddressUpdater = (
+  id: string,
+  body: UpdateAddressRequest,
+) => Promise<ApiResponse<Address>>;
+
+/**
  * Campos do endereço que acompanham a segunda tentativa do PATCH.
  *
  * Saneados, e omitidos quando não passam: o valor vem do banco, não de um
@@ -91,12 +101,10 @@ function addressFields(address: Address) {
 async function patchIsDefault(
   addressId: string,
   body: UpdateAddressRequest,
+  update: AddressUpdater = apiService.address.updateUserAddress,
 ): Promise<DefaultChange> {
   try {
-    const response = await apiService.address.updateUserAddress(
-      addressId,
-      body,
-    );
+    const response = await update(addressId, body);
 
     return { ok: response.success === true, message: response.message };
   } catch (error) {
@@ -118,18 +126,20 @@ async function patchIsDefault(
 async function setIsDefault(
   address: Address | string,
   isDefault: boolean,
+  update?: AddressUpdater,
 ): Promise<DefaultChange> {
   const full = typeof address === "string" ? null : address;
   const addressId = typeof address === "string" ? address : address.id;
 
-  const minimal = await patchIsDefault(addressId, { isDefault });
+  const minimal = await patchIsDefault(addressId, { isDefault }, update);
 
   if (minimal.ok || !full) return minimal;
 
-  const withFields = await patchIsDefault(addressId, {
-    isDefault,
-    ...addressFields(full),
-  });
+  const withFields = await patchIsDefault(
+    addressId,
+    { isDefault, ...addressFields(full) },
+    update,
+  );
 
   if (withFields.ok) return withFields;
 
@@ -141,6 +151,19 @@ async function setIsDefault(
   ];
 
   return { ok: false, message: reasons.join(" / ") || undefined };
+}
+
+/**
+ * Desmarca um endereço como padrão, com a mesma estratégia do cliente:
+ * primeiro só a flag, depois os campos saneados. Usado pelo perfil da
+ * empresa, que antes reenviava o endereço inteiro cru - um CEP incompleto
+ * ou complemento curto vindo do banco fazia o PATCH recusar a mudança.
+ */
+export function unsetDefaultAddress(
+  address: Address,
+  update: AddressUpdater,
+): Promise<DefaultChange> {
+  return setIsDefault(address, false, update);
 }
 
 async function readUserAddresses(): Promise<Address[] | undefined> {

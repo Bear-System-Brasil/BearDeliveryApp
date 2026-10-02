@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import {
+  Bike,
   ChefHat,
   ClipboardList,
   House,
@@ -73,6 +74,17 @@ const navGroups: { label: string; links: NavLink[] }[] = [
         icon: ChefHat,
         roles: ["owner", "admin", "manager", "cook"],
       },
+      // Operacao do dia a dia, junto de Pedidos e Cozinha - nao categoria
+      // propria. Sem este item, quem administra o restaurante estava em
+      // /menu-management e nao tinha caminho direto pra area de entregas: no
+      // desktop a BottomBar e `md:hidden`, entao era voltar ao Inicio pelo
+      // logo e abrir o menu do app.
+      {
+        href: "/delivery-dashboard",
+        label: "Entregas",
+        icon: Bike,
+        roles: ["owner", "admin", "manager", "delivery"],
+      },
       {
         href: "/team-management",
         label: "Equipe",
@@ -88,37 +100,40 @@ const navGroups: { label: string; links: NavLink[] }[] = [
         href: "/financial-management/dashboard",
         label: "Dashboard",
         icon: LayoutDashboard,
-        roles: ["owner", "admin", "financial"],
+        roles: ["owner", "admin", "manager", "financial"],
       },
       {
         href: "/financial-management/finance",
         label: "Finanças",
         icon: TrendingUp,
-        roles: ["owner", "admin", "financial"],
+        roles: ["owner", "admin", "manager", "financial"],
       },
       {
         href: "/financial-management/cash-register",
         label: "Caixa",
         icon: Wallet,
-        roles: ["owner", "admin", "financial"],
+        roles: ["owner", "admin", "manager", "financial"],
       },
       {
         href: "/financial-management/orders",
         label: "Pedidos",
         icon: ClipboardList,
-        roles: ["owner", "admin", "financial"],
+        roles: ["owner", "admin", "manager", "financial"],
       },
       {
         href: "/financial-management/customers",
         label: "Clientes",
         icon: Users,
-        roles: ["owner", "admin", "financial"],
+        roles: ["owner", "admin", "manager", "financial"],
       },
+      // Preferencias de quem usa a area, e nao cadastro da empresa: o
+      // ROUTE_PERMISSIONS sempre liberou a tela pro financeiro, e so o link
+      // ficava escondido dele - acesso sem caminho.
       {
         href: "/financial-management/settings",
         label: "Configurações",
         icon: Settings,
-        roles: ["owner", "admin"],
+        roles: ["owner", "admin", "financial"],
       },
     ],
   },

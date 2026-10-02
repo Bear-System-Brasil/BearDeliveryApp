@@ -23,6 +23,7 @@
  * ```
  */
 
+import { useAuthStore } from "@/stores/auth-store";
 import { STORAGE_KEYS } from "@/utils/storage-manager";
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
@@ -92,6 +93,10 @@ interface CartState {
   restaurant: Restaurant | null;
   isOpen: boolean;
   orderId: string | null; // ID do pedido no backend (carrinho Redis)
+  // Conta dona do carrinho. O orderId fica no localStorage, que é do
+  // navegador e não da conta - sem saber de quem ele é, a próxima conta a
+  // entrar reusava o carrinho da anterior (LDMF-239).
+  ownerId: string | null;
   isLoading: boolean;
   lastSynced: number | null;
   appliedPromo: string | null;
@@ -114,7 +119,17 @@ interface CartState {
   getSubtotal: () => number;
   getTotal: (deliveryFee?: number) => number;
   markSynced: () => void;
+  /** Descarta o carrinho se ele não for de `userId` (null = deslogado). */
+  bindToUser: (userId: string | null) => void;
 }
+
+const emptyCart = {
+  items: [],
+  orderId: null,
+  restaurant: null,
+  lastSynced: null,
+  appliedPromo: null,
+};
 
 export const useCartStore = create<CartState>()(
   devtools(
@@ -124,6 +139,7 @@ export const useCartStore = create<CartState>()(
         restaurant: null,
         isOpen: false,
         orderId: null,
+        ownerId: null,
         isLoading: false,
         lastSynced: null,
         appliedPromo: null,
@@ -161,18 +177,16 @@ export const useCartStore = create<CartState>()(
         markSynced: () =>
           set({ lastSynced: Date.now() }, false, "cart/markSynced"),
 
-        clearCart: () =>
+        clearCart: () => set(emptyCart, false, "cart/clearCart"),
+
+        bindToUser: (userId) => {
+          if (get().ownerId === userId) return;
           set(
-            {
-              items: [],
-              orderId: null,
-              restaurant: null,
-              lastSynced: null,
-              appliedPromo: null,
-            },
+            { ...emptyCart, isOpen: false, ownerId: userId },
             false,
-            "cart/clearCart",
-          ),
+            "cart/bindToUser",
+          );
+        },
 
         toggleCart: () =>
           set((state) => ({ isOpen: !state.isOpen }), false, "cart/toggleCart"),
@@ -183,12 +197,26 @@ export const useCartStore = create<CartState>()(
       }),
       {
         name: STORAGE_KEYS.CART_ORDER_ID,
-        // Persistir apenas orderId para recuperar carrinhos abandonados
+        // Persistir apenas orderId (e de quem ele é) para recuperar
+        // carrinhos abandonados
         partialize: (state) => ({
           orderId: state.orderId,
+          ownerId: state.ownerId,
         }),
       },
     ),
     { name: "cart-store", enabled: process.env.NODE_ENV !== "production" },
   ),
 );
+
+// O carrinho segue a conta logada. Qualquer caminho que troque o usuário -
+// logout manual, 401 da API, sessão expirada no boot, login de outra conta -
+// passa pelo auth-store, então escutar aqui cobre todos sem depender de
+// cada um lembrar de limpar o carrinho. A chamada inicial cobre o boot:
+// orderId persistido de uma conta com outra já logada (ou orderId antigo,
+// gravado antes de existir `ownerId`). Descartar o orderId da própria conta
+// não perde o carrinho - o sync do useCartActions recupera pelo `cart:<id>`.
+useCartStore.getState().bindToUser(useAuthStore.getState().user?.id ?? null);
+useAuthStore.subscribe((state) => {
+  useCartStore.getState().bindToUser(state.user?.id ?? null);
+});

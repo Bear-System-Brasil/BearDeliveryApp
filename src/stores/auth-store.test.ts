@@ -39,7 +39,7 @@ describe("normalizeAuthUser", () => {
     expect(user.role).toBe("client");
   });
 
-  it("usa os campos de empresa para roles de staff (owner, admin, manager, cook, delivery)", () => {
+  it("usa os campos de empresa para roles de staff (owner, admin, manager, financial, cook, delivery)", () => {
     const user = normalizeAuthUser({
       id: "c1",
       email: "empresa@example.com",
@@ -55,6 +55,24 @@ describe("normalizeAuthUser", () => {
     expect(user.cpf).toBe("12345678000199"); // cnpj cai no campo cpf normalizado
     expect(user.companyId).toBe("comp-1");
     expect(user.photoUrl).toBe("logo.png"); // fallback pra logo_url quando não há photoUrl
+  });
+
+  it("usa os campos de empresa para a role financial", () => {
+    const user = normalizeAuthUser({
+      id: "f1",
+      email: "financeiro@example.com",
+      role: "financial",
+      tradeName: "Restaurante do Zé",
+      cnpj: "12345678000199",
+      companyId: "comp-1",
+      logo_url: "logo.png",
+    });
+
+    expect(user.name).toBe("Restaurante do Zé");
+    expect(user.cpf).toBe("12345678000199");
+    expect(user.companyId).toBe("comp-1");
+    expect(user.tradeName).toBe("Restaurante do Zé");
+    expect(user.logo_url).toBe("logo.png");
   });
 
   it("segue a cadeia de fallback do nome da empresa: tradeName > legalName > name > 'Empresa'", () => {

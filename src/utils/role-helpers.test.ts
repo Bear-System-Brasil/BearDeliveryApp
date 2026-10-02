@@ -13,7 +13,6 @@ describe("isCompanyStaffRole", () => {
     expect(isCompanyStaffRole("financial")).toBe(true);
     expect(isCompanyStaffRole("cook")).toBe(true);
     expect(isCompanyStaffRole("delivery")).toBe(true);
-    expect(isCompanyStaffRole("company")).toBe(true);
   });
 
   it("não reconhece cliente nem valor vazio", () => {
@@ -26,7 +25,6 @@ describe("isCompanyAdminRole", () => {
   it("só reconhece quem administra o cadastro da empresa", () => {
     expect(isCompanyAdminRole("owner")).toBe(true);
     expect(isCompanyAdminRole("admin")).toBe(true);
-    expect(isCompanyAdminRole("company")).toBe(true);
   });
 
   it("staff que não é admin fica de fora (manager, financial, cook, delivery)", () => {
