@@ -43,18 +43,6 @@ function getItemExtrasLabel(item: CartItem) {
   return parts.join(" · ");
 }
 
-function getItemNote(item: CartItem) {
-  const customizations = item.customizations as
-    | { instructions?: string; specialInstructions?: string }
-    | undefined;
-  const instructions =
-    customizations?.instructions || customizations?.specialInstructions;
-
-  if (instructions) return `Obs.: ${instructions}`;
-
-  return "";
-}
-
 export default function CartPage() {
   const router = useRouter();
   const {
@@ -251,7 +239,6 @@ export default function CartPage() {
 
               {items.map((item) => {
                 const extrasLabel = getItemExtrasLabel(item);
-                const note = getItemNote(item);
                 const itemTotal = item.price * item.quantity;
 
                 return (
@@ -289,12 +276,6 @@ export default function CartPage() {
                       {extrasLabel && (
                         <p className="mt-1 truncate text-xs font-bold text-brand-600 dark:text-brand-400">
                           {extrasLabel}
-                        </p>
-                      )}
-
-                      {note && (
-                        <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
-                          {note}
                         </p>
                       )}
 
