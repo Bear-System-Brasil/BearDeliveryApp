@@ -17,6 +17,7 @@ import { DataCard } from "@/components/data-card";
 import {
   DeliveryForm,
   type AddressFieldProps,
+  type NeighborhoodOption,
   type PinStatusProps,
 } from "../delivery-form";
 import { cn } from "@/lib/utils";
@@ -94,7 +95,7 @@ type Props = {
   addresses: Address[];
   isLoadingCep: boolean;
   editingAddressId?: string | null;
-  neighborhoodOptions?: string[] | null;
+  neighborhoodOptions?: NeighborhoodOption[] | null;
   isLocatingPin?: boolean;
   addressFieldProps: AddressFieldProps;
   pinStatusProps?: PinStatusProps;

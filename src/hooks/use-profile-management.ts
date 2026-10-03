@@ -5,7 +5,7 @@ import {
   type SourcedCoords,
 } from "@/lib/address-coordinates";
 import { parseCoords } from "@/lib/geocode";
-import { findNeighborhood } from "@/services/neighborhoods";
+import { findNeighborhood, neighborhoodLabel } from "@/services/neighborhoods";
 import { apiService } from "@/services/api";
 import {
   restorePendingDefaultAddress,
@@ -704,8 +704,10 @@ export const useProfileManagement = () => {
     addressCoords,
     applyCoords,
     neighborhoodOptions:
-      addressPin.neighborhoodList?.neighborhoods.map((item) => item.name) ??
-      null,
+      addressPin.neighborhoodList?.neighborhoods.map((item) => ({
+        value: item.name,
+        label: neighborhoodLabel(item),
+      })) ?? null,
     stateOptions: addressFields.stateOptions,
     cityOptions: addressFields.cityOptions,
     isLoadingCities: addressFields.isLoadingCities,

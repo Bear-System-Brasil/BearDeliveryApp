@@ -33,25 +33,35 @@ function Harness(extra: { isSearchingAddress?: boolean; addressNotFound?: boolea
   const city = form.watch("city");
 
   return (
-    <DeliveryForm
-      handleCloseAddressModal={vi.fn()}
-      handleAddAddress={vi.fn()}
-      applyCoords={vi.fn()}
-      addressForm={form}
-      addressCoords={null}
-      isSavingAddress={false}
-      isLoadingCep={false}
-      neighborhoodOptions={city === "Castelo" ? ["Centro", "Castelo III"] : null}
-      stateOptions={fields.stateOptions}
-      cityOptions={fields.cityOptions}
-      isLoadingCities={fields.isLoadingCities}
-      citiesError={fields.citiesError}
-      fieldLocks={fields.locks}
-      onStateChange={fields.changeState}
-      onCityChange={fields.changeCity}
-      onNeighborhoodChange={fields.changeNeighborhood}
-      {...extra}
-    />
+    <>
+      <output data-testid="valor-bairro">{form.watch("neighborhood")}</output>
+      <DeliveryForm
+        handleCloseAddressModal={vi.fn()}
+        handleAddAddress={vi.fn()}
+        applyCoords={vi.fn()}
+        addressForm={form}
+        addressCoords={null}
+        isSavingAddress={false}
+        isLoadingCep={false}
+        neighborhoodOptions={
+          city === "Castelo"
+            ? [
+                { value: "Centro", label: "Centro" },
+                { value: "Castelo III", label: "Castelo III (Pombal, Ivo Martins)" },
+              ]
+            : null
+        }
+        stateOptions={fields.stateOptions}
+        cityOptions={fields.cityOptions}
+        isLoadingCities={fields.isLoadingCities}
+        citiesError={fields.citiesError}
+        fieldLocks={fields.locks}
+        onStateChange={fields.changeState}
+        onCityChange={fields.changeCity}
+        onNeighborhoodChange={fields.changeNeighborhood}
+        {...extra}
+      />
+    </>
   );
 }
 
@@ -150,6 +160,19 @@ describe("DeliveryForm: ordem e trava dos campos", () => {
 
     fireEvent.change(field(/Número/), { target: { value: "45" } });
     await waitFor(() => expect(field(/Complemento/).disabled).toBe(false));
+  });
+
+  it("opção mostra os outros nomes entre parênteses e salva só o nome oficial", async () => {
+    renderForm();
+    await pickState("ES");
+    await pickCity("Castelo");
+
+    const option = screen.getByRole("option", { name: "Castelo III (Pombal, Ivo Martins)" });
+    expect(option).toHaveValue("Castelo III");
+
+    fireEvent.change(field(/Bairro/), { target: { value: "Castelo III" } });
+
+    expect(screen.getByTestId("valor-bairro")).toHaveTextContent(/^Castelo III$/);
   });
 
   it("trocar a cidade limpa bairro, rua e número e avisa para limpar o pino", async () => {

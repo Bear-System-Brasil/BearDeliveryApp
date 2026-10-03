@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { findNeighborhood, getNeighborhoods } from "./neighborhoods";
+import {
+  findNeighborhood,
+  getNeighborhoods,
+  isSpellingVariant,
+  neighborhoodLabel,
+} from "./neighborhoods";
 
 // Lei Municipal de Castelo nº 4.641/2026, grafia conforme LDMF-264, sem
 // "Jardim Primavera", que virou nome alternativo do Pantanal (LDMF-278).
@@ -91,7 +96,7 @@ describe("getNeighborhoods", () => {
     );
 
     expect(altNames).toEqual({
-      "Castelo III": ["Castelo Três", "Ivo Martins"],
+      "Castelo III": ["Castelo 3", "Castelo Três", "Pombal", "Ivo Martins"],
       "Cava-Roxa": ["Cava Roxa"],
       Pantanal: ["Jardim Primavera"],
     });
@@ -106,6 +111,8 @@ describe("findNeighborhood", () => {
     expect(findNeighborhood(list, "Jardim Primavera")?.name).toBe("Pantanal");
     expect(findNeighborhood(list, "castelo tres")?.name).toBe("Castelo III");
     expect(findNeighborhood(list, "Ivo Martins")?.name).toBe("Castelo III");
+    expect(findNeighborhood(list, "Pombal")?.name).toBe("Castelo III");
+    expect(findNeighborhood(list, "castelo 3")?.name).toBe("Castelo III");
     expect(findNeighborhood(list, "Cava Roxa")?.name).toBe("Cava-Roxa");
   });
 
@@ -122,5 +129,26 @@ describe("findNeighborhood", () => {
     expect(findNeighborhood(list, "Boa Fé")).toBeNull();
     expect(findNeighborhood(list, "")).toBeNull();
     expect(findNeighborhood(null, "Centro")).toBeNull();
+  });
+});
+
+describe("texto da opção na lista", () => {
+  it("mostra entre parênteses só os nomes diferentes, não as variações de grafia", async () => {
+    const list = await getNeighborhoods("ES", "Castelo");
+    const label = (name: string) =>
+      neighborhoodLabel(list!.neighborhoods.find((n) => n.name === name)!);
+
+    expect(label("Castelo III")).toBe("Castelo III (Pombal, Ivo Martins)");
+    expect(label("Pantanal")).toBe("Pantanal (Jardim Primavera)");
+    expect(label("Cava-Roxa")).toBe("Cava-Roxa");
+    expect(label("Centro")).toBe("Centro");
+  });
+
+  it("variação de grafia: caixa, acento, pontuação, romano e número por extenso", () => {
+    expect(isSpellingVariant("Castelo III", "Castelo 3")).toBe(true);
+    expect(isSpellingVariant("Castelo III", "Castelo Três")).toBe(true);
+    expect(isSpellingVariant("Cava-Roxa", "Cava Roxa")).toBe(true);
+    expect(isSpellingVariant("Castelo III", "Pombal")).toBe(false);
+    expect(isSpellingVariant("Pantanal", "Jardim Primavera")).toBe(false);
   });
 });

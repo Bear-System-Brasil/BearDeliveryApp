@@ -791,7 +791,18 @@ describe("useProfileManagement", () => {
       fillCity(result);
 
       await waitFor(() => expect(result.current.neighborhoodOptions).toHaveLength(31));
-      expect(result.current.neighborhoodOptions).toContain("Castelo III");
+      expect(result.current.neighborhoodOptions).toContainEqual({
+        value: "Castelo III",
+        label: "Castelo III (Pombal, Ivo Martins)",
+      });
+      expect(result.current.neighborhoodOptions).toContainEqual({
+        value: "Pantanal",
+        label: "Pantanal (Jardim Primavera)",
+      });
+      expect(result.current.neighborhoodOptions).toContainEqual({
+        value: "Cava-Roxa",
+        label: "Cava-Roxa",
+      });
     });
 
     it("busca por nome alternativo encontra o bairro oficial e exibe o oficial", async () => {
@@ -805,7 +816,9 @@ describe("useProfileManagement", () => {
       await waitFor(() =>
         expect(result.current.addressForm.getValues("neighborhood")).toBe("Pantanal"),
       );
-      expect(result.current.neighborhoodOptions).not.toContain("Jardim Primavera");
+      expect(result.current.neighborhoodOptions?.map((option) => option.value)).not.toContain(
+        "Jardim Primavera",
+      );
     });
 
     it("endereço salvo com nome alternativo abre com o oficial e mantém o pino salvo", async () => {
@@ -844,7 +857,9 @@ describe("useProfileManagement", () => {
       const fetchMock = stubNominatim([]);
       const { result } = await renderProfile();
       fillCity(result);
-      await waitFor(() => expect(result.current.neighborhoodOptions).toEqual(["Centro"]));
+      await waitFor(() =>
+        expect(result.current.neighborhoodOptions).toEqual([{ value: "Centro", label: "Centro" }]),
+      );
 
       act(() => result.current.addressForm.setValue("neighborhood", "Centro"));
 

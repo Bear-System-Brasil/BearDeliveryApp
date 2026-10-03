@@ -78,3 +78,46 @@ export function findNeighborhood(
     null
   );
 }
+
+const NUMBER_WORDS: Record<string, string> = {
+  um: "1", uma: "1", dois: "2", duas: "2", tres: "3", quatro: "4",
+  cinco: "5", seis: "6", sete: "7", oito: "8", nove: "9", dez: "10",
+};
+
+const ROMAN_NUMERALS: Record<string, string> = {
+  i: "1", ii: "2", iii: "3", iv: "4", v: "5",
+  vi: "6", vii: "7", viii: "8", ix: "9", x: "10",
+};
+
+/** Forma comparável do nome: sem caixa, acento e pontuação, números em algarismo. */
+function spellingKey(name: string) {
+  return normalizeText(name)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(" ")
+    .map((word) => NUMBER_WORDS[word] ?? ROMAN_NUMERALS[word] ?? word)
+    .join(" ");
+}
+
+/**
+ * O nome alternativo é só outra grafia do oficial ("Castelo 3", "Castelo Três"
+ * e "Castelo III"; "Cava Roxa" e "Cava-Roxa")?
+ */
+export function isSpellingVariant(officialName: string, altName: string) {
+  return spellingKey(officialName) === spellingKey(altName);
+}
+
+/**
+ * Texto da opção na lista: o nome oficial e, entre parênteses, os nomes
+ * alternativos que são nomes diferentes - ex.: "Castelo III (Pombal, Ivo
+ * Martins)". Só exibição: o valor salvo é sempre `name`.
+ */
+export function neighborhoodLabel(item: Neighborhood) {
+  const otherNames = (item.altNames ?? []).filter(
+    (alt) => !isSpellingVariant(item.name, alt),
+  );
+
+  return otherNames.length > 0
+    ? `${item.name} (${otherNames.join(", ")})`
+    : item.name;
+}

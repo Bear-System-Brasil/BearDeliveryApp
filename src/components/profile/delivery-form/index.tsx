@@ -23,6 +23,9 @@ import type { IbgeState } from "@/services/ibge";
 import { Coords } from "@/types/restaurant";
 import { toast } from "sonner";
 
+/** Bairro da lista: `value` é o nome oficial, `label` o texto exibido. */
+export type NeighborhoodOption = { value: string; label: string };
+
 /** Estado do pino no mapa (vem de `useProfileManagement`). */
 export type PinStatusProps = {
   isSearchingAddress?: boolean;
@@ -54,7 +57,7 @@ type Props = AddressFieldProps & PinStatusProps & {
   isLoadingCep: boolean;
   isEditing?: boolean;
   /** Bairros oficiais da cidade; `null` = cidade sem lista (campo livre). */
-  neighborhoodOptions?: string[] | null;
+  neighborhoodOptions?: NeighborhoodOption[] | null;
   isLocatingPin?: boolean;
 };
 
@@ -235,14 +238,18 @@ export function DeliveryForm({
                   {/* Endereço antigo com bairro fora da lista oficial (ex.:
                       "Castelo 3") continua visível até a troca. */}
                   {currentNeighborhood &&
-                    !neighborhoodOptions.includes(currentNeighborhood) && (
+                    !neighborhoodOptions.some(
+                      (option) => option.value === currentNeighborhood,
+                    ) && (
                       <option value={currentNeighborhood}>
                         {currentNeighborhood} (fora da lista oficial)
                       </option>
                     )}
-                  {neighborhoodOptions.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
+                  {/* O texto pode trazer outros nomes do bairro entre
+                      parênteses; o valor salvo é sempre o nome oficial. */}
+                  {neighborhoodOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>

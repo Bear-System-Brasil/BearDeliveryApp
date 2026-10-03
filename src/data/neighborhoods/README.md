@@ -11,13 +11,15 @@ rota vai devolver:
   "ibgeCode": "3201407",
   "cep": "29360-000",
   "neighborhoods": [
-    { "name": "Castelo III", "altNames": ["Castelo Três", "Ivo Martins"], "lat": -20.6335760, "lng": -41.2041395 }
+    { "name": "Castelo III", "altNames": ["Castelo 3", "Castelo Três", "Pombal", "Ivo Martins"], "lat": -20.6335760, "lng": -41.2041395 }
   ]
 }
 ```
 
 - `name`: nome oficial, o único exibido.
-- `altNames` (opcional): outros nomes do bairro, só para busca (LDMF-278).
+- `altNames` (opcional): outros nomes do bairro (LDMF-278). Servem para busca;
+  os que são nomes diferentes (não só outra grafia) aparecem entre parênteses
+  na opção da lista. O valor salvo é sempre o `name`.
 - `lat`/`lng`: ponto do bairro, ou `null` quando não há fonte real. Nunca
   estimar coordenada.
 
@@ -27,7 +29,10 @@ rota vai devolver:
   "Jardim Primavera" é nome alternativo do Pantanal (decisão de 03/10/2026),
   então a lista tem 31 entradas.
 - **CEP e código IBGE:** confirmados pela equipe (29360-000 e 3201407).
-- **Coordenadas e nomes alternativos:** © colaboradores do OpenStreetMap,
+- **Nomes alternativos de Castelo III:** "Castelo 3" e "Pombal" são como os
+  moradores chamam o bairro (informado pela equipe); "Castelo Três" e
+  "Ivo Martins" vêm do OpenStreetMap.
+- **Coordenadas e demais nomes alternativos:** © colaboradores do OpenStreetMap,
   disponíveis sob a Open Database License (ODbL),
   https://www.openstreetmap.org/copyright. Levantamento de 03/10/2026 por
   Overpass na área IBGE 3201407 e Nominatim (detalhes na LDMF-264). Cada
