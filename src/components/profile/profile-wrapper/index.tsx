@@ -86,6 +86,10 @@ export function ProfileWrapper() {
     changeState,
     changeCity,
     changeNeighborhood,
+    isSearchingAddress,
+    addressNotFound,
+    pinZoom,
+    pinRecenterKey,
     // CEP
     isLoadingCep,
   } = useProfileManagement();
@@ -237,6 +241,12 @@ export function ProfileWrapper() {
             onStateChange: changeState,
             onCityChange: changeCity,
             onNeighborhoodChange: changeNeighborhood,
+          }}
+          pinStatusProps={{
+            isSearchingAddress,
+            addressNotFound,
+            pinZoom,
+            pinRecenterKey,
           }}
         />
 

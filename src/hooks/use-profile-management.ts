@@ -16,10 +16,15 @@ import { getErrorMessage, onlyNumbers } from "@/utils";
 import { isCompanyAdminRole } from "@/utils/role-helpers";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAddressFields } from "./use-address-fields";
-import { useAddressPin, type PinSource } from "./use-address-pin";
+import {
+  NEIGHBORHOOD_ZOOM,
+  STREET_ZOOM,
+  useAddressPin,
+  type PinSource,
+} from "./use-address-pin";
 import { useUserAddresses } from "./use-addresses";
 import { useProfile } from "./use-api";
 import {
@@ -80,9 +85,15 @@ export const useProfileManagement = () => {
   const [lastFetchedCep, setLastFetchedCep] = useState<string | null>(null);
 
   // Posição do pino + de onde ela veio. É exatamente o que vai para o
-  // backend ao salvar (LDMF-261): sem pino, não salva.
-  const [addressCoords, setAddressCoords] = useState<SourcedCoords | null>(
-    null,
+  // backend ao salvar (LDMF-261): sem pino, não salva. `zoom` e `seq` só
+  // dizem ao mapa como recentralizar a cada novo posicionamento.
+  const [pin, setPin] = useState<
+    (SourcedCoords & { zoom?: number; seq: number }) | null
+  >(null);
+  const pinSeq = useRef(0);
+  const addressCoords = useMemo<SourcedCoords | null>(
+    () => (pin ? { coords: pin.coords, source: pin.source } : null),
+    [pin],
   );
 
   // Form management with validation
@@ -129,8 +140,8 @@ export const useProfileManagement = () => {
       street: watchedStreet,
       number: watchedNumber,
     },
-    onPin: (coords: Coords, source: PinSource) =>
-      setAddressCoords({ coords, source }),
+    onPin: (coords: Coords, source: PinSource, zoom: number) =>
+      setPin({ coords, source, zoom, seq: ++pinSeq.current }),
   });
 
   // Ordem e trava dos campos; trocar estado, cidade ou bairro limpa os
@@ -139,7 +150,7 @@ export const useProfileManagement = () => {
     form: addressForm,
     enabled: addingAddressState.isOpen,
     onPreviousFieldChange: () => {
-      setAddressCoords(null);
+      setPin(null);
       addressPin.resetBaseline();
     },
   });
@@ -276,7 +287,23 @@ export const useProfileManagement = () => {
    * (clique no mapa > geocodificação > CEP).
    */
   const applyCoords = (coords: Coords | null, source: CoordinateSource) => {
-    setAddressCoords((current) => withCoords(current, coords, source));
+    if (source === "manual" && coords) addressPin.clearNotice();
+
+    setPin((current) => {
+      const base = current
+        ? { coords: current.coords, source: current.source }
+        : null;
+      const next = withCoords(base, coords, source);
+      if (next === base || !next) return current;
+
+      // Toque/arrasto mantém o zoom do cliente; a coordenada do CEP é do
+      // logradouro (ou da cidade inteira), então aproxima só até o bairro.
+      return {
+        ...next,
+        zoom: source === "cep" ? NEIGHBORHOOD_ZOOM : undefined,
+        seq: ++pinSeq.current,
+      };
+    });
   };
 
   /**
@@ -387,8 +414,15 @@ export const useProfileManagement = () => {
 
     const storedCoords = parseCoords(address.latitude, address.longitude);
 
-    setAddressCoords(
-      storedCoords ? { coords: storedCoords, source: "stored" } : null,
+    setPin(
+      storedCoords
+        ? {
+            coords: storedCoords,
+            source: "stored",
+            zoom: STREET_ZOOM,
+            seq: ++pinSeq.current,
+          }
+        : null,
     );
     // O pino abre na coordenada salva: só mudança de bairro, rua ou número
     // dispara nova posição. Mudar o complemento mantém.
@@ -507,7 +541,7 @@ export const useProfileManagement = () => {
         setEditingAddressOriginalComplement("");
         addingAddressState.close();
         setLastFetchedCep(null);
-        setAddressCoords(null);
+        setPin(null);
         addressPin.resetBaseline();
 
         toast.success(
@@ -548,7 +582,7 @@ export const useProfileManagement = () => {
     setLastFetchedCep(null);
     setEditingAddressId(null);
     setEditingAddressOriginalComplement("");
-    setAddressCoords(null);
+    setPin(null);
     addressPin.resetBaseline();
     addingAddressState.close();
   };
@@ -669,7 +703,11 @@ export const useProfileManagement = () => {
     changeState: addressFields.changeState,
     changeCity: addressFields.changeCity,
     changeNeighborhood: addressFields.changeNeighborhood,
-    isLocatingPin: addressPin.isLocating,
+    isLocatingPin: addressPin.isLocatingNeighborhood,
+    isSearchingAddress: addressPin.isSearchingAddress,
+    addressNotFound: addressPin.addressNotFound,
+    pinZoom: pin?.zoom,
+    pinRecenterKey: pin?.seq,
     // CEP
     isLoadingCep,
     formatCep,

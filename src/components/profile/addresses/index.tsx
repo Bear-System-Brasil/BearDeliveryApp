@@ -14,7 +14,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DataCard } from "@/components/data-card";
-import { DeliveryForm, type AddressFieldProps } from "../delivery-form";
+import {
+  DeliveryForm,
+  type AddressFieldProps,
+  type PinStatusProps,
+} from "../delivery-form";
 import { cn } from "@/lib/utils";
 
 type AddingAddressState = {
@@ -93,6 +97,7 @@ type Props = {
   neighborhoodOptions?: string[] | null;
   isLocatingPin?: boolean;
   addressFieldProps: AddressFieldProps;
+  pinStatusProps?: PinStatusProps;
 };
 
 export function Addresses({
@@ -114,6 +119,7 @@ export function Addresses({
   neighborhoodOptions,
   isLocatingPin,
   addressFieldProps,
+  pinStatusProps,
 }: Props) {
   return (
     <DataCard
@@ -240,6 +246,7 @@ export function Addresses({
           neighborhoodOptions={neighborhoodOptions}
           isLocatingPin={isLocatingPin}
           {...addressFieldProps}
+          {...pinStatusProps}
         />
       )}
     </DataCard>

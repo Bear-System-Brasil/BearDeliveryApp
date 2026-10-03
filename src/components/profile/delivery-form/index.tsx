@@ -23,6 +23,14 @@ import type { IbgeState } from "@/services/ibge";
 import { Coords } from "@/types/restaurant";
 import { toast } from "sonner";
 
+/** Estado do pino no mapa (vem de `useProfileManagement`). */
+export type PinStatusProps = {
+  isSearchingAddress?: boolean;
+  addressNotFound?: boolean;
+  pinZoom?: number;
+  pinRecenterKey?: number;
+};
+
 /** Ordem, trava e opções dos campos (vem de `useAddressFields`). */
 export type AddressFieldProps = {
   stateOptions: IbgeState[];
@@ -36,7 +44,7 @@ export type AddressFieldProps = {
   onNeighborhoodChange: (neighborhood: string) => void;
 };
 
-type Props = AddressFieldProps & {
+type Props = AddressFieldProps & PinStatusProps & {
   handleCloseAddressModal: () => void;
   handleAddAddress: HandleAddAddress;
   applyCoords: (coords: Coords | null, source: CoordinateSource) => void;
@@ -77,6 +85,10 @@ export function DeliveryForm({
   onStateChange,
   onCityChange,
   onNeighborhoodChange,
+  isSearchingAddress = false,
+  addressNotFound = false,
+  pinZoom,
+  pinRecenterKey,
 }: Props) {
   const [currentState, currentCity, currentNeighborhood] = addressForm.watch([
     "state",
@@ -301,9 +313,9 @@ export function DeliveryForm({
                 <label className="text-sm font-medium">
                   Localização no mapa
                 </label>
-                {isLocatingPin && (
-                  <span className="text-xs text-muted-foreground">
-                    Localizando...
+                {(isSearchingAddress || isLocatingPin) && (
+                  <span role="status" className="text-xs text-muted-foreground">
+                    {isSearchingAddress ? "Buscando endereço..." : "Localizando..."}
                   </span>
                 )}
               </div>
@@ -314,7 +326,15 @@ export function DeliveryForm({
                 mapHeight={220}
                 value={addressCoords?.coords ?? null}
                 onSelect={(coords) => applyCoords(coords, "manual")}
+                zoom={pinZoom}
+                recenterKey={pinRecenterKey}
               />
+              {addressNotFound && (
+                <p role="alert" className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                  Não encontramos esse endereço no mapa. Arraste o pino até a
+                  sua casa.
+                </p>
+              )}
               {!addressCoords && (
                 <p className="text-xs font-medium text-destructive">
                   Escolha o bairro ou toque no mapa para marcar o endereço.

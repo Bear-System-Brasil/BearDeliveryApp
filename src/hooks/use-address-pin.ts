@@ -16,6 +16,11 @@ import { Coords } from "@/types/restaurant";
  */
 export const ADDRESS_SEARCH_DELAY_MS = 800;
 
+/** Zoom do mapa conforme a origem do pino. */
+export const STREET_ZOOM = 17;
+export const NEIGHBORHOOD_ZOOM = 15;
+export const CITY_ZOOM = 13;
+
 export type PinSource = "neighborhood" | "geocode";
 
 export type AddressPinFields = {
@@ -29,7 +34,7 @@ export type AddressPinFields = {
 type Options = {
   fields: AddressPinFields;
   /** Chamado quando o preenchimento define uma nova posição para o pino. */
-  onPin: (coords: Coords, source: PinSource) => void;
+  onPin: (coords: Coords, source: PinSource, zoom: number) => void;
 };
 
 function addressKey({ street, number, city, state }: AddressPinFields) {
@@ -52,6 +57,8 @@ export function useAddressPin({ fields, onPin }: Options) {
     useState<CityNeighborhoods | null>(null);
   const [isLocatingNeighborhood, setIsLocatingNeighborhood] = useState(false);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  // A última busca de rua e número não achou nada dentro da cidade.
+  const [addressNotFound, setAddressNotFound] = useState(false);
 
   const onPinRef = useRef(onPin);
   onPinRef.current = onPin;
@@ -93,7 +100,7 @@ export function useAddressPin({ fields, onPin }: Options) {
 
     const neighborhoodCenter = parseCoords(item.lat, item.lng);
     if (neighborhoodCenter) {
-      onPinRef.current(neighborhoodCenter, "neighborhood");
+      onPinRef.current(neighborhoodCenter, "neighborhood", NEIGHBORHOOD_ZOOM);
       return;
     }
 
@@ -103,7 +110,9 @@ export function useAddressPin({ fields, onPin }: Options) {
     nominatim
       .searchCity({ city: neighborhoodList.city, state: neighborhoodList.state })
       .then((cityCenter) => {
-        if (active && cityCenter) onPinRef.current(cityCenter, "neighborhood");
+        if (active && cityCenter) {
+          onPinRef.current(cityCenter, "neighborhood", CITY_ZOOM);
+        }
       })
       .finally(() => {
         if (active) setIsLocatingNeighborhood(false);
@@ -116,21 +125,27 @@ export function useAddressPin({ fields, onPin }: Options) {
   }, [neighborhood, neighborhoodList]);
 
   useEffect(() => {
-    if (!currentAddressKey || currentAddressKey === baseline.current.address) {
+    if (!currentAddressKey) {
+      setAddressNotFound(false);
       return;
     }
+    if (currentAddressKey === baseline.current.address) return;
 
     let active = true;
 
     const timer = setTimeout(async () => {
       baseline.current.address = currentAddressKey;
+      setAddressNotFound(false);
       setIsSearchingAddress(true);
 
       const coords = await nominatim.searchAddress({ street, number, city, state });
       if (!active) return;
 
       setIsSearchingAddress(false);
-      if (coords) onPinRef.current(coords, "geocode");
+      // Não achou ou caiu fora da cidade: o pino fica onde estava e o
+      // cliente é avisado para arrastar.
+      if (coords) onPinRef.current(coords, "geocode", STREET_ZOOM);
+      else setAddressNotFound(true);
     }, ADDRESS_SEARCH_DELAY_MS);
 
     return () => {
@@ -150,12 +165,19 @@ export function useAddressPin({ fields, onPin }: Options) {
       neighborhood: normalizeText(values.neighborhood),
       address: addressKey(values),
     };
+    setAddressNotFound(false);
   }, []);
+
+  /** O cliente posicionou o pino à mão: o aviso de não encontrado sai. */
+  const clearNotice = useCallback(() => setAddressNotFound(false), []);
 
   return {
     /** Lista oficial de bairros da cidade, ou `null` sem lista. */
     neighborhoodList,
-    isLocating: isLocatingNeighborhood || isSearchingAddress,
+    isLocatingNeighborhood,
+    isSearchingAddress,
+    addressNotFound,
     resetBaseline,
+    clearNotice,
   };
 }

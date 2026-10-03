@@ -879,6 +879,55 @@ describe("useProfileManagement", () => {
         coords: { lat: -20.6, lng: -41.2 },
         source: "manual",
       });
+      expect(result.current.addressNotFound).toBe(true);
+    });
+
+    it("Nominatim sem resultado avisa e o aviso sai quando o cliente arrasta o pino", async () => {
+      const fetchMock = stubNominatim([]);
+      const { result } = await renderProfile();
+      fillCity(result);
+      act(() => {
+        result.current.addressForm.setValue("street", "Rua Sem Mapa");
+        result.current.addressForm.setValue("number", "7");
+      });
+
+      await waitFor(() => expect(result.current.addressNotFound).toBe(true), { timeout: 3000 });
+      expect(nominatimCalls(fetchMock)).toHaveLength(1);
+      expect(result.current.addressCoords).toBeNull();
+      expect(result.current.isSearchingAddress).toBe(false);
+
+      placePin(result, { lat: -20.6, lng: -41.2 });
+
+      expect(result.current.addressNotFound).toBe(false);
+    });
+
+    it("zoom de rua para a busca de rua e número, de cidade para o centro da cidade", async () => {
+      const fetchMock = vi.fn(async (url: string) => {
+        const params = new URL(url).searchParams;
+        const body = params.get("street")
+          ? nominatimHit("-20.61", "-41.19")
+          : nominatimHit("-20.6", "-41.2");
+        return { ok: true, status: 200, json: async () => body };
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const { result } = await renderProfile();
+      fillCity(result);
+      await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
+
+      act(() => result.current.addressForm.setValue("neighborhood", "Centro"));
+      await waitFor(() => expect(result.current.addressCoords?.source).toBe("neighborhood"));
+      expect(result.current.pinZoom).toBe(13);
+      const keyAfterNeighborhood = result.current.pinRecenterKey;
+
+      act(() => {
+        result.current.addressForm.setValue("street", "Rua Principal");
+        result.current.addressForm.setValue("number", "45");
+      });
+      await waitFor(() => expect(result.current.addressCoords?.source).toBe("geocode"), {
+        timeout: 3000,
+      });
+      expect(result.current.pinZoom).toBe(17);
+      expect(result.current.pinRecenterKey).not.toBe(keyAfterNeighborhood);
     });
 
     it("salvar usa o pino posicionado pela busca, sem buscar de novo", async () => {

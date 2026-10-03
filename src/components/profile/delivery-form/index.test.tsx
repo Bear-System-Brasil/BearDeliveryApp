@@ -27,7 +27,7 @@ const IBGE: Record<string, unknown> = {
 
 const onPreviousFieldChange = vi.fn();
 
-function Harness() {
+function Harness(extra: { isSearchingAddress?: boolean; addressNotFound?: boolean }) {
   const form = useAddressForm();
   const fields = useAddressFields({ form, enabled: true, onPreviousFieldChange });
   const city = form.watch("city");
@@ -50,15 +50,16 @@ function Harness() {
       onStateChange={fields.changeState}
       onCityChange={fields.changeCity}
       onNeighborhoodChange={fields.changeNeighborhood}
+      {...extra}
     />
   );
 }
 
-function renderForm() {
+function renderForm(extra: { isSearchingAddress?: boolean; addressNotFound?: boolean } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <Harness />
+      <Harness {...extra} />
     </QueryClientProvider>,
   );
 }
@@ -214,5 +215,26 @@ describe("DeliveryForm: ordem e trava dos campos", () => {
 
     await waitFor(() => expect(field(/Cidade/).tagName).toBe("INPUT"), { timeout: 4000 });
     expect(field(/Cidade/).disabled).toBe(false);
+  });
+
+  it("mostra 'Buscando endereço...' durante a busca", () => {
+    renderForm({ isSearchingAddress: true });
+
+    expect(screen.getByRole("status")).toHaveTextContent("Buscando endereço...");
+  });
+
+  it("avisa quando o endereço não foi encontrado no mapa", () => {
+    renderForm({ addressNotFound: true });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Não encontramos esse endereço no mapa. Arraste o pino até a sua casa.",
+    );
+  });
+
+  it("sem busca e sem aviso, nenhuma das mensagens aparece", () => {
+    renderForm();
+
+    expect(screen.queryByText("Buscando endereço...")).toBeNull();
+    expect(screen.queryByText(/Não encontramos esse endereço/)).toBeNull();
   });
 });
