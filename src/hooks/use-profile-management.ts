@@ -1,7 +1,5 @@
 import {
-  addressTextKey,
   parseBrasilApiCoords,
-  resolveAddressCoordinates,
   withCoords,
   type CoordinateSource,
   type SourcedCoords,
@@ -20,6 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useAddressPin, type PinSource } from "./use-address-pin";
 import { useUserAddresses } from "./use-addresses";
 import { useProfile } from "./use-api";
 import {
@@ -79,19 +78,11 @@ export const useProfileManagement = () => {
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [lastFetchedCep, setLastFetchedCep] = useState<string | null>(null);
 
-  // Coordenada do endereço + de onde ela veio. Este formulário nunca gravou
-  // coordenada nenhuma: agora vem do CEP, da geocodificação do endereço
-  // digitado ou do clique no mapa, nessa ordem de prioridade.
+  // Posição do pino + de onde ela veio. É exatamente o que vai para o
+  // backend ao salvar (LDMF-261): sem pino, não salva.
   const [addressCoords, setAddressCoords] = useState<SourcedCoords | null>(
     null,
   );
-
-  // Endereço como estava ao abrir a edição. Enquanto o texto não muda, a
-  // coordenada já salva continua valendo (o cliente pode ter ajustado o pino
-  // no mapa antes); assim que muda, ela é descartada e recalculada.
-  const [editingAddressTextKey, setEditingAddressTextKey] = useState<
-    string | null
-  >(null);
 
   // Form management with validation
   const profileForm = useProfileForm({
@@ -119,7 +110,7 @@ export const useProfileManagement = () => {
     "state",
   ]);
   const [
-    watchedCep,
+    ,
     watchedStreet,
     watchedNumber,
     watchedNeighborhood,
@@ -127,13 +118,18 @@ export const useProfileManagement = () => {
     watchedState,
   ] = watchedAddress;
 
-  const watchedAddressTextKey = addressTextKey({
-    zipCode: watchedCep,
-    street: watchedStreet,
-    number: watchedNumber,
-    neighborhood: watchedNeighborhood,
-    city: watchedCity,
-    state: watchedState,
+  // Bairro, rua e número movem o pino na frente do cliente - o salvar não
+  // geocodifica nada escondido.
+  const addressPin = useAddressPin({
+    fields: {
+      state: watchedState,
+      city: watchedCity,
+      neighborhood: watchedNeighborhood,
+      street: watchedStreet,
+      number: watchedNumber,
+    },
+    onPin: (coords: Coords, source: PinSource) =>
+      setAddressCoords({ coords, source }),
   });
 
   /**
@@ -264,20 +260,6 @@ export const useProfileManagement = () => {
   }, [user?.id, queryClient]);
 
   /**
-   * O endereço mudou desde que a edição abriu, então a coordenada que estava
-   * salva aponta para outro lugar - descarta para o save geocodificar de novo.
-   */
-  useEffect(() => {
-    if (!editingAddressTextKey) return;
-    if (watchedAddressTextKey === editingAddressTextKey) return;
-
-    setEditingAddressTextKey(null);
-    setAddressCoords((coords) =>
-      coords?.source === "stored" ? null : coords,
-    );
-  }, [watchedAddressTextKey, editingAddressTextKey]);
-
-  /**
    * Registra uma coordenada respeitando a prioridade das fontes
    * (clique no mapa > geocodificação > CEP).
    */
@@ -393,7 +375,15 @@ export const useProfileManagement = () => {
     setAddressCoords(
       storedCoords ? { coords: storedCoords, source: "stored" } : null,
     );
-    setEditingAddressTextKey(storedCoords ? addressTextKey(address) : null);
+    // O pino abre na coordenada salva: só mudança de bairro, rua ou número
+    // dispara nova posição. Mudar o complemento mantém.
+    addressPin.resetBaseline({
+      state: address.state,
+      city: address.city,
+      neighborhood: address.neighborhood,
+      street: address.street,
+      number: String(address.number ?? ""),
+    });
     setEditingAddressId(address.id);
     setEditingAddressOriginalComplement(address.complement || "");
     setLastFetchedCep(onlyNumbers(address.zipCode));
@@ -429,20 +419,17 @@ export const useProfileManagement = () => {
       trimmedComplement.length > 0 &&
       trimmedComplement.length < 5;
 
+    // Salvar = confirmar o pino. Endereço sem coordenada some das buscas por
+    // proximidade, então sem pino não sai nada.
+    if (!addressCoords) {
+      toast.error("Marque no mapa onde fica o endereço antes de salvar.");
+      return;
+    }
+
+    const pinCoords = addressCoords.coords;
+
     setIsSavingAddress(true);
     try {
-      // Sem gesto explícito do cliente (clique no mapa) nem coordenada salva
-      // ainda válida, geocodifica o endereço digitado - é o que a loja já faz
-      // em use-company-profile-management. Sem isso este formulário gravava o
-      // endereço sem coordenada nenhuma, e o cliente sumia das buscas por
-      // proximidade.
-      const resolvedCoords = await resolveAddressCoordinates(
-        data,
-        addressCoords,
-      );
-
-      if (resolvedCoords) setAddressCoords(resolvedCoords);
-
       const payload = {
         street: data.street,
         number: data.number,
@@ -450,8 +437,8 @@ export const useProfileManagement = () => {
         neighborhood: data.neighborhood,
         city: data.city,
         state: data.state,
-        longitude: resolvedCoords?.coords.lng,
-        latitude: resolvedCoords?.coords.lat,
+        longitude: pinCoords.lng,
+        latitude: pinCoords.lat,
         zipCode: onlyNumbers(data.zipCode),
         isDefault: data.isDefault ?? false,
       };
@@ -506,7 +493,7 @@ export const useProfileManagement = () => {
         addingAddressState.close();
         setLastFetchedCep(null);
         setAddressCoords(null);
-        setEditingAddressTextKey(null);
+        addressPin.resetBaseline();
 
         toast.success(
           editingAddressId
@@ -547,7 +534,7 @@ export const useProfileManagement = () => {
     setEditingAddressId(null);
     setEditingAddressOriginalComplement("");
     setAddressCoords(null);
-    setEditingAddressTextKey(null);
+    addressPin.resetBaseline();
     addingAddressState.close();
   };
 
@@ -656,6 +643,10 @@ export const useProfileManagement = () => {
     editingAddressId,
     addressCoords,
     applyCoords,
+    neighborhoodOptions:
+      addressPin.neighborhoodList?.neighborhoods.map((item) => item.name) ??
+      null,
+    isLocatingPin: addressPin.isLocating,
     // CEP
     isLoadingCep,
     formatCep,

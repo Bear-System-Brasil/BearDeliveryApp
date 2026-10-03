@@ -3,12 +3,13 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
-import { resolveAddressCoordinates } from "@/lib/address-coordinates";
 import {
   restorePendingDefaultAddress,
   setDefaultAddress,
 } from "@/lib/default-address";
+import { nominatim } from "@/lib/nominatim";
 import { apiService, type Address } from "@/services/api";
+import { getNeighborhoods } from "@/services/neighborhoods";
 import { useAuthStore } from "@/stores";
 import type { AddressFormData } from "./use-form-validation";
 import { useProfileManagement } from "./use-profile-management";
@@ -21,9 +22,9 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
 
-vi.mock("@/lib/address-coordinates", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/address-coordinates")>();
-  return { ...actual, resolveAddressCoordinates: vi.fn() };
+vi.mock("@/services/neighborhoods", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/neighborhoods")>();
+  return { ...actual, getNeighborhoods: vi.fn(actual.getNeighborhoods) };
 });
 
 vi.mock("@/lib/default-address", async (importOriginal) => {
@@ -75,6 +76,8 @@ const stored = (id: string, extra: Partial<Address> = {}) =>
     state: "PR",
     zipCode: "80000000",
     isDefault: false,
+    latitude: -25.1,
+    longitude: -49.1,
     ...extra,
   }) as Address;
 
@@ -90,7 +93,27 @@ const formData = (extra: Partial<AddressFormData> = {}): AddressFormData => ({
   ...extra,
 });
 
-const geocoded = { coords: { lat: -25.44, lng: -49.29 }, source: "geocode" as const };
+const { getNeighborhoods: realGetNeighborhoods } = await vi.importActual<
+  typeof import("@/services/neighborhoods")
+>("@/services/neighborhoods");
+
+const PIN = { lat: -25.44, lng: -49.29 };
+
+/** Resultado do Nominatim dentro (ou fora) de Castelo/ES. */
+const nominatimHit = (lat: string, lon: string, town = "Castelo") => [
+  { lat, lon, address: { town, "ISO3166-2-lvl4": "BR-ES" } },
+];
+
+function stubNominatim(results: unknown[]) {
+  const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => results }));
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+const nominatimCalls = (fetchMock: ReturnType<typeof vi.fn>) =>
+  fetchMock.mock.calls
+    .map(([url]) => new URL(String(url)))
+    .filter((url) => url.hostname === "nominatim.openstreetmap.org");
 
 const initialAuthState = useAuthStore.getState();
 let queryClient: QueryClient;
@@ -104,6 +127,13 @@ async function renderProfile() {
   const hook = renderHook(() => useProfileManagement(), { wrapper });
   await waitFor(() => expect(hook.result.current.isLoadingAddresses).toBe(false));
   return hook;
+}
+
+type ProfileHook = Awaited<ReturnType<typeof renderProfile>>["result"];
+
+/** Cliente toca no mapa: é o que o salvar manda. */
+function placePin(result: ProfileHook, coords = PIN) {
+  act(() => result.current.applyCoords(coords, "manual"));
 }
 
 describe("useProfileManagement", () => {
@@ -122,7 +152,9 @@ describe("useProfileManagement", () => {
       success: true,
       data: savedAddresses,
     }));
-    vi.mocked(resolveAddressCoordinates).mockResolvedValue(geocoded);
+    nominatim.reset();
+    // mockResolvedValue de um teste não pode vazar para o próximo.
+    vi.mocked(getNeighborhoods).mockImplementation(realGetNeighborhoods);
     vi.mocked(restorePendingDefaultAddress).mockResolvedValue(false);
     vi.mocked(setDefaultAddress).mockResolvedValue({ promoted: true, demotedAll: true });
     vi.stubGlobal("confirm", vi.fn(() => true));
@@ -306,9 +338,12 @@ describe("useProfileManagement", () => {
   });
 
   describe("salvar endereço", () => {
-    it("novo endereço sai com todos os campos, CEP só com dígitos e a coordenada geocodificada", async () => {
+    it("novo endereço sai com todos os campos, CEP só com dígitos e exatamente a posição do pino", async () => {
       api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
       const { result } = await renderProfile();
+      placePin(result);
 
       await act(async () => {
         await result.current.handleAddAddress(formData({ complement: "Casa 2" }));
@@ -328,11 +363,14 @@ describe("useProfileManagement", () => {
       });
       expect(toast.success).toHaveBeenCalledWith("Endereço adicionado com sucesso!");
       expect(setDefaultAddress).not.toHaveBeenCalled();
+      // Nenhuma geocodificação escondida no salvar.
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it("complemento vazio sai como undefined", async () => {
       api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
       const { result } = await renderProfile();
+      placePin(result);
 
       await act(async () => {
         await result.current.handleAddAddress(formData({ complement: "" }));
@@ -341,24 +379,42 @@ describe("useProfileManagement", () => {
       expect(api.address.createUserAddress.mock.calls[0][0].complement).toBeUndefined();
     });
 
-    it("sem coordenada resolvida, salva sem latitude e longitude", async () => {
-      vi.mocked(resolveAddressCoordinates).mockResolvedValue(null);
-      api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
+    it("sem pino no mapa, não salva e avisa", async () => {
       const { result } = await renderProfile();
+      act(() => result.current.addingAddressState.open());
 
       await act(async () => {
         await result.current.handleAddAddress(formData());
       });
 
-      const payload = api.address.createUserAddress.mock.calls[0][0];
-      expect(payload.latitude).toBeUndefined();
-      expect(payload.longitude).toBeUndefined();
+      expect(api.address.createUserAddress).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith(
+        "Marque no mapa onde fica o endereço antes de salvar.",
+      );
+      expect(result.current.addingAddressState.isOpen).toBe(true);
+    });
+
+    it("pino arrastado depois de uma busca: salva a posição final do pino", async () => {
+      api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
+      const { result } = await renderProfile();
+      placePin(result, { lat: -20.6, lng: -41.2 });
+      placePin(result, { lat: -20.61, lng: -41.21 });
+
+      await act(async () => {
+        await result.current.handleAddAddress(formData());
+      });
+
+      expect(api.address.createUserAddress.mock.calls[0][0]).toMatchObject({
+        latitude: -20.61,
+        longitude: -41.21,
+      });
     });
 
     it("novo endereço marcado como padrão promove o id que o backend devolveu", async () => {
       savedAddresses = [stored("antigo", { isDefault: true }), stored("novo")];
       api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
       const { result } = await renderProfile();
+      placePin(result);
 
       await act(async () => {
         await result.current.handleAddAddress(formData({ isDefault: true }));
@@ -373,6 +429,7 @@ describe("useProfileManagement", () => {
       vi.mocked(setDefaultAddress).mockResolvedValue({ promoted: true, demotedAll: false });
       api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
       const { result } = await renderProfile();
+      placePin(result);
 
       await act(async () => {
         await result.current.handleAddAddress(formData({ isDefault: true }));
@@ -387,6 +444,7 @@ describe("useProfileManagement", () => {
     it("salvamento recusado não mexe no padrão e mantém o formulário aberto", async () => {
       api.address.createUserAddress.mockResolvedValue({ success: false, message: "CEP inválido" });
       const { result } = await renderProfile();
+      placePin(result);
       act(() => result.current.addingAddressState.open());
 
       await act(async () => {
@@ -402,6 +460,7 @@ describe("useProfileManagement", () => {
     it("sucesso fecha o formulário e recarrega a lista", async () => {
       api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
       const { result } = await renderProfile();
+      placePin(result);
       act(() => result.current.addingAddressState.open());
       const calls = api.address.getUserAddresses.mock.calls.length;
 
@@ -418,6 +477,7 @@ describe("useProfileManagement", () => {
     it("exceção ao salvar avisa erro genérico", async () => {
       api.address.createUserAddress.mockRejectedValue(new Error("offline"));
       const { result } = await renderProfile();
+      placePin(result);
 
       await act(async () => {
         await result.current.handleAddAddress(formData());
@@ -497,7 +557,10 @@ describe("useProfileManagement", () => {
       expect(setDefaultAddress).toHaveBeenCalledWith(expect.any(Array), "a1");
     });
 
-    it("coordenada salva vale enquanto o texto do endereço não muda", async () => {
+    it("o pino abre na coordenada salva e o PATCH a reenvia se nada mudou", async () => {
+      api.address.updateUserAddress.mockResolvedValue({ success: true });
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
       const { result } = await editing(stored("a1", { latitude: -25.1, longitude: -49.1 }));
 
       expect(result.current.addressCoords).toEqual({
@@ -505,9 +568,32 @@ describe("useProfileManagement", () => {
         source: "stored",
       });
 
+      act(() => result.current.addressForm.setValue("complement", "Casa dos fundos"));
+      await act(async () => {
+        await result.current.handleAddAddress(
+          formData({ street: "Rua A", number: "10", complement: "Casa dos fundos" }),
+        );
+      });
+
+      expect(api.address.updateUserAddress.mock.calls[0][1]).toMatchObject({
+        latitude: -25.1,
+        longitude: -49.1,
+      });
+      // Abrir a edição e mudar só o complemento não busca nada.
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("mudar a rua faz nova busca; sem resultado, o pino fica onde estava", async () => {
+      const fetchMock = stubNominatim([]);
+      const { result } = await editing(
+        stored("a1", { city: "Castelo", state: "ES", latitude: -20.6, longitude: -41.2 }),
+      );
+
       act(() => result.current.addressForm.setValue("street", "Rua Trocada"));
 
-      await waitFor(() => expect(result.current.addressCoords).toBeNull());
+      await waitFor(() => expect(nominatimCalls(fetchMock)).toHaveLength(1), { timeout: 3000 });
+      await waitFor(() => expect(result.current.isLocatingPin).toBe(false));
+      expect(result.current.addressCoords?.coords).toEqual({ lat: -20.6, lng: -41.2 });
     });
 
     it("PATCH recusado não promove o endereço a padrão", async () => {
@@ -535,7 +621,7 @@ describe("useProfileManagement", () => {
     });
 
     it("fechar o modal limpa o estado de edição", async () => {
-      const { result } = await editing(stored("a1", { latitude: -25.1, longitude: -49.1 }));
+      const { result } = await editing(stored("a1"));
 
       act(() => result.current.handleCloseAddressModal());
 
@@ -635,6 +721,139 @@ describe("useProfileManagement", () => {
       });
 
       expect(toast.error).toHaveBeenCalledWith("Endereço em uso");
+    });
+  });
+
+  describe("pino acompanha o preenchimento", () => {
+    function fillCity(result: ProfileHook) {
+      act(() => {
+        result.current.addressForm.setValue("state", "ES");
+        result.current.addressForm.setValue("city", "Castelo");
+      });
+    }
+
+    it("Castelo/ES oferece os bairros da lista oficial", async () => {
+      const { result } = await renderProfile();
+      expect(result.current.neighborhoodOptions).toBeNull();
+
+      fillCity(result);
+
+      await waitFor(() => expect(result.current.neighborhoodOptions).toHaveLength(32));
+      expect(result.current.neighborhoodOptions).toContain("Castelo III");
+    });
+
+    it("bairro com coordenada move o pino para o centro do bairro", async () => {
+      vi.mocked(getNeighborhoods).mockResolvedValue({
+        state: "ES",
+        city: "Castelo",
+        ibgeCode: null,
+        cep: null,
+        neighborhoods: [{ name: "Centro", lat: -20.6033, lng: -41.1847 }],
+      });
+      const fetchMock = stubNominatim([]);
+      const { result } = await renderProfile();
+      fillCity(result);
+      await waitFor(() => expect(result.current.neighborhoodOptions).toEqual(["Centro"]));
+
+      act(() => result.current.addressForm.setValue("neighborhood", "Centro"));
+
+      await waitFor(() =>
+        expect(result.current.addressCoords).toEqual({
+          coords: { lat: -20.6033, lng: -41.1847 },
+          source: "neighborhood",
+        }),
+      );
+      expect(nominatimCalls(fetchMock)).toHaveLength(0);
+    });
+
+    it("bairro sem coordenada move o pino para o centro da cidade, pelo Nominatim", async () => {
+      const fetchMock = stubNominatim(nominatimHit("-20.6", "-41.2"));
+      const { result } = await renderProfile();
+      fillCity(result);
+      await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
+
+      act(() => result.current.addressForm.setValue("neighborhood", "Castelo III"));
+
+      await waitFor(() =>
+        expect(result.current.addressCoords).toEqual({
+          coords: { lat: -20.6, lng: -41.2 },
+          source: "neighborhood",
+        }),
+      );
+      const [call] = nominatimCalls(fetchMock);
+      expect(call.searchParams.get("city")).toBe("Castelo");
+      expect(call.searchParams.get("state")).toBe("Espírito Santo");
+      expect(call.searchParams.has("street")).toBe(false);
+    });
+
+    it("preencher o número dispara uma única busca de rua e número", async () => {
+      const fetchMock = stubNominatim(nominatimHit("-20.61", "-41.19"));
+      const { result } = await renderProfile();
+      fillCity(result);
+
+      act(() => result.current.addressForm.setValue("street", "Rua Principal"));
+      act(() => result.current.addressForm.setValue("number", "4"));
+      // Pausa de digitação menor que o atraso da busca: ainda não busca.
+      await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+      act(() => result.current.addressForm.setValue("number", "45"));
+
+      await waitFor(
+        () =>
+          expect(result.current.addressCoords).toEqual({
+            coords: { lat: -20.61, lng: -41.19 },
+            source: "geocode",
+          }),
+        { timeout: 3000 },
+      );
+      const calls = nominatimCalls(fetchMock);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].searchParams.get("street")).toBe("45 Rua Principal");
+    });
+
+    it("resultado fora da cidade é ignorado e o pino fica onde estava", async () => {
+      const fetchMock = stubNominatim(nominatimHit("-20.3", "-40.3", "Vitória"));
+      const { result } = await renderProfile();
+      fillCity(result);
+      placePin(result, { lat: -20.6, lng: -41.2 });
+
+      act(() => {
+        result.current.addressForm.setValue("street", "Rua Principal");
+        result.current.addressForm.setValue("number", "45");
+      });
+
+      await waitFor(() => expect(nominatimCalls(fetchMock)).toHaveLength(1), { timeout: 3000 });
+      await waitFor(() => expect(result.current.isLocatingPin).toBe(false));
+      expect(result.current.addressCoords).toEqual({
+        coords: { lat: -20.6, lng: -41.2 },
+        source: "manual",
+      });
+    });
+
+    it("salvar usa o pino posicionado pela busca, sem buscar de novo", async () => {
+      api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
+      const fetchMock = stubNominatim(nominatimHit("-20.61", "-41.19"));
+      const { result } = await renderProfile();
+      fillCity(result);
+      act(() => {
+        result.current.addressForm.setValue("street", "Rua Principal");
+        result.current.addressForm.setValue("number", "45");
+      });
+      await waitFor(() => expect(result.current.addressCoords?.source).toBe("geocode"), {
+        timeout: 3000,
+      });
+      const callsBeforeSave = fetchMock.mock.calls.length;
+
+      await act(async () => {
+        await result.current.handleAddAddress(
+          formData({ street: "Rua Principal", number: "45", city: "Castelo", state: "ES" }),
+        );
+      });
+
+      expect(api.address.createUserAddress.mock.calls[0][0]).toMatchObject({
+        latitude: -20.61,
+        longitude: -41.19,
+      });
+      expect(fetchMock.mock.calls.length).toBe(callsBeforeSave);
     });
   });
 

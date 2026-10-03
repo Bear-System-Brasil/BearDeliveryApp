@@ -90,6 +90,8 @@ type Props = {
   addresses: Address[];
   isLoadingCep: boolean;
   editingAddressId?: string | null;
+  neighborhoodOptions?: string[] | null;
+  isLocatingPin?: boolean;
 };
 
 export function Addresses({
@@ -108,6 +110,8 @@ export function Addresses({
   addressCoords,
   addresses,
   editingAddressId,
+  neighborhoodOptions,
+  isLocatingPin,
 }: Props) {
   return (
     <DataCard
@@ -231,6 +235,8 @@ export function Addresses({
           addressCoords={addressCoords}
           isLoadingCep={isLoadingCep}
           isEditing={!!editingAddressId}
+          neighborhoodOptions={neighborhoodOptions}
+          isLocatingPin={isLocatingPin}
         />
       )}
     </DataCard>

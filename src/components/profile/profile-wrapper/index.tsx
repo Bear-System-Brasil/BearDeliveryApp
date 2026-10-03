@@ -76,6 +76,8 @@ export function ProfileWrapper() {
     editingAddressId,
     addressCoords,
     applyCoords,
+    neighborhoodOptions,
+    isLocatingPin,
     // CEP
     isLoadingCep,
   } = useProfileManagement();
@@ -216,6 +218,8 @@ export function ProfileWrapper() {
           addressForm={addressForm}
           addressCoords={addressCoords}
           addresses={addresses}
+          neighborhoodOptions={neighborhoodOptions}
+          isLocatingPin={isLocatingPin}
         />
 
         {/* Security */}

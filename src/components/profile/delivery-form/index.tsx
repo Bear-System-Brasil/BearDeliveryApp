@@ -30,6 +30,9 @@ type Props = {
   isSavingAddress: boolean;
   isLoadingCep: boolean;
   isEditing?: boolean;
+  /** Bairros oficiais da cidade; `null` = cidade sem lista (campo livre). */
+  neighborhoodOptions?: string[] | null;
+  isLocatingPin?: boolean;
 };
 
 export function DeliveryForm({
@@ -41,7 +44,17 @@ export function DeliveryForm({
   isSavingAddress,
   isLoadingCep,
   isEditing = false,
+  neighborhoodOptions = null,
+  isLocatingPin = false,
 }: Props) {
+  const currentNeighborhood = addressForm.watch("neighborhood") ?? "";
+  // Endereço antigo com bairro fora da lista oficial (ex.: "Castelo 3"):
+  // continua visível até o cliente escolher o bairro certo.
+  const showLegacyNeighborhood =
+    !!neighborhoodOptions &&
+    !!currentNeighborhood &&
+    !neighborhoodOptions.includes(currentNeighborhood);
+
   return (
     <Dialog open onOpenChange={(open) => !open && handleCloseAddressModal()}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -132,11 +145,34 @@ export function DeliveryForm({
 
             {/* Bairro */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Bairro *</label>
-              <Input
-                {...addressForm.register("neighborhood")}
-                placeholder="Nome do bairro"
-              />
+              <label htmlFor="address-neighborhood" className="text-sm font-medium">
+                Bairro *
+              </label>
+              {neighborhoodOptions ? (
+                <select
+                  id="address-neighborhood"
+                  {...addressForm.register("neighborhood")}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
+                >
+                  <option value="">Selecione o bairro</option>
+                  {showLegacyNeighborhood && (
+                    <option value={currentNeighborhood}>
+                      {currentNeighborhood} (fora da lista oficial)
+                    </option>
+                  )}
+                  {neighborhoodOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  id="address-neighborhood"
+                  {...addressForm.register("neighborhood")}
+                  placeholder="Nome do bairro"
+                />
+              )}
               {addressForm.formState.errors.neighborhood && (
                 <p className="text-sm text-destructive">
                   {addressForm.formState.errors.neighborhood.message}
@@ -179,21 +215,26 @@ export function DeliveryForm({
                 <label className="text-sm font-medium">
                   Localização no mapa
                 </label>
-                <span className="text-xs text-muted-foreground">
-                  {addressCoords
-                    ? "Clique no mapa para ajustar"
-                    : "Preencha o CEP ou clique no mapa"}
-                </span>
+                {isLocatingPin && (
+                  <span className="text-xs text-muted-foreground">
+                    Localizando...
+                  </span>
+                )}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Confira se o pino está na sua casa. Se não estiver, arraste.
+              </p>
               <AddressMap
                 mapHeight={220}
                 value={addressCoords?.coords ?? null}
                 onSelect={(coords) => applyCoords(coords, "manual")}
               />
-              <p className="text-xs text-muted-foreground">
-                Sem ajuste no mapa, localizamos o endereço automaticamente ao
-                salvar.
-              </p>
+              {!addressCoords && (
+                <p className="text-xs font-medium text-destructive">
+                  Escolha o bairro ou toque no mapa para marcar o endereço.
+                  Sem o pino não dá para salvar.
+                </p>
+              )}
             </div>
 
             {/* Checkbox Padrão */}
