@@ -36,7 +36,7 @@ BearDelivery is a comprehensive food delivery platform that connects customers w
 - Advanced restaurant search with filters
 - Real-time shopping cart with backend sync
 - Product customization (variations, add-ons with per-item quantity, notes)
-- Multiple delivery addresses management (with Google Maps geocoding)
+- Multiple delivery addresses management (OpenStreetMap/Nominatim geocoding and map pin)
 - Multiple payment methods (Pix, credit/debit card online, cash or card on delivery)
 - Real-time order tracking with live status updates
 - Restaurant favorites
@@ -88,7 +88,8 @@ BearDelivery is a comprehensive food delivery platform that connects customers w
 
 ### Real-time & External Services
 - **Socket.IO Client** - Real-time updates (kitchen orders, deliveries, notifications)
-- **@react-google-maps/api** - Address geocoding and map display
+- **Leaflet / react-leaflet** - Maps with OpenStreetMap tiles (no API key)
+- **Nominatim (OpenStreetMap)** - Address geocoding
 
 ### Utilities
 - **date-fns / dayjs / react-day-picker** - Date manipulation and pickers
@@ -134,7 +135,6 @@ Edit `.env.local` and add your configuration:
 ```env
 NEXT_PUBLIC_API_URL=https://bearsystem.tech
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
 4. **Run the development server**
@@ -244,7 +244,7 @@ like-delivery-app/
 │       ├── utils.ts              # Shared utilities
 │       ├── jwt.ts / session.ts   # Auth session helpers
 │       ├── socket-auth.ts        # Socket.IO auth handshake
-│       ├── geocode.ts            # Google Maps geocoding
+│       ├── geocode.ts            # Nominatim (OpenStreetMap) geocoding
 │       └── notify.ts             # Notification dispatch rules
 │
 ├── public/                        # Static assets
@@ -579,7 +579,6 @@ Set these in your deployment platform:
 ```env
 NEXT_PUBLIC_API_URL=https://bearsystem.tech
 NEXT_PUBLIC_APP_URL=https://your-domain.com
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
 ### Build Optimization
@@ -675,7 +674,7 @@ chore: Build process or auxiliary tool changes
 - Delivery dashboard for drivers
 - Authentication and role-based authorization (client, owner, admin, manager, cook, financial, delivery)
 - Real-time order tracking and in-app notifications (Socket.IO)
-- Multiple addresses (with Google Maps geocoding) and payment methods
+- Multiple addresses (OpenStreetMap map pin and geocoding) and payment methods
 - Image uploads to S3
 
 ### Medium Term (Enhancements)
