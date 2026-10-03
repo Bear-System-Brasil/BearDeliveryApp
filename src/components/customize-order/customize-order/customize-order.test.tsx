@@ -34,6 +34,14 @@ const ADD_ON = {
   productId: "prod-1",
 };
 
+// Referência estável entre renders (mock com identidade nova a cada
+// chamada causa laço de render). Os testes trocam o objeto inteiro.
+const DEFAULT_VARIATIONS_RESULT = { data: [VARIATION], isLoading: false };
+let variationsResult: {
+  data: (typeof VARIATION)[];
+  isLoading: boolean;
+} = DEFAULT_VARIATIONS_RESULT;
+
 vi.mock("@/hooks", () => ({
   useAllCategories: () => ({ data: [] }),
   useCartActions: () => ({ handleAddToCart: addToCart }),
@@ -41,7 +49,7 @@ vi.mock("@/hooks", () => ({
     data: { id: "comp-1", tradeName: "Lanchonete do Bear" },
     isLoading: false,
   }),
-  usePublicProductVariations: () => ({ data: [VARIATION], isLoading: false }),
+  usePublicProductVariations: () => variationsResult,
   usePublicProductAddOns: () => ({ data: [ADD_ON], isLoading: false }),
 }));
 
@@ -194,5 +202,30 @@ describe("CustomizeOrder - preços dos extras", () => {
     expect(screen.queryByText("+ R$ 5,00")).not.toBeInTheDocument();
     // Complemento continua somando por cima.
     expect(screen.getByText("+ R$ 3,00")).toBeInTheDocument();
+  });
+});
+
+describe("CustomizeOrder - tamanhos vendáveis", () => {
+  beforeEach(() => {
+    addToCart.mockReset();
+    showAuthModal.mockReset();
+    isAuthenticated = false;
+    variationsResult = DEFAULT_VARIATIONS_RESULT;
+  });
+
+  it("esconde tamanho sem estoque ou indisponível, como o cardápio", () => {
+    variationsResult = {
+      data: [
+        VARIATION,
+        { ...VARIATION, id: "var-familia", name: "Família", stockQuantity: 0 },
+        { ...VARIATION, id: "var-gigante", name: "Gigante", isAvailable: false },
+      ],
+      isLoading: false,
+    };
+    renderModal();
+
+    expect(screen.getByText("Grande")).toBeInTheDocument();
+    expect(screen.queryByText("Família")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gigante")).not.toBeInTheDocument();
   });
 });

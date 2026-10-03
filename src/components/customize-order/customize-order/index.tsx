@@ -14,6 +14,7 @@ import {
   useRestaurant,
 } from "@/hooks";
 import { useAuth } from "@/contexts/auth-provider";
+import { isSellableVariation } from "@/lib/product-variation";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/utils";
 import { Minus, Plus, X } from "lucide-react";
@@ -134,7 +135,9 @@ export function CustomizeOrder({
   const extraGroups: ExtraGroup[] = useMemo(() => {
     const groups: ExtraGroup[] = [];
 
-    const availableVariations = variations.filter((v) => v.isAvailable);
+    // Mesmo critério do "A partir de" do cardápio: tamanho sem estoque não
+    // é vendável, então não entra na lista nem ancora a pré-seleção.
+    const availableVariations = variations.filter(isSellableVariation);
     if (availableVariations.length > 0) {
       groups.push({
         id: "variation",
