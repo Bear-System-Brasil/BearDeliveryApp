@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import L from "leaflet";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import LeafletAddressMap from "./leaflet-address-map";
 
@@ -90,5 +91,63 @@ describe("LeafletAddressMap", () => {
     const [coords] = onSelect.mock.calls[0];
     expect(coords.lat).not.toBeCloseTo(CASTELO.lat, 6);
     expect(coords.lng).not.toBeCloseTo(CASTELO.lng, 6);
+  });
+
+  describe("recentralizar", () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    function lastView(spy: ReturnType<typeof vi.spyOn>) {
+      const [center, zoom] = spy.mock.calls.at(-1) as [L.LatLngExpression, number];
+      return { center: L.latLng(center), zoom };
+    }
+
+    it("posição nova recentraliza o mapa nela, com o zoom pedido", () => {
+      const setView = vi.spyOn(L.Map.prototype, "setView");
+      const { rerender } = render(
+        <LeafletAddressMap value={CASTELO} zoom={13} recenterKey={1} onSelect={vi.fn()} />,
+      );
+
+      rerender(
+        <LeafletAddressMap
+          value={{ lat: -20.62, lng: -41.21 }}
+          zoom={17}
+          recenterKey={2}
+          onSelect={vi.fn()}
+        />,
+      );
+
+      const view = lastView(setView);
+      expect(view.center.lat).toBeCloseTo(-20.62, 6);
+      expect(view.center.lng).toBeCloseTo(-41.21, 6);
+      expect(view.zoom).toBe(17);
+    });
+
+    it("mesma posição com novo recenterKey recentraliza de novo", () => {
+      const setView = vi.spyOn(L.Map.prototype, "setView");
+      const { rerender } = render(
+        <LeafletAddressMap value={CASTELO} zoom={13} recenterKey={1} onSelect={vi.fn()} />,
+      );
+      const calls = setView.mock.calls.length;
+
+      rerender(
+        <LeafletAddressMap value={CASTELO} zoom={13} recenterKey={2} onSelect={vi.fn()} />,
+      );
+
+      expect(setView.mock.calls.length).toBeGreaterThan(calls);
+      expect(lastView(setView).center.lat).toBeCloseTo(CASTELO.lat, 6);
+    });
+
+    it("sem zoom pedido, mantém o zoom atual do mapa", () => {
+      const setView = vi.spyOn(L.Map.prototype, "setView");
+      const { rerender } = render(
+        <LeafletAddressMap value={CASTELO} zoom={15} recenterKey={1} onSelect={vi.fn()} />,
+      );
+
+      rerender(
+        <LeafletAddressMap value={{ lat: -20.61, lng: -41.2 }} recenterKey={2} onSelect={vi.fn()} />,
+      );
+
+      expect(lastView(setView).zoom).toBe(15);
+    });
   });
 });
