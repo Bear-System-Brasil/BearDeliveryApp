@@ -26,10 +26,15 @@ describe("getNeighborhoods", () => {
     expect(list?.neighborhoods.every((n) => n.lat === null && n.lng === null)).toBe(true);
   });
 
-  it("ibgeCode e cep ficam null até confirmação em fonte oficial", async () => {
+  it("traz o CEP da cidade e o código IBGE confirmados", async () => {
     const list = await getNeighborhoods("ES", "Castelo");
 
-    expect(list).toMatchObject({ state: "ES", city: "Castelo", ibgeCode: null, cep: null });
+    expect(list).toMatchObject({
+      state: "ES",
+      city: "Castelo",
+      ibgeCode: "3201407",
+      cep: "29360-000",
+    });
   });
 
   it("ignora caixa e acento na cidade e no estado", async () => {

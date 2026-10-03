@@ -13,8 +13,7 @@ export type Neighborhood = {
 
 /**
  * Formato combinado para a futura rota de bairros do backend (LDMF-264).
- * `ibgeCode` e `cep` ficam `null` enquanto não forem confirmados em fonte
- * oficial.
+ * `ibgeCode` e `cep` podem ser `null` quando ainda não foram confirmados.
  */
 export type CityNeighborhoods = {
   state: string;

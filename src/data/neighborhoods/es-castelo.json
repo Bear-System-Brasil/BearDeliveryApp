@@ -1,8 +1,8 @@
 {
   "state": "ES",
   "city": "Castelo",
-  "ibgeCode": null,
-  "cep": null,
+  "ibgeCode": "3201407",
+  "cep": "29360-000",
   "neighborhoods": [
     {
       "name": "Aracuí",
