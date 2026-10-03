@@ -175,6 +175,29 @@ export function CustomizeOrder({
     return groups;
   }, [variations, addOns, productData.salePrice]);
 
+  // O tamanho mais barato entre os vendáveis já vem marcado - a escolha
+  // continua obrigatória, mas o cliente que quer o preço base não precisa
+  // procurar por ele.
+  const cheapestVariationId = useMemo(() => {
+    const options =
+      extraGroups.find((group) => group.id === "variation")?.options ?? [];
+    if (options.length === 0) return undefined;
+    return options.reduce((cheapest, option) =>
+      option.price < cheapest.price ? option : cheapest,
+    ).id;
+  }, [extraGroups]);
+
+  // Só preenche quando não há escolha - não sobrescreve a do cliente. O
+  // resetState ao fechar zera a seleção, então reabrir pré-seleciona de novo.
+  useEffect(() => {
+    if (!isModalOpen || !cheapestVariationId) return;
+    setSelections((prev) =>
+      prev.variation?.length
+        ? prev
+        : { ...prev, variation: [cheapestVariationId] },
+    );
+  }, [isModalOpen, cheapestVariationId]);
+
   const handleSelectionChange = (groupId: string, selectedIds: string[]) => {
     setSelections((prev) => ({ ...prev, [groupId]: selectedIds }));
   };
