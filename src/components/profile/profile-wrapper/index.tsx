@@ -78,6 +78,14 @@ export function ProfileWrapper() {
     applyCoords,
     neighborhoodOptions,
     isLocatingPin,
+    stateOptions,
+    cityOptions,
+    isLoadingCities,
+    citiesError,
+    fieldLocks,
+    changeState,
+    changeCity,
+    changeNeighborhood,
     // CEP
     isLoadingCep,
   } = useProfileManagement();
@@ -220,6 +228,16 @@ export function ProfileWrapper() {
           addresses={addresses}
           neighborhoodOptions={neighborhoodOptions}
           isLocatingPin={isLocatingPin}
+          addressFieldProps={{
+            stateOptions,
+            cityOptions,
+            isLoadingCities,
+            citiesError,
+            fieldLocks,
+            onStateChange: changeState,
+            onCityChange: changeCity,
+            onNeighborhoodChange: changeNeighborhood,
+          }}
         />
 
         {/* Security */}

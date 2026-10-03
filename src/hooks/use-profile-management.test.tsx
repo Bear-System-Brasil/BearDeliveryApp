@@ -579,8 +579,8 @@ describe("useProfileManagement", () => {
         latitude: -25.1,
         longitude: -49.1,
       });
-      // Abrir a edição e mudar só o complemento não busca nada.
-      expect(fetchMock).not.toHaveBeenCalled();
+      // Abrir a edição e mudar só o complemento não busca nada no mapa.
+      expect(nominatimCalls(fetchMock)).toHaveLength(0);
     });
 
     it("mudar a rua faz nova busca; sem resultado, o pino fica onde estava", async () => {
@@ -731,6 +731,58 @@ describe("useProfileManagement", () => {
         result.current.addressForm.setValue("city", "Castelo");
       });
     }
+
+    it("trocar estado, cidade ou bairro limpa os campos seguintes e o pino", async () => {
+      const { result } = await renderProfile();
+      act(() => {
+        result.current.changeState("ES");
+        result.current.changeCity("Castelo");
+        result.current.addressForm.setValue("neighborhood", "Centro");
+        result.current.addressForm.setValue("street", "Rua Principal");
+        result.current.addressForm.setValue("number", "45");
+      });
+      placePin(result);
+
+      act(() => result.current.changeCity("Alegre"));
+
+      expect(result.current.addressCoords).toBeNull();
+      expect(result.current.addressForm.getValues()).toMatchObject({
+        state: "ES",
+        city: "Alegre",
+        neighborhood: "",
+        street: "",
+        number: "",
+      });
+    });
+
+    it("CEP de outra cidade limpa os campos seguintes e o pino", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: async () => ({ state: "ES", city: "Castelo", neighborhood: "", street: "" }),
+        }),
+      );
+      const { result } = await renderProfile();
+      act(() => {
+        result.current.changeState("PR");
+        result.current.changeCity("Curitiba");
+        result.current.addressForm.setValue("neighborhood", "Batel");
+        result.current.addressForm.setValue("street", "Rua Nova");
+      });
+      placePin(result);
+
+      act(() => result.current.addressForm.setValue("zipCode", "29360-000"));
+
+      await waitFor(() => expect(result.current.addressForm.getValues("city")).toBe("Castelo"));
+      expect(result.current.addressForm.getValues()).toMatchObject({
+        state: "ES",
+        neighborhood: "",
+        street: "",
+      });
+      expect(result.current.addressCoords).toBeNull();
+    });
 
     it("Castelo/ES oferece os bairros da lista oficial", async () => {
       const { result } = await renderProfile();

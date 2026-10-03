@@ -18,6 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useAddressFields } from "./use-address-fields";
 import { useAddressPin, type PinSource } from "./use-address-pin";
 import { useUserAddresses } from "./use-addresses";
 import { useProfile } from "./use-api";
@@ -130,6 +131,17 @@ export const useProfileManagement = () => {
     },
     onPin: (coords: Coords, source: PinSource) =>
       setAddressCoords({ coords, source }),
+  });
+
+  // Ordem e trava dos campos; trocar estado, cidade ou bairro limpa os
+  // seguintes e o pino.
+  const addressFields = useAddressFields({
+    form: addressForm,
+    enabled: addingAddressState.isOpen,
+    onPreviousFieldChange: () => {
+      setAddressCoords(null);
+      addressPin.resetBaseline();
+    },
   });
 
   /**
@@ -290,10 +302,13 @@ export const useProfileManagement = () => {
       }
 
       const data = await response.json();
-      addressForm.setValue("street", data.street || "");
-      addressForm.setValue("neighborhood", data.neighborhood || "");
-      addressForm.setValue("city", data.city || "");
-      addressForm.setValue("state", data.state || "");
+      // CEP preenche estado e cidade. Se a cidade mudou, os campos seguintes
+      // e o pino são limpos como em qualquer troca de campo anterior.
+      if (data.state) addressFields.changeState(data.state);
+      if (data.city) addressFields.changeCity(data.city);
+      // CEP de rua (não o de cidade inteira) também traz bairro e rua.
+      if (data.neighborhood) addressForm.setValue("neighborhood", data.neighborhood);
+      if (data.street) addressForm.setValue("street", data.street);
 
       // A BrasilAPI já devolve a coordenada do logradouro - usa como ponto de
       // partida e centra o mapa nela. É a fonte de menor prioridade: cede
@@ -646,6 +661,14 @@ export const useProfileManagement = () => {
     neighborhoodOptions:
       addressPin.neighborhoodList?.neighborhoods.map((item) => item.name) ??
       null,
+    stateOptions: addressFields.stateOptions,
+    cityOptions: addressFields.cityOptions,
+    isLoadingCities: addressFields.isLoadingCities,
+    citiesError: addressFields.citiesError,
+    fieldLocks: addressFields.locks,
+    changeState: addressFields.changeState,
+    changeCity: addressFields.changeCity,
+    changeNeighborhood: addressFields.changeNeighborhood,
     isLocatingPin: addressPin.isLocating,
     // CEP
     isLoadingCep,

@@ -18,10 +18,25 @@ import type {
   CoordinateSource,
   SourcedCoords,
 } from "@/lib/address-coordinates";
+import type { AddressFieldLocks } from "@/hooks/use-address-fields";
+import type { IbgeState } from "@/services/ibge";
 import { Coords } from "@/types/restaurant";
 import { toast } from "sonner";
 
-type Props = {
+/** Ordem, trava e opções dos campos (vem de `useAddressFields`). */
+export type AddressFieldProps = {
+  stateOptions: IbgeState[];
+  /** Municípios do estado; `null` enquanto carrega ou se o IBGE falhar. */
+  cityOptions: string[] | null;
+  isLoadingCities?: boolean;
+  citiesError?: boolean;
+  fieldLocks: AddressFieldLocks;
+  onStateChange: (uf: string) => void;
+  onCityChange: (city: string) => void;
+  onNeighborhoodChange: (neighborhood: string) => void;
+};
+
+type Props = AddressFieldProps & {
   handleCloseAddressModal: () => void;
   handleAddAddress: HandleAddAddress;
   applyCoords: (coords: Coords | null, source: CoordinateSource) => void;
@@ -35,6 +50,14 @@ type Props = {
   isLocatingPin?: boolean;
 };
 
+const selectClass =
+  "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm";
+
+/** Lista de opções que sempre inclui o valor atual (carregando ou legado). */
+function withCurrent(options: string[], current: string) {
+  return current && !options.includes(current) ? [current, ...options] : options;
+}
+
 export function DeliveryForm({
   handleCloseAddressModal,
   handleAddAddress,
@@ -46,14 +69,21 @@ export function DeliveryForm({
   isEditing = false,
   neighborhoodOptions = null,
   isLocatingPin = false,
+  stateOptions,
+  cityOptions,
+  isLoadingCities = false,
+  citiesError = false,
+  fieldLocks,
+  onStateChange,
+  onCityChange,
+  onNeighborhoodChange,
 }: Props) {
-  const currentNeighborhood = addressForm.watch("neighborhood") ?? "";
-  // Endereço antigo com bairro fora da lista oficial (ex.: "Castelo 3"):
-  // continua visível até o cliente escolher o bairro certo.
-  const showLegacyNeighborhood =
-    !!neighborhoodOptions &&
-    !!currentNeighborhood &&
-    !neighborhoodOptions.includes(currentNeighborhood);
+  const [currentState, currentCity, currentNeighborhood] = addressForm.watch([
+    "state",
+    "city",
+    "neighborhood",
+  ]);
+  const errors = addressForm.formState.errors;
 
   return (
     <Dialog open onOpenChange={(open) => !open && handleCloseAddressModal()}>
@@ -77,10 +107,13 @@ export function DeliveryForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* CEP */}
             <div className="md:col-span-2 space-y-2">
-              <label className="text-sm font-medium">CEP *</label>
+              <label htmlFor="address-zipcode" className="text-sm font-medium">
+                CEP *
+              </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
+                  id="address-zipcode"
                   {...addressForm.register("zipCode")}
                   placeholder="00000-000"
                   maxLength={9}
@@ -109,57 +142,92 @@ export function DeliveryForm({
               </p>
             </div>
 
-            {/* Rua */}
-            <div className="md:col-span-2 space-y-2">
-              <label className="text-sm font-medium">Rua *</label>
-              <Input
-                {...addressForm.register("street")}
-                placeholder="Nome da rua"
-              />
-              {addressForm.formState.errors.street && (
-                <p className="text-sm text-destructive">
-                  {addressForm.formState.errors.street.message}
-                </p>
+            {/* Estado */}
+            <div className="space-y-2">
+              <label htmlFor="address-state" className="text-sm font-medium">
+                Estado *
+              </label>
+              <select
+                id="address-state"
+                value={currentState ?? ""}
+                onChange={(e) => onStateChange(e.target.value)}
+                className={selectClass}
+              >
+                <option value="">Selecione o estado</option>
+                {currentState &&
+                  !stateOptions.some((option) => option.uf === currentState) && (
+                    <option value={currentState}>{currentState}</option>
+                  )}
+                {stateOptions.map((option) => (
+                  <option key={option.uf} value={option.uf}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+              {errors.state && (
+                <p className="text-sm text-destructive">{errors.state.message}</p>
               )}
             </div>
 
-            {/* Número */}
+            {/* Cidade */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Número *</label>
-              <Input {...addressForm.register("number")} placeholder="123" />
-              {addressForm.formState.errors.number && (
-                <p className="text-sm text-destructive">
-                  {addressForm.formState.errors.number.message}
-                </p>
+              <label htmlFor="address-city" className="text-sm font-medium">
+                Cidade *
+              </label>
+              {citiesError ? (
+                // Sem resposta do IBGE, o cliente ainda consegue cadastrar.
+                <Input
+                  id="address-city"
+                  value={currentCity ?? ""}
+                  onChange={(e) => onCityChange(e.target.value)}
+                  placeholder="Nome da cidade"
+                  disabled={fieldLocks.city}
+                />
+              ) : (
+                <select
+                  id="address-city"
+                  value={currentCity ?? ""}
+                  onChange={(e) => onCityChange(e.target.value)}
+                  disabled={fieldLocks.city}
+                  className={selectClass}
+                >
+                  <option value="">
+                    {isLoadingCities ? "Carregando cidades..." : "Selecione a cidade"}
+                  </option>
+                  {withCurrent(cityOptions ?? [], currentCity ?? "").map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
               )}
-            </div>
-
-            {/* Complemento */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Complemento</label>
-              <Input
-                {...addressForm.register("complement")}
-                placeholder="Apto, bloco, etc"
-              />
+              {errors.city && (
+                <p className="text-sm text-destructive">{errors.city.message}</p>
+              )}
             </div>
 
             {/* Bairro */}
-            <div className="space-y-2">
+            <div className="md:col-span-2 space-y-2">
               <label htmlFor="address-neighborhood" className="text-sm font-medium">
                 Bairro *
               </label>
               {neighborhoodOptions ? (
                 <select
                   id="address-neighborhood"
-                  {...addressForm.register("neighborhood")}
-                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
+                  value={currentNeighborhood ?? ""}
+                  onChange={(e) => onNeighborhoodChange(e.target.value)}
+                  disabled={fieldLocks.neighborhood}
+                  className={selectClass}
                 >
                   <option value="">Selecione o bairro</option>
-                  {showLegacyNeighborhood && (
-                    <option value={currentNeighborhood}>
-                      {currentNeighborhood} (fora da lista oficial)
-                    </option>
-                  )}
+                  {/* Endereço antigo com bairro fora da lista oficial (ex.:
+                      "Castelo 3") continua visível até a troca. */}
+                  {currentNeighborhood &&
+                    !neighborhoodOptions.includes(currentNeighborhood) && (
+                      <option value={currentNeighborhood}>
+                        {currentNeighborhood} (fora da lista oficial)
+                      </option>
+                    )}
                   {neighborhoodOptions.map((name) => (
                     <option key={name} value={name}>
                       {name}
@@ -169,44 +237,62 @@ export function DeliveryForm({
               ) : (
                 <Input
                   id="address-neighborhood"
-                  {...addressForm.register("neighborhood")}
+                  value={currentNeighborhood ?? ""}
+                  onChange={(e) => onNeighborhoodChange(e.target.value)}
                   placeholder="Nome do bairro"
+                  disabled={fieldLocks.neighborhood}
                 />
               )}
-              {addressForm.formState.errors.neighborhood && (
+              {errors.neighborhood && (
                 <p className="text-sm text-destructive">
-                  {addressForm.formState.errors.neighborhood.message}
+                  {errors.neighborhood.message}
                 </p>
               )}
             </div>
 
-            {/* Cidade */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Cidade *</label>
+            {/* Rua */}
+            <div className="md:col-span-2 space-y-2">
+              <label htmlFor="address-street" className="text-sm font-medium">
+                Rua *
+              </label>
               <Input
-                {...addressForm.register("city")}
-                placeholder="Nome da cidade"
+                id="address-street"
+                {...addressForm.register("street")}
+                placeholder="Nome da rua"
+                disabled={fieldLocks.street}
               />
-              {addressForm.formState.errors.city && (
-                <p className="text-sm text-destructive">
-                  {addressForm.formState.errors.city.message}
-                </p>
+              {errors.street && (
+                <p className="text-sm text-destructive">{errors.street.message}</p>
               )}
             </div>
 
-            {/* Estado */}
+            {/* Número */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Estado *</label>
+              <label htmlFor="address-number" className="text-sm font-medium">
+                Número *
+              </label>
               <Input
-                {...addressForm.register("state")}
-                placeholder="SP"
-                maxLength={2}
+                id="address-number"
+                {...addressForm.register("number")}
+                placeholder="123"
+                disabled={fieldLocks.number}
               />
-              {addressForm.formState.errors.state && (
-                <p className="text-sm text-destructive">
-                  {addressForm.formState.errors.state.message}
-                </p>
+              {errors.number && (
+                <p className="text-sm text-destructive">{errors.number.message}</p>
               )}
+            </div>
+
+            {/* Complemento */}
+            <div className="space-y-2">
+              <label htmlFor="address-complement" className="text-sm font-medium">
+                Complemento
+              </label>
+              <Input
+                id="address-complement"
+                {...addressForm.register("complement")}
+                placeholder="Apto, bloco, etc"
+                disabled={fieldLocks.rest}
+              />
             </div>
 
             {/* Localização no mapa */}
