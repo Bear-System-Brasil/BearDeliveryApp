@@ -226,3 +226,92 @@ describe("ProductVariationsDialog - tamanho base automático", () => {
     expect(screen.getAllByText("PREÇO BASE")).toHaveLength(1);
   });
 });
+
+describe("ProductVariationsDialog - prato sem tamanho base", () => {
+  beforeEach(() => {
+    createMutateAsync.mockReset();
+    createMutateAsync.mockResolvedValue({});
+    toastInfo.mockReset();
+  });
+
+  it("cria o Pequeno com o estoque do tamanho vendável mais barato", async () => {
+    variationsQuery = settled([
+      variation({ id: "var-g", name: "Grande", priceModifier: 10, stockQuantity: 9 }),
+      variation({ id: "var-m", name: "Médio", priceModifier: 5, stockQuantity: 0 }),
+      variation({ id: "var-f", name: "Família", priceModifier: 20, stockQuantity: 2 }),
+    ]);
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "Criar tamanho base" }));
+
+    await waitFor(() => expect(createMutateAsync).toHaveBeenCalledTimes(1));
+    // Médio é o mais barato, mas está sem estoque - o vendável mais barato
+    // é o Grande.
+    expect(createMutateAsync).toHaveBeenCalledWith({
+      productId: "prod-1",
+      data: {
+        name: "Pequeno",
+        priceModifier: 0,
+        stockQuantity: 9,
+        isAvailable: true,
+      },
+    });
+    expect(toastInfo).toHaveBeenCalled();
+  });
+
+  it('usa "Pequeno (base)" quando já existe um Pequeno mais caro', async () => {
+    variationsQuery = settled([
+      variation({ id: "var-p", name: "Pequeno", priceModifier: 3 }),
+    ]);
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("button", { name: "Criar tamanho base" }));
+
+    await waitFor(() => expect(createMutateAsync).toHaveBeenCalledTimes(1));
+    expect(createMutateAsync).toHaveBeenCalledWith({
+      productId: "prod-1",
+      data: expect.objectContaining({ name: "Pequeno (base)", priceModifier: 0 }),
+    });
+  });
+
+  it("não mostra o botão quando o base existe e é vendável", () => {
+    variationsQuery = settled([
+      variation({ id: "var-base", name: "Broto", priceModifier: 0 }),
+      variation(),
+    ]);
+    renderDialog();
+
+    expect(
+      screen.queryByRole("button", { name: "Criar tamanho base" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("não mostra o botão em prato sem nenhum tamanho", () => {
+    variationsQuery = settled([]);
+    renderDialog();
+
+    expect(
+      screen.queryByRole("button", { name: "Criar tamanho base" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("aponta pra edição quando o base existe sem estoque, em vez de duplicar", async () => {
+    variationsQuery = settled([
+      variation({ id: "var-base", name: "Broto", priceModifier: 0, stockQuantity: 0 }),
+      variation(),
+    ]);
+    const user = userEvent.setup();
+    renderDialog();
+
+    expect(
+      screen.queryByRole("button", { name: "Criar tamanho base" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/indisponível ou sem estoque/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+
+    expect(screen.getByPlaceholderText("Ex: Grande")).toHaveValue("Broto");
+  });
+});

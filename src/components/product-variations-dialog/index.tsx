@@ -14,6 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StockQuantityInput } from "@/components/ui/stock-quantity-input";
 import { useConfirm } from "@/contexts/confirm-provider";
+import {
+  isBaseSizeVariation,
+  isSellableVariation,
+} from "@/lib/product-variation";
 import { cn } from "@/lib/utils";
 import {
   useCreateProductVariation,
@@ -63,17 +67,10 @@ const emptyForm: FormState = {
  */
 const roundToCents = (value: number) => Math.round(value * 100) / 100;
 
-/**
- * Tamanho base: variação com priceModifier 0, ou seja, o próprio preço
- * base do prato como opção de tamanho. Sem ele o cliente não consegue
- * pedir o prato pelo preço base quando existem tamanhos (LDMF-271).
- */
+// Nome do tamanho base (ver isBaseSizeVariation) criado pelo app.
 const BASE_SIZE_NAME = "Pequeno";
 // Usado quando o restaurante já chamou de "Pequeno" um tamanho mais caro.
 const BASE_SIZE_FALLBACK_NAME = "Pequeno (base)";
-
-const isBaseSize = (variation: ProductVariation) =>
-  variation.priceModifier === 0;
 
 const fieldClassName =
   "h-9 rounded-[10px] border-border bg-card text-xs shadow-none focus-visible:ring-1 focus-visible:ring-brand-500";
@@ -116,6 +113,52 @@ export function ProductVariationsDialog({
       v.id !== editingId &&
       v.name.trim().toLowerCase() === trimmedName.toLowerCase(),
   );
+
+  // Prato com tamanhos e sem tamanho base vendável (dados antigos, ou o
+  // base foi apagado): o cliente não tem como pedir pelo preço base.
+  const baseSize = variations.find(isBaseSizeVariation);
+  const isMissingBaseSize =
+    isListSettled && variations.length > 0 && !baseSize;
+  // Base existe mas está indisponível ou sem estoque - criar outro
+  // duplicaria o tamanho; o caminho é editar o que já existe.
+  const isBaseSizeUnsellable =
+    isListSettled && !!baseSize && !isSellableVariation(baseSize);
+
+  const handleCreateBaseSize = async () => {
+    if (!productId || !isMissingBaseSize) return;
+
+    const hasPequeno = variations.some(
+      (v) => v.name.trim().toLowerCase() === BASE_SIZE_NAME.toLowerCase(),
+    );
+    const baseName = hasPequeno ? BASE_SIZE_FALLBACK_NAME : BASE_SIZE_NAME;
+
+    // Estoque copiado do tamanho mais barato que o cliente consegue pedir
+    // hoje (ou do mais barato, se nenhum é vendável) - é o vizinho mais
+    // próximo do base. O restaurante ajusta depois pela edição.
+    const byPrice = [...variations].sort(
+      (a, b) => a.priceModifier - b.priceModifier,
+    );
+    const stockSource = byPrice.find(isSellableVariation) ?? byPrice[0];
+
+    try {
+      await createVariation.mutateAsync({
+        productId,
+        data: {
+          name: baseName,
+          priceModifier: 0,
+          stockQuantity: stockSource.stockQuantity ?? 0,
+          isAvailable: true,
+        },
+      });
+    } catch {
+      // O toast de erro já sai do hook.
+      return;
+    }
+
+    toast.info(
+      `O preço base virou o tamanho "${baseName}". Dá pra renomear na lista.`,
+    );
+  };
 
   const resetForm = () => {
     setEditingId(null);
@@ -363,6 +406,41 @@ export function ProductVariationsDialog({
             </div>
           </div>
 
+          {isMissingBaseSize && (
+            <div className="mt-3 flex items-center gap-3 rounded-[10px] border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+              <p className="min-w-0 flex-1 text-[11.5px] font-semibold text-foreground">
+                Nenhum tamanho tem o preço base ({formatCurrency(salePrice)}).
+                Sem ele, o cliente não consegue pedir o prato por esse valor.
+              </p>
+              <Button
+                type="button"
+                onClick={handleCreateBaseSize}
+                disabled={isSaving}
+                className="h-8 shrink-0 cursor-pointer rounded-[8px] bg-brand-500 px-2.5 text-[11.5px] font-extrabold text-white hover:bg-brand-600"
+              >
+                Criar tamanho base
+              </Button>
+            </div>
+          )}
+
+          {isBaseSizeUnsellable && baseSize && (
+            <div className="mt-3 flex items-center gap-3 rounded-[10px] border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+              <p className="min-w-0 flex-1 text-[11.5px] font-semibold text-foreground">
+                O tamanho com o preço base (&quot;{baseSize.name}&quot;) está
+                indisponível ou sem estoque. O cliente não consegue pedir o
+                prato por {formatCurrency(salePrice)}.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => handleEdit(baseSize)}
+                className="h-8 shrink-0 cursor-pointer rounded-[8px] px-2.5 text-[11.5px] font-bold text-foreground hover:bg-card"
+              >
+                Editar
+              </Button>
+            </div>
+          )}
+
           <div className="mt-3 divide-y divide-border">
             {isLoading &&
               [1, 2, 3].map((i) => (
@@ -395,7 +473,7 @@ export function ProductVariationsDialog({
                   <div className="min-w-0 flex-1">
                     <p className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-bold text-foreground">
                       <span className="truncate">{variation.name}</span>
-                      {isBaseSize(variation) && (
+                      {isBaseSizeVariation(variation) && (
                         <span className="shrink-0 rounded-md bg-muted px-1.5 py-[1px] text-[9.5px] font-extrabold tracking-wide text-muted-foreground">
                           PREÇO BASE
                         </span>
