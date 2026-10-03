@@ -1,3 +1,4 @@
+import { BRAZIL_STATES } from "@/constants/brazil-states";
 import { normalizeText, parseCoords } from "@/lib/geocode";
 import { Coords } from "@/types/restaurant";
 
@@ -16,37 +17,6 @@ import { Coords } from "@/types/restaurant";
 const SEARCH_URL = "https://nominatim.openstreetmap.org/search";
 const MIN_INTERVAL_MS = 1000;
 
-// O formulário guarda a UF; a busca estruturada do Nominatim entende melhor o
-// nome do estado.
-const STATE_NAMES: Record<string, string> = {
-  AC: "Acre",
-  AL: "Alagoas",
-  AP: "Amapá",
-  AM: "Amazonas",
-  BA: "Bahia",
-  CE: "Ceará",
-  DF: "Distrito Federal",
-  ES: "Espírito Santo",
-  GO: "Goiás",
-  MA: "Maranhão",
-  MT: "Mato Grosso",
-  MS: "Mato Grosso do Sul",
-  MG: "Minas Gerais",
-  PA: "Pará",
-  PB: "Paraíba",
-  PR: "Paraná",
-  PE: "Pernambuco",
-  PI: "Piauí",
-  RJ: "Rio de Janeiro",
-  RN: "Rio Grande do Norte",
-  RS: "Rio Grande do Sul",
-  RO: "Rondônia",
-  RR: "Roraima",
-  SC: "Santa Catarina",
-  SP: "São Paulo",
-  SE: "Sergipe",
-  TO: "Tocantins",
-};
 
 export type CityRef = {
   city: string;
@@ -69,8 +39,10 @@ type NominatimResult = {
   address?: NominatimAddress;
 };
 
+// O formulário guarda a UF; a busca estruturada do Nominatim entende melhor o
+// nome do estado.
 function stateName(uf: string) {
-  return STATE_NAMES[uf.trim().toUpperCase()] ?? uf;
+  return BRAZIL_STATES[uf.trim().toUpperCase()] ?? uf;
 }
 
 /**
