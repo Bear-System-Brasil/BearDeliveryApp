@@ -11,7 +11,7 @@ const inCastelo = {
 };
 
 function respond(results: unknown[]) {
-  return vi.fn(async () => ({ ok: true, json: async () => results }) as Response);
+  return vi.fn(async (_input: RequestInfo | URL) => ({ ok: true, json: async () => results }) as Response);
 }
 
 /** Relógio controlado: `sleep` avança o tempo em vez de esperar. */
