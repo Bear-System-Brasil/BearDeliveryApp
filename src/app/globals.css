@@ -191,6 +191,17 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  button:not(:disabled),
+  [role="button"]:not(:disabled):not([aria-disabled="true"]):not([disabled]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  button[aria-disabled="true"],
+  [role="button"]:disabled,
+  [role="button"][disabled],
+  [role="button"][aria-disabled="true"] {
+    cursor: default;
+  }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: oklch(0.96 0.01 0); border-radius: 8px; }
   ::-webkit-scrollbar-thumb {
