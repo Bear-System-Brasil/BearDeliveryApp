@@ -98,18 +98,25 @@ describe("DeliveryDashboardPage - filtros", () => {
     });
   });
 
-  it("em Todos, mostra em rota antes de a coletar, e os outros grupos", () => {
+  it("em Todos, mostra em rota antes de a coletar, e as disponíveis", () => {
     render(<DeliveryDashboardPage />);
 
     expect(screen.getByRole("heading", { name: "Em rota" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "A coletar" })).toBeInTheDocument();
-    expect(cardIds()).toEqual(["p1", "a1", "d1", "n1"]);
+    expect(cardIds()).toEqual(["p1", "a1", "n1"]);
+  });
+
+  it("entregas fechadas não aparecem no painel - ficam só no histórico", () => {
+    render(<DeliveryDashboardPage />);
+
+    expect(screen.queryByRole("button", { name: /^Entregues/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Entregues" })).toBeNull();
+    expect(cardIds()).not.toContain("d1");
   });
 
   it.each([
     ["Em rota", ["p1"]],
     ["A coletar", ["a1"]],
-    ["Entregues", ["d1"]],
     ["Disponíveis", ["n1"]],
   ])("filtro %s mostra só o seu grupo", (label, expected) => {
     render(<DeliveryDashboardPage />);

@@ -23,7 +23,7 @@ import { getNextStatus, pluralizeAvailable } from "@/lib/delivery";
 import { cn } from "@/lib/utils";
 import type { Delivery } from "@/services/api";
 
-type Filter = "all" | "inRoute" | "toPickUp" | "delivered" | "available";
+type Filter = "all" | "inRoute" | "toPickUp" | "available";
 
 function Group({
   title,
@@ -68,7 +68,7 @@ function EmptyState({ message }: { message: string }) {
 
 /**
  * Filtro no topo. Rolagem horizontal em vez de quebrar linha: com os
- * contadores, os cinco botões não cabem numa tela de 320px, e duas linhas de
+ * contadores, os botões não cabem numa tela de 320px, e duas linhas de
  * filtro empurram as entregas pra baixo.
  */
 function FilterBar({
@@ -116,7 +116,6 @@ export default function DeliveryDashboardPage() {
     refetch,
     inRouteDeliveries,
     toPickUpDeliveries,
-    recentlyDelivered,
     availableDeliveries,
     soundEnabled,
     toggleSound,
@@ -323,7 +322,6 @@ export default function DeliveryDashboardPage() {
                 { key: "all", label: "Todos" },
                 { key: "inRoute", label: "Em rota", count: counts.inRoute },
                 { key: "toPickUp", label: "A coletar", count: counts.toPickUp },
-                { key: "delivered", label: "Entregues", count: counts.recent },
                 { key: "available", label: "Disponíveis", count: counts.available },
               ]}
             />
@@ -356,29 +354,6 @@ export default function DeliveryDashboardPage() {
                   ) : (
                     <div className="flex flex-col gap-3">
                       {toPickUpDeliveries.map(renderActiveCard)}
-                    </div>
-                  )}
-                </Group>
-              )}
-
-            {shows("delivered") &&
-              (filter === "delivered" || recentlyDelivered.length > 0) && (
-                <Group
-                  title="Entregues"
-                  count={counts.recent}
-                  hint="Fechadas na última hora. As anteriores estão no histórico."
-                >
-                  {recentlyDelivered.length === 0 ? (
-                    <EmptyState message="Nenhuma entrega fechada na última hora." />
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      {recentlyDelivered.map((delivery) => (
-                        <DeliveryCard
-                          key={delivery.id}
-                          delivery={delivery}
-                          compact
-                        />
-                      ))}
                     </div>
                   )}
                 </Group>
