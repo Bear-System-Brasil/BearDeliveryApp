@@ -122,6 +122,17 @@ export const useDeliveryDriver = () => {
 
   const { myDeliveries, recentlyDelivered, availableDeliveries } = groups;
 
+  // "Em rota" e "A coletar" saem de `myDeliveries` em vez de filtrar de novo
+  // a resposta: as duas listas herdam a ordem e o critério de "ativa" dela.
+  const inRouteDeliveries = useMemo(
+    () => myDeliveries.filter((delivery) => delivery.status === "PICKED_UP"),
+    [myDeliveries],
+  );
+  const toPickUpDeliveries = useMemo(
+    () => myDeliveries.filter((delivery) => delivery.status === "ACCEPTED"),
+    [myDeliveries],
+  );
+
   // ─── Alerta sonoro pra entrega nova disponível ────────────────────────────
   // Toque único, sempre que aparece uma PENDING nova - inclusive com corrida
   // em andamento, já que o entregador leva vários pedidos na mesma saída.
@@ -287,6 +298,10 @@ export const useDeliveryDriver = () => {
     isError,
     refetch,
     ...groups,
+    /** Já coletadas: o que está na rua e o entregador olha primeiro. */
+    inRouteDeliveries,
+    /** Aceitas e ainda não buscadas no restaurante. */
+    toPickUpDeliveries,
     soundEnabled,
     toggleSound: toggleMuted,
     acceptDelivery: acceptMutation.mutate,
@@ -302,6 +317,8 @@ export const useDeliveryDriver = () => {
     hasMorePages: (data?.meta.totalPages ?? 1) > 1,
     counts: {
       mine: myDeliveries.length,
+      inRoute: inRouteDeliveries.length,
+      toPickUp: toPickUpDeliveries.length,
       recent: recentlyDelivered.length,
       available: availableDeliveries.length,
     },

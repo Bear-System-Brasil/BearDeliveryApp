@@ -154,7 +154,28 @@ describe("useDeliveryDriver", () => {
       expect(result.current.myDeliveries.map((d) => d.id)).toEqual(["p1", "a1"]);
       expect(result.current.recentlyDelivered.map((d) => d.id)).toEqual(["d1"]);
       expect(result.current.availableDeliveries.map((d) => d.id)).toEqual(["n1"]);
-      expect(result.current.counts).toEqual({ mine: 2, recent: 1, available: 1 });
+      expect(result.current.counts).toEqual({
+        mine: 2,
+        inRoute: 1,
+        toPickUp: 1,
+        recent: 1,
+        available: 1,
+      });
+    });
+
+    it("separa em rota (PICKED_UP) de a coletar (ACCEPTED), na ordem de chegada", async () => {
+      server = [
+        delivery("a1", "ACCEPTED", { created_at: new Date(Date.now() - 5 * MINUTE).toISOString() }),
+        delivery("p2", "PICKED_UP", { created_at: new Date(Date.now() - 2 * MINUTE).toISOString() }),
+        delivery("a2", "ACCEPTED", { created_at: new Date(Date.now() - 1 * MINUTE).toISOString() }),
+        delivery("p1", "PICKED_UP", { created_at: new Date(Date.now() - 8 * MINUTE).toISOString() }),
+        delivery("n1", "PENDING"),
+      ];
+
+      const { result } = await renderDriver();
+
+      expect(result.current.inRouteDeliveries.map((d) => d.id)).toEqual(["p1", "p2"]);
+      expect(result.current.toPickUpDeliveries.map((d) => d.id)).toEqual(["a1", "a2"]);
     });
 
     it("aceita a resposta como array cru, sem o envelope", async () => {
