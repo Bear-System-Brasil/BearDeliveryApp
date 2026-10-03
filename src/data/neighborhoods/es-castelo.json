@@ -6,18 +6,18 @@
   "neighborhoods": [
     {
       "name": "Aracuí",
-      "lat": null,
-      "lng": null
+      "lat": -20.6407875,
+      "lng": -41.2107832
     },
     {
       "name": "Baixa Itália",
-      "lat": null,
-      "lng": null
+      "lat": -20.6016974,
+      "lng": -41.2019081
     },
     {
       "name": "Bela Vista",
-      "lat": null,
-      "lng": null
+      "lat": -20.6146347,
+      "lng": -41.2079093
     },
     {
       "name": "Caparaó",
@@ -27,39 +27,39 @@
     {
       "name": "Castelo III",
       "altNames": ["Castelo Três", "Ivo Martins"],
-      "lat": null,
-      "lng": null
+      "lat": -20.6335760,
+      "lng": -41.2041395
     },
     {
       "name": "Cava-Roxa",
       "altNames": ["Cava Roxa"],
-      "lat": null,
-      "lng": null
+      "lat": -20.6195768,
+      "lng": -41.1988949
     },
     {
       "name": "Centro",
-      "lat": null,
-      "lng": null
+      "lat": -20.6030775,
+      "lng": -41.2051535
     },
     {
       "name": "Esplanada",
-      "lat": null,
-      "lng": null
+      "lat": -20.6172327,
+      "lng": -41.2033730
     },
     {
       "name": "Exposição",
-      "lat": null,
-      "lng": null
+      "lat": -20.6096767,
+      "lng": -41.2123698
     },
     {
       "name": "Garagem",
-      "lat": null,
-      "lng": null
+      "lat": -20.5957987,
+      "lng": -41.2150298
     },
     {
       "name": "Independência",
-      "lat": null,
-      "lng": null
+      "lat": -20.5980544,
+      "lng": -41.2053881
     },
     {
       "name": "Jardins",
@@ -73,19 +73,19 @@
     },
     {
       "name": "Niterói",
-      "lat": null,
-      "lng": null
+      "lat": -20.6072080,
+      "lng": -41.1976926
     },
     {
       "name": "Nossa Senhora Aparecida",
-      "lat": null,
-      "lng": null
+      "lat": -20.6065512,
+      "lng": -41.2057867
     },
     {
       "name": "Pantanal",
       "altNames": ["Jardim Primavera"],
-      "lat": null,
-      "lng": null
+      "lat": -20.6469660,
+      "lng": -41.2076957
     },
     {
       "name": "Pedra Luz",
@@ -94,18 +94,18 @@
     },
     {
       "name": "Pouso Alto",
-      "lat": null,
-      "lng": null
+      "lat": -20.5981755,
+      "lng": -41.2003934
     },
     {
       "name": "Prainha",
-      "lat": null,
-      "lng": null
+      "lat": -20.5975403,
+      "lng": -41.2102605
     },
     {
       "name": "Santa Bárbara",
-      "lat": null,
-      "lng": null
+      "lat": -20.6303167,
+      "lng": -41.2060421
     },
     {
       "name": "Santa Fé",
@@ -114,38 +114,38 @@
     },
     {
       "name": "Santa Mônica",
-      "lat": null,
-      "lng": null
+      "lat": -20.6121192,
+      "lng": -41.2097285
     },
     {
       "name": "Santo Agostinho",
-      "lat": null,
-      "lng": null
+      "lat": -20.6111070,
+      "lng": -41.2068908
     },
     {
       "name": "Santo Andrezinho",
-      "lat": null,
-      "lng": null
+      "lat": -20.6061586,
+      "lng": -41.2016773
     },
     {
       "name": "São Miguel",
-      "lat": null,
-      "lng": null
+      "lat": -20.6097534,
+      "lng": -41.2017916
     },
     {
       "name": "Vila Barbosa",
-      "lat": null,
-      "lng": null
+      "lat": -20.6035275,
+      "lng": -41.2122148
     },
     {
       "name": "Vila Izabel",
-      "lat": null,
-      "lng": null
+      "lat": -20.6020524,
+      "lng": -41.2094684
     },
     {
       "name": "Vila Nova",
-      "lat": null,
-      "lng": null
+      "lat": -20.6231323,
+      "lng": -41.2012378
     },
     {
       "name": "Vista do Rio",
@@ -159,8 +159,8 @@
     },
     {
       "name": "Volta Redonda",
-      "lat": null,
-      "lng": null
+      "lat": -20.5995334,
+      "lng": -41.2113195
     }
   ]
 }

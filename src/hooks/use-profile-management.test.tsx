@@ -857,13 +857,31 @@ describe("useProfileManagement", () => {
       expect(nominatimCalls(fetchMock)).toHaveLength(0);
     });
 
+    it("bairro com coordenada na lista real move o pino para o bairro com zoom de bairro", async () => {
+      const fetchMock = stubNominatim([]);
+      const { result } = await renderProfile();
+      fillCity(result);
+      await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
+
+      act(() => result.current.addressForm.setValue("neighborhood", "Centro"));
+
+      await waitFor(() =>
+        expect(result.current.addressCoords).toEqual({
+          coords: { lat: -20.6030775, lng: -41.2051535 },
+          source: "neighborhood",
+        }),
+      );
+      expect(result.current.pinZoom).toBe(15);
+      expect(nominatimCalls(fetchMock)).toHaveLength(0);
+    });
+
     it("bairro sem coordenada move o pino para o centro da cidade, pelo Nominatim", async () => {
       const fetchMock = stubNominatim(nominatimHit("-20.6", "-41.2"));
       const { result } = await renderProfile();
       fillCity(result);
       await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
 
-      act(() => result.current.addressForm.setValue("neighborhood", "Castelo III"));
+      act(() => result.current.addressForm.setValue("neighborhood", "Caparaó"));
 
       await waitFor(() =>
         expect(result.current.addressCoords).toEqual({
@@ -953,7 +971,8 @@ describe("useProfileManagement", () => {
       fillCity(result);
       await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
 
-      act(() => result.current.addressForm.setValue("neighborhood", "Centro"));
+      // Caparaó não tem coordenada: o pino vai para o centro da cidade.
+      act(() => result.current.addressForm.setValue("neighborhood", "Caparaó"));
       await waitFor(() => expect(result.current.addressCoords?.source).toBe("neighborhood"));
       expect(result.current.pinZoom).toBe(13);
       const keyAfterNeighborhood = result.current.pinRecenterKey;
