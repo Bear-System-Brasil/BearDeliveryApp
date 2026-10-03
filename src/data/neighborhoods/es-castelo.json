@@ -1,0 +1,168 @@
+{
+  "state": "ES",
+  "city": "Castelo",
+  "ibgeCode": null,
+  "cep": null,
+  "neighborhoods": [
+    {
+      "name": "Aracuí",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Baixa Itália",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Bela Vista",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Caparaó",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Castelo III",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Cava-Roxa",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Centro",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Esplanada",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Exposição",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Garagem",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Independência",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Jardim Primavera",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Jardins",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Maravilha",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Niterói",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Nossa Senhora Aparecida",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Pantanal",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Pedra Luz",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Pouso Alto",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Prainha",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Santa Bárbara",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Santa Fé",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Santa Mônica",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Santo Agostinho",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Santo Andrezinho",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "São Miguel",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Vila Barbosa",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Vila Izabel",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Vila Nova",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Vista do Rio",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Vista Linda",
+      "lat": null,
+      "lng": null
+    },
+    {
+      "name": "Volta Redonda",
+      "lat": null,
+      "lng": null
+    }
+  ]
+}
