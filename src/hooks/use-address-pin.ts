@@ -36,6 +36,11 @@ type Options = {
   fields: AddressPinFields;
   /** Chamado quando o preenchimento define uma nova posição para o pino. */
   onPin: (coords: Coords, source: PinSource, zoom: number) => void;
+  /**
+   * Bairro em "Outro" (texto livre): o nome digitado não mexe no pino e é
+   * salvo como foi escrito.
+   */
+  otherNeighborhood?: boolean;
 };
 
 function addressKey({ street, number, city, state }: AddressPinFields) {
@@ -53,7 +58,7 @@ function addressKey({ street, number, city, state }: AddressPinFields) {
  *
  * Vale sempre a última ação do cliente. Nada aqui roda na hora de salvar.
  */
-export function useAddressPin({ fields, onPin }: Options) {
+export function useAddressPin({ fields, onPin, otherNeighborhood = false }: Options) {
   const [neighborhoodList, setNeighborhoodList] =
     useState<CityNeighborhoods | null>(null);
   const [isLocatingNeighborhood, setIsLocatingNeighborhood] = useState(false);
@@ -63,6 +68,10 @@ export function useAddressPin({ fields, onPin }: Options) {
 
   const onPinRef = useRef(onPin);
   onPinRef.current = onPin;
+
+  // Cada busca do centro da cidade pelo "Outro" ganha um número; resposta de
+  // busca antiga (o cliente já escolheu outra coisa) é descartada.
+  const cityLookup = useRef(0);
 
   // Valores que já estão representados no pino (endereço aberto para edição
   // ou última busca feita). Só mudança em relação a eles dispara algo.
@@ -92,6 +101,7 @@ export function useAddressPin({ fields, onPin }: Options) {
 
     const key = normalizeText(neighborhood);
     if (!key || key === baseline.current.neighborhood) return;
+    if (otherNeighborhood) return;
 
     // Nome oficial ou alternativo. Trocar um pelo outro (ex.: "Jardim
     // Primavera" → "Pantanal") é o mesmo bairro e não mexe no pino.
@@ -99,6 +109,7 @@ export function useAddressPin({ fields, onPin }: Options) {
     const previous = findNeighborhood(neighborhoodList, baseline.current.neighborhood);
     baseline.current.neighborhood = key;
     if (!item || item === previous) return;
+    cityLookup.current += 1;
 
     const neighborhoodCenter = parseCoords(item.lat, item.lng);
     if (neighborhoodCenter) {
@@ -124,7 +135,7 @@ export function useAddressPin({ fields, onPin }: Options) {
       active = false;
       setIsLocatingNeighborhood(false);
     };
-  }, [neighborhood, neighborhoodList]);
+  }, [neighborhood, neighborhoodList, otherNeighborhood]);
 
   useEffect(() => {
     if (!currentAddressKey) {
@@ -162,7 +173,27 @@ export function useAddressPin({ fields, onPin }: Options) {
    * endereço salvo para edição (o pino já está na coordenada dele) ou ao
    * limpar o formulário.
    */
+  /** "Outro" escolhido: pino no centro da cidade, como bairro sem coordenada. */
+  const locateCityCenter = useCallback(() => {
+    if (!city || !state) return;
+
+    const lookup = ++cityLookup.current;
+    setIsLocatingNeighborhood(true);
+
+    nominatim
+      .searchCity({ city, state })
+      .then((cityCenter) => {
+        if (lookup === cityLookup.current && cityCenter) {
+          onPinRef.current(cityCenter, "neighborhood", CITY_ZOOM);
+        }
+      })
+      .finally(() => {
+        if (lookup === cityLookup.current) setIsLocatingNeighborhood(false);
+      });
+  }, [city, state]);
+
   const resetBaseline = useCallback((values: AddressPinFields = {}) => {
+    cityLookup.current += 1;
     baseline.current = {
       neighborhood: normalizeText(values.neighborhood),
       address: addressKey(values),
@@ -181,5 +212,6 @@ export function useAddressPin({ fields, onPin }: Options) {
     addressNotFound,
     resetBaseline,
     clearNotice,
+    locateCityCenter,
   };
 }

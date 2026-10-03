@@ -59,6 +59,9 @@ function Harness(extra: { isSearchingAddress?: boolean; addressNotFound?: boolea
         onStateChange={fields.changeState}
         onCityChange={fields.changeCity}
         onNeighborhoodChange={fields.changeNeighborhood}
+        isOtherNeighborhood={fields.otherNeighborhood}
+        onSelectOtherNeighborhood={fields.selectOtherNeighborhood}
+        onOtherNeighborhoodChange={fields.changeOtherNeighborhood}
         {...extra}
       />
     </>
@@ -259,5 +262,66 @@ describe("DeliveryForm: ordem e trava dos campos", () => {
 
     expect(screen.queryByText("Buscando endereço...")).toBeNull();
     expect(screen.queryByText(/Não encontramos esse endereço/)).toBeNull();
+  });
+
+  describe("opção Outro", () => {
+    async function chooseOther() {
+      await pickState("ES");
+      await pickCity("Castelo");
+      fireEvent.change(field(/Bairro/), { target: { value: "__outro__" } });
+    }
+
+    it("é a última opção da lista de bairros", async () => {
+      renderForm();
+      await pickState("ES");
+      await pickCity("Castelo");
+
+      const options = Array.from((field(/Bairro/) as unknown as HTMLSelectElement).options);
+      expect(options.at(-1)?.textContent).toBe("Outro");
+    });
+
+    it("pede o nome do bairro em campo obrigatório e libera a rua só depois", async () => {
+      renderForm();
+      await chooseOther();
+
+      const other = field(/Qual é o seu bairro/);
+      expect(other.required).toBe(true);
+      expect(other.value).toBe("");
+      expect(field(/Rua/).disabled).toBe(true);
+      expect(onPreviousFieldChange).toHaveBeenCalled();
+
+      fireEvent.change(other, { target: { value: "Boa Fé" } });
+
+      expect(screen.getByTestId("valor-bairro")).toHaveTextContent(/^Boa Fé$/);
+      expect(field(/Rua/).disabled).toBe(false);
+      expect((field(/Bairro/) as unknown as HTMLSelectElement).value).toBe("__outro__");
+    });
+
+    it("sem o nome, o envio é barrado: campo obrigatório e validação do bairro", async () => {
+      renderForm();
+      await chooseOther();
+
+      // No navegador, o campo obrigatório vazio impede o envio.
+      expect(field(/Qual é o seu bairro/).validity.valueMissing).toBe(true);
+
+      // Mesmo se o envio passar direto, a validação do formulário barra.
+      fireEvent.submit(screen.getByRole("button", { name: "Salvar Endereço" }).closest("form")!);
+
+      await waitFor(() => expect(screen.getByText("Bairro é obrigatório")).toBeTruthy());
+    });
+
+    it("trocar de Outro para um bairro da lista limpa o campo de texto", async () => {
+      renderForm();
+      await chooseOther();
+      fireEvent.change(field(/Qual é o seu bairro/), { target: { value: "Boa Fé" } });
+
+      fireEvent.change(field(/Bairro/), { target: { value: "Centro" } });
+
+      expect(screen.queryByLabelText(/Qual é o seu bairro/)).toBeNull();
+      expect(screen.getByTestId("valor-bairro")).toHaveTextContent(/^Centro$/);
+
+      fireEvent.change(field(/Bairro/), { target: { value: "__outro__" } });
+      expect(field(/Qual é o seu bairro/).value).toBe("");
+    });
   });
 });

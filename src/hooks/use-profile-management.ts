@@ -133,7 +133,26 @@ export const useProfileManagement = () => {
 
   // Bairro, rua e número movem o pino na frente do cliente - o salvar não
   // geocodifica nada escondido.
+  // Ordem e trava dos campos; trocar estado, cidade ou bairro limpa os
+  // seguintes e o pino. As ações do pino chegam por ref porque o hook do pino
+  // também precisa saber se o bairro está em "Outro".
+  const pinActions = useRef<{
+    resetBaseline: () => void;
+    locateCityCenter: () => void;
+  } | null>(null);
+  const addressFields = useAddressFields({
+    form: addressForm,
+    enabled: addingAddressState.isOpen,
+    onPreviousFieldChange: () => {
+      setPin(null);
+      pinActions.current?.resetBaseline();
+    },
+    // "Outro": pino no centro da cidade.
+    onOtherNeighborhood: () => pinActions.current?.locateCityCenter(),
+  });
+
   const addressPin = useAddressPin({
+    otherNeighborhood: addressFields.otherNeighborhood,
     fields: {
       state: watchedState,
       city: watchedCity,
@@ -144,27 +163,37 @@ export const useProfileManagement = () => {
     onPin: (coords: Coords, source: PinSource, zoom: number) =>
       setPin({ coords, source, zoom, seq: ++pinSeq.current }),
   });
+  pinActions.current = {
+    resetBaseline: addressPin.resetBaseline,
+    locateCityCenter: addressPin.locateCityCenter,
+  };
 
   // Bairro digitado ou vindo do CEP/endereço salvo com nome alternativo (ex.:
   // "Jardim Primavera") vira o nome oficial ("Pantanal"): o formulário exibe
   // e salva sempre o oficial (LDMF-278).
+  // "Outro" escolhido agora, ou endereço salvo com bairro fora da lista (o
+  // nome digitado antes continua editável no campo de texto).
+  const isOtherNeighborhood =
+    addressFields.otherNeighborhood ||
+    (!!addressPin.neighborhoodList &&
+      !!watchedNeighborhood?.trim() &&
+      !findNeighborhood(addressPin.neighborhoodList, watchedNeighborhood));
+
+  // Em "Outro" o nome digitado é salvo como foi escrito, sem conversão.
   useEffect(() => {
+    if (addressFields.otherNeighborhood) return;
+
     const item = findNeighborhood(addressPin.neighborhoodList, watchedNeighborhood);
     if (item && item.name !== watchedNeighborhood) {
       addressForm.setValue("neighborhood", item.name, { shouldValidate: true });
     }
-  }, [addressPin.neighborhoodList, watchedNeighborhood, addressForm]);
+  }, [
+    addressFields.otherNeighborhood,
+    addressPin.neighborhoodList,
+    watchedNeighborhood,
+    addressForm,
+  ]);
 
-  // Ordem e trava dos campos; trocar estado, cidade ou bairro limpa os
-  // seguintes e o pino.
-  const addressFields = useAddressFields({
-    form: addressForm,
-    enabled: addingAddressState.isOpen,
-    onPreviousFieldChange: () => {
-      setPin(null);
-      addressPin.resetBaseline();
-    },
-  });
 
   /**
    * Prevent SSR issues
@@ -447,6 +476,7 @@ export const useProfileManagement = () => {
     setEditingAddressId(address.id);
     setEditingAddressOriginalComplement(address.complement || "");
     setLastFetchedCep(onlyNumbers(address.zipCode));
+    addressFields.resetOtherNeighborhood();
     addingAddressState.open();
   };
 
@@ -478,6 +508,12 @@ export const useProfileManagement = () => {
       complementUnchanged &&
       trimmedComplement.length > 0 &&
       trimmedComplement.length < 5;
+
+    // "Outro" exige o nome do bairro (só espaços não vale).
+    if (isOtherNeighborhood && !data.neighborhood?.trim()) {
+      toast.error("Informe qual é o seu bairro.");
+      return;
+    }
 
     // Salvar = confirmar o pino. Endereço sem coordenada some das buscas por
     // proximidade, então sem pino não sai nada.
@@ -554,6 +590,7 @@ export const useProfileManagement = () => {
         setLastFetchedCep(null);
         setPin(null);
         addressPin.resetBaseline();
+        addressFields.resetOtherNeighborhood();
 
         toast.success(
           editingAddressId
@@ -595,6 +632,7 @@ export const useProfileManagement = () => {
     setEditingAddressOriginalComplement("");
     setPin(null);
     addressPin.resetBaseline();
+    addressFields.resetOtherNeighborhood();
     addingAddressState.close();
   };
 
@@ -716,6 +754,9 @@ export const useProfileManagement = () => {
     changeState: addressFields.changeState,
     changeCity: addressFields.changeCity,
     changeNeighborhood: addressFields.changeNeighborhood,
+    isOtherNeighborhood,
+    selectOtherNeighborhood: addressFields.selectOtherNeighborhood,
+    changeOtherNeighborhood: addressFields.changeOtherNeighborhood,
     isLocatingPin: addressPin.isLocatingNeighborhood,
     isSearchingAddress: addressPin.isSearchingAddress,
     addressNotFound: addressPin.addressNotFound,

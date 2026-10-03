@@ -45,7 +45,14 @@ export type AddressFieldProps = {
   onStateChange: (uf: string) => void;
   onCityChange: (city: string) => void;
   onNeighborhoodChange: (neighborhood: string) => void;
+  /** Bairro em "Outro": a lista mostra "Outro" e aparece o campo de texto. */
+  isOtherNeighborhood?: boolean;
+  onSelectOtherNeighborhood?: () => void;
+  onOtherNeighborhoodChange?: (neighborhood: string) => void;
 };
+
+/** Valor da opção "Outro" na lista (nunca é salvo). */
+const OTHER_NEIGHBORHOOD = "__outro__";
 
 type Props = AddressFieldProps & PinStatusProps & {
   handleCloseAddressModal: () => void;
@@ -88,6 +95,9 @@ export function DeliveryForm({
   onStateChange,
   onCityChange,
   onNeighborhoodChange,
+  isOtherNeighborhood = false,
+  onSelectOtherNeighborhood,
+  onOtherNeighborhoodChange,
   isSearchingAddress = false,
   addressNotFound = false,
   pinZoom,
@@ -227,32 +237,48 @@ export function DeliveryForm({
                 Bairro *
               </label>
               {neighborhoodOptions ? (
-                <select
-                  id="address-neighborhood"
-                  value={currentNeighborhood ?? ""}
-                  onChange={(e) => onNeighborhoodChange(e.target.value)}
-                  disabled={fieldLocks.neighborhood}
-                  className={selectClass}
-                >
-                  <option value="">Selecione o bairro</option>
-                  {/* Endereço antigo com bairro fora da lista oficial (ex.:
-                      "Castelo 3") continua visível até a troca. */}
-                  {currentNeighborhood &&
-                    !neighborhoodOptions.some(
-                      (option) => option.value === currentNeighborhood,
-                    ) && (
-                      <option value={currentNeighborhood}>
-                        {currentNeighborhood} (fora da lista oficial)
+                <>
+                  <select
+                    id="address-neighborhood"
+                    value={isOtherNeighborhood ? OTHER_NEIGHBORHOOD : (currentNeighborhood ?? "")}
+                    onChange={(e) =>
+                      e.target.value === OTHER_NEIGHBORHOOD
+                        ? onSelectOtherNeighborhood?.()
+                        : onNeighborhoodChange(e.target.value)
+                    }
+                    disabled={fieldLocks.neighborhood}
+                    className={selectClass}
+                  >
+                    <option value="">Selecione o bairro</option>
+                    {/* O texto pode trazer outros nomes do bairro entre
+                        parênteses; o valor salvo é sempre o nome oficial. */}
+                    {neighborhoodOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
                       </option>
-                    )}
-                  {/* O texto pode trazer outros nomes do bairro entre
-                      parênteses; o valor salvo é sempre o nome oficial. */}
-                  {neighborhoodOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                    ))}
+                    <option value={OTHER_NEIGHBORHOOD}>Outro</option>
+                  </select>
+                  {/* "Outro" (bairro fora da lista, ou endereço antigo com um
+                      nome que não está nela): o nome é salvo como foi escrito. */}
+                  {isOtherNeighborhood && (
+                    <div className="space-y-2 pt-1">
+                      <label
+                        htmlFor="address-neighborhood-other"
+                        className="text-sm font-medium"
+                      >
+                        Qual é o seu bairro? *
+                      </label>
+                      <Input
+                        id="address-neighborhood-other"
+                        value={currentNeighborhood ?? ""}
+                        onChange={(e) => onOtherNeighborhoodChange?.(e.target.value)}
+                        placeholder="Nome do bairro"
+                        required
+                      />
+                    </div>
+                  )}
+                </>
               ) : (
                 <Input
                   id="address-neighborhood"

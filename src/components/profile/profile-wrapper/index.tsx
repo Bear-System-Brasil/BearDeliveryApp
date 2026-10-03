@@ -86,6 +86,9 @@ export function ProfileWrapper() {
     changeState,
     changeCity,
     changeNeighborhood,
+    isOtherNeighborhood,
+    selectOtherNeighborhood,
+    changeOtherNeighborhood,
     isSearchingAddress,
     addressNotFound,
     pinZoom,
@@ -241,6 +244,9 @@ export function ProfileWrapper() {
             onStateChange: changeState,
             onCityChange: changeCity,
             onNeighborhoodChange: changeNeighborhood,
+            isOtherNeighborhood,
+            onSelectOtherNeighborhood: selectOtherNeighborhood,
+            onOtherNeighborhoodChange: changeOtherNeighborhood,
           }}
           pinStatusProps={{
             isSearchingAddress,

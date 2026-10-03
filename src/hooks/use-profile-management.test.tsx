@@ -784,6 +784,86 @@ describe("useProfileManagement", () => {
       expect(result.current.addressCoords).toBeNull();
     });
 
+    it("Outro: pino no centro da cidade e o nome digitado é salvo como foi escrito", async () => {
+      api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
+      const fetchMock = stubNominatim(nominatimHit("-20.6", "-41.2"));
+      const { result } = await renderProfile();
+      fillCity(result);
+      await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
+
+      act(() => result.current.selectOtherNeighborhood());
+
+      await waitFor(() =>
+        expect(result.current.addressCoords).toEqual({
+          coords: { lat: -20.6, lng: -41.2 },
+          source: "neighborhood",
+        }),
+      );
+      expect(result.current.pinZoom).toBe(13);
+      expect(result.current.isOtherNeighborhood).toBe(true);
+      const [cityCall] = nominatimCalls(fetchMock);
+      expect(cityCall.searchParams.get("city")).toBe("Castelo");
+      expect(cityCall.searchParams.has("street")).toBe(false);
+
+      // Mesmo um nome alternativo da lista fica como foi digitado em "Outro".
+      act(() => result.current.changeOtherNeighborhood("pombal "));
+      await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+      expect(result.current.addressForm.getValues("neighborhood")).toBe("pombal ");
+      expect(result.current.addressCoords?.coords).toEqual({ lat: -20.6, lng: -41.2 });
+
+      await act(async () => {
+        await result.current.handleAddAddress(
+          formData({
+            ...result.current.addressForm.getValues(),
+            street: "Rua A",
+            number: "1",
+            zipCode: "29360-000",
+          }),
+        );
+      });
+
+      expect(api.address.createUserAddress.mock.calls[0][0]).toMatchObject({
+        neighborhood: "pombal ",
+        latitude: -20.6,
+        longitude: -41.2,
+      });
+    });
+
+    it("Outro sem nome do bairro não salva", async () => {
+      stubNominatim(nominatimHit("-20.6", "-41.2"));
+      const { result } = await renderProfile();
+      fillCity(result);
+      await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
+      act(() => result.current.selectOtherNeighborhood());
+      await waitFor(() => expect(result.current.addressCoords).not.toBeNull());
+
+      await act(async () => {
+        await result.current.handleAddAddress(
+          formData({ city: "Castelo", state: "ES", neighborhood: "   " }),
+        );
+      });
+
+      expect(api.address.createUserAddress).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith("Informe qual é o seu bairro.");
+    });
+
+    it("trocar de Outro para um bairro da lista volta ao fluxo normal", async () => {
+      stubNominatim(nominatimHit("-20.6", "-41.2"));
+      const { result } = await renderProfile();
+      fillCity(result);
+      await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
+      act(() => result.current.selectOtherNeighborhood());
+      act(() => result.current.changeOtherNeighborhood("Boa Fé"));
+
+      act(() => result.current.changeNeighborhood("Centro"));
+
+      expect(result.current.isOtherNeighborhood).toBe(false);
+      expect(result.current.addressForm.getValues("neighborhood")).toBe("Centro");
+      await waitFor(() =>
+        expect(result.current.addressCoords?.coords).toEqual({ lat: -20.6030775, lng: -41.2051535 }),
+      );
+    });
+
     it("Castelo/ES oferece os bairros da lista oficial", async () => {
       const { result } = await renderProfile();
       expect(result.current.neighborhoodOptions).toBeNull();

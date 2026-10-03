@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 
 import { BRAZIL_STATES } from "@/constants/brazil-states";
@@ -33,6 +34,8 @@ type Options = {
   enabled: boolean;
   /** Um campo anterior mudou: o pino e o que ele representava deixam de valer. */
   onPreviousFieldChange: () => void;
+  /** O cliente escolheu "Outro" na lista de bairros. */
+  onOtherNeighborhood?: () => void;
 };
 
 /**
@@ -45,7 +48,12 @@ export function useAddressFields({
   form,
   enabled,
   onPreviousFieldChange,
+  onOtherNeighborhood,
 }: Options) {
+  // "Outro" na lista de bairros (decisão na LDMF-260): bairro fora da lista
+  // não trava o cadastro; o cliente digita o nome.
+  const [otherNeighborhood, setOtherNeighborhood] = useState(false);
+
   const [state, city, neighborhood, street, number] = form.watch([
     "state",
     "city",
@@ -85,6 +93,9 @@ export function useAddressFields({
   ) {
     if ((form.getValues(field) ?? "") === value) return;
 
+    // Estado ou cidade novos: o "Outro" escolhido era da cidade anterior.
+    if (field !== "neighborhood") setOtherNeighborhood(false);
+
     form.setValue(field, value, { shouldValidate: true, shouldDirty: true });
     for (const next of FOLLOWING[field]) {
       form.setValue(next, "", { shouldDirty: true });
@@ -110,6 +121,24 @@ export function useAddressFields({
     locks,
     changeState: (value: string) => change("state", value.trim().toUpperCase()),
     changeCity: (value: string) => change("city", value.trim()),
-    changeNeighborhood: (value: string) => change("neighborhood", value),
+    /** Bairro da lista (ou campo livre, em cidade sem lista). */
+    changeNeighborhood: (value: string) => {
+      // Sair do "Outro" para um bairro da lista descarta o nome digitado.
+      setOtherNeighborhood(false);
+      change("neighborhood", value);
+    },
+    otherNeighborhood,
+    /** "Outro": limpa o bairro (e os campos seguintes) e pede o nome. */
+    selectOtherNeighborhood: () => {
+      setOtherNeighborhood(true);
+      change("neighborhood", "");
+      onOtherNeighborhood?.();
+    },
+    /** Nome digitado em "Qual é o seu bairro?", salvo como foi escrito. */
+    changeOtherNeighborhood: (value: string) => {
+      setOtherNeighborhood(true);
+      form.setValue("neighborhood", value, { shouldValidate: true, shouldDirty: true });
+    },
+    resetOtherNeighborhood: () => setOtherNeighborhood(false),
   };
 }
