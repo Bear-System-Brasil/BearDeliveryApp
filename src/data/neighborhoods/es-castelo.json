@@ -26,11 +26,13 @@
     },
     {
       "name": "Castelo III",
+      "altNames": ["Castelo Três", "Ivo Martins"],
       "lat": null,
       "lng": null
     },
     {
       "name": "Cava-Roxa",
+      "altNames": ["Cava Roxa"],
       "lat": null,
       "lng": null
     },
@@ -60,11 +62,6 @@
       "lng": null
     },
     {
-      "name": "Jardim Primavera",
-      "lat": null,
-      "lng": null
-    },
-    {
       "name": "Jardins",
       "lat": null,
       "lng": null
@@ -86,6 +83,7 @@
     },
     {
       "name": "Pantanal",
+      "altNames": ["Jardim Primavera"],
       "lat": null,
       "lng": null
     },

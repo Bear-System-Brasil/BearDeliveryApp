@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { normalizeText, parseCoords } from "@/lib/geocode";
 import { nominatim } from "@/lib/nominatim";
 import {
+  findNeighborhood,
   getNeighborhoods,
   type CityNeighborhoods,
 } from "@/services/neighborhoods";
@@ -91,12 +92,13 @@ export function useAddressPin({ fields, onPin }: Options) {
 
     const key = normalizeText(neighborhood);
     if (!key || key === baseline.current.neighborhood) return;
-    baseline.current.neighborhood = key;
 
-    const item = neighborhoodList.neighborhoods.find(
-      (option) => normalizeText(option.name) === key,
-    );
-    if (!item) return;
+    // Nome oficial ou alternativo. Trocar um pelo outro (ex.: "Jardim
+    // Primavera" → "Pantanal") é o mesmo bairro e não mexe no pino.
+    const item = findNeighborhood(neighborhoodList, key);
+    const previous = findNeighborhood(neighborhoodList, baseline.current.neighborhood);
+    baseline.current.neighborhood = key;
+    if (!item || item === previous) return;
 
     const neighborhoodCenter = parseCoords(item.lat, item.lng);
     if (neighborhoodCenter) {

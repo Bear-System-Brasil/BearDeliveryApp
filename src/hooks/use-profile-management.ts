@@ -5,6 +5,7 @@ import {
   type SourcedCoords,
 } from "@/lib/address-coordinates";
 import { parseCoords } from "@/lib/geocode";
+import { findNeighborhood } from "@/services/neighborhoods";
 import { apiService } from "@/services/api";
 import {
   restorePendingDefaultAddress,
@@ -143,6 +144,16 @@ export const useProfileManagement = () => {
     onPin: (coords: Coords, source: PinSource, zoom: number) =>
       setPin({ coords, source, zoom, seq: ++pinSeq.current }),
   });
+
+  // Bairro digitado ou vindo do CEP/endereço salvo com nome alternativo (ex.:
+  // "Jardim Primavera") vira o nome oficial ("Pantanal"): o formulário exibe
+  // e salva sempre o oficial (LDMF-278).
+  useEffect(() => {
+    const item = findNeighborhood(addressPin.neighborhoodList, watchedNeighborhood);
+    if (item && item.name !== watchedNeighborhood) {
+      addressForm.setValue("neighborhood", item.name, { shouldValidate: true });
+    }
+  }, [addressPin.neighborhoodList, watchedNeighborhood, addressForm]);
 
   // Ordem e trava dos campos; trocar estado, cidade ou bairro limpa os
   // seguintes e o pino.

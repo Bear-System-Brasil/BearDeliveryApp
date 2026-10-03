@@ -6,7 +6,13 @@ import { normalizeText } from "@/lib/geocode";
  * levantados - sem eles o pino começa no centro da cidade.
  */
 export type Neighborhood = {
+  /** Nome oficial: é o único exibido. */
   name: string;
+  /**
+   * Outros nomes pelos quais o bairro é conhecido (ex.: o do OpenStreetMap).
+   * Servem só para busca e correspondência, nunca para exibição (LDMF-278).
+   */
+  altNames?: string[];
   lat: number | null;
   lng: number | null;
 };
@@ -23,8 +29,10 @@ export type CityNeighborhoods = {
   neighborhoods: Neighborhood[];
 };
 
-// Lista local temporária (LDMF-260). Fonte: Lei Municipal de Castelo nº 4.641,
-// de 15/09/2026 - 32 bairros, grafia da lei.
+// Lista local temporária (LDMF-260). Fonte dos nomes: Lei Municipal de Castelo
+// nº 4.641, de 15/09/2026, na grafia da lei. "Jardim Primavera" é nome
+// alternativo do Pantanal (LDMF-278), então a lista tem 31 entradas. Fontes e
+// atribuição em src/data/neighborhoods/README.md.
 const LOCAL_LISTS: CityNeighborhoods[] = [casteloEs as CityNeighborhoods];
 
 /**
@@ -48,5 +56,25 @@ export async function getNeighborhoods(
         normalizeText(list.state) === stateKey &&
         normalizeText(list.city) === cityKey,
     ) ?? null
+  );
+}
+
+/**
+ * Bairro da lista pelo nome oficial ou por um nome alternativo, sem caixa e
+ * acento. Devolve o bairro com o nome oficial, que é o que se exibe e salva.
+ */
+export function findNeighborhood(
+  list: CityNeighborhoods | null | undefined,
+  query: string | null | undefined,
+): Neighborhood | null {
+  const key = normalizeText(query);
+  if (!list || !key) return null;
+
+  return (
+    list.neighborhoods.find((item) => normalizeText(item.name) === key) ??
+    list.neighborhoods.find((item) =>
+      item.altNames?.some((alt) => normalizeText(alt) === key),
+    ) ??
+    null
   );
 }
