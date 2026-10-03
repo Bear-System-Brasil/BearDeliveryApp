@@ -301,7 +301,7 @@ export default function RestaurantPage() {
             <>
               {/* === CABEÇALHO DO RESTAURANTE === */}
               <section className="overflow-hidden rounded-[14px] border border-border bg-card shadow-sm">
-                {/* Capa que se dissolve no card, com o logo por cima */}
+                {/* Capa do restaurante limpa, sem camada branca sobreposta (LDMF-270) */}
                 <div className="relative h-40 sm:h-48">
                   <Image
                     fill
@@ -315,7 +315,6 @@ export default function RestaurantPage() {
                     alt=""
                     className="object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-card" />
 
                   <button
                     type="button"
