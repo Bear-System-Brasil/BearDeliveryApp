@@ -15,6 +15,19 @@ export type AddressMapProps = {
   onSelect: (coords: Coords) => void;
 
   mapHeight?: number;
+
+  /**
+   * Zoom a aplicar na próxima recentralização. Sem ele, a primeira coordenada
+   * aproxima e as seguintes mantêm o zoom do cliente.
+   */
+  zoom?: number;
+
+  /**
+   * Muda a cada novo posicionamento do pino. Recentraliza mesmo quando a
+   * coordenada é a mesma de antes (ex.: o cliente arrastou o mapa e escolheu
+   * outro bairro sem coordenada, que cai de novo no centro da cidade).
+   */
+  recenterKey?: number;
 };
 
 const boxClass =

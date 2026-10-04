@@ -26,17 +26,29 @@ const FALLBACK_ZOOM = 4;
 const PINNED_ZOOM = 16;
 
 /**
- * O `center` do `MapContainer` só vale no mount. Aqui o mapa acompanha a
- * coordenada quando ela muda de fato (CEP novo, geocodificação, toque,
- * arrasto). Entre uma mudança e outra o mapa é do cliente: zoom e arrasto
- * dele não são desfeitos.
+ * O `center` do `MapContainer` só vale no mount. Aqui o mapa recentraliza a
+ * cada novo posicionamento do pino (coordenada nova ou `recenterKey` novo).
+ * Entre uma mudança e outra o mapa é do cliente: zoom e arrasto dele não são
+ * desfeitos.
  */
-function SyncView({ value }: { value: Coords | null }) {
+function SyncView({
+  value,
+  zoom,
+  recenterKey,
+}: {
+  value: Coords | null;
+  zoom?: number;
+  recenterKey?: number;
+}) {
   const map = useMap();
   const hadValue = useRef(value !== null);
 
   const lat = value?.lat;
   const lng = value?.lng;
+
+  // O zoom só vale junto com o posicionamento que o trouxe.
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   useEffect(() => {
     if (lat === undefined || lng === undefined) {
@@ -45,10 +57,14 @@ function SyncView({ value }: { value: Coords | null }) {
       return;
     }
 
-    // Primeira coordenada aproxima; as seguintes mantêm o zoom do cliente.
-    map.setView([lat, lng], hadValue.current ? map.getZoom() : PINNED_ZOOM);
+    // Sem zoom pedido: a primeira coordenada aproxima e as seguintes mantêm o
+    // zoom do cliente.
+    const nextZoom =
+      zoomRef.current ?? (hadValue.current ? map.getZoom() : PINNED_ZOOM);
+
+    map.setView([lat, lng], nextZoom);
     hadValue.current = true;
-  }, [map, lat, lng]);
+  }, [map, lat, lng, recenterKey]);
 
   return null;
 }
@@ -102,6 +118,8 @@ export default function LeafletAddressMap({
   value,
   onSelect,
   mapHeight = 400,
+  zoom,
+  recenterKey,
 }: AddressMapProps) {
   const initial = value ?? FALLBACK_CENTER;
 
@@ -114,7 +132,7 @@ export default function LeafletAddressMap({
     >
       <MapContainer
         center={[initial.lat, initial.lng]}
-        zoom={value ? PINNED_ZOOM : FALLBACK_ZOOM}
+        zoom={value ? (zoom ?? PINNED_ZOOM) : FALLBACK_ZOOM}
         // Rolagem da página não deve virar zoom no mapa (o formulário rola).
         scrollWheelZoom={false}
         style={{ height: "100%", width: "100%" }}
@@ -124,7 +142,7 @@ export default function LeafletAddressMap({
           attribution={OSM_ATTRIBUTION}
           maxZoom={OSM_MAX_ZOOM}
         />
-        <SyncView value={value} />
+        <SyncView value={value} zoom={zoom} recenterKey={recenterKey} />
         <ClickToSelect onSelect={onSelect} />
         {value && <DraggablePin value={value} onSelect={onSelect} />}
       </MapContainer>
