@@ -191,7 +191,7 @@ export default function AuthModal({
 
                     <div className="space-y-1 sm:space-y-1.5">
                       <Label htmlFor="cpf" className="text-xs sm:text-sm font-semibold text-foreground">
-                        CPF <span className="font-normal text-muted-foreground">(opcional)</span>
+                        CPF
                       </Label>
                       <div className="relative">
                         <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />

@@ -288,31 +288,6 @@ describe("useAuthModal", () => {
       });
     });
 
-    it("CPF é opcional: vazio vale, incompleto não", () => {
-      const { result } = renderModal("register");
-      type(result, { ...validRegister, cpf: "" });
-      act(() => result.current.setAcceptedTerms(true));
-      expect(result.current.isFormValid()).toBeTruthy();
-
-      type(result, { cpf: "123456" });
-      expect(result.current.isFormValid()).toBeFalsy();
-    });
-
-    it("sem CPF, o campo nem vai no corpo do cadastro", async () => {
-      api.createUser.mockResolvedValue({ success: true });
-      const { result } = renderModal("register");
-      type(result, { ...validRegister, cpf: "" });
-
-      await act(async () => {
-        await result.current.handleSubmit();
-      });
-
-      expect(api.createUser).toHaveBeenCalledWith(
-        expect.not.objectContaining({ cpf: expect.anything() }),
-      );
-      expect(api.createUser.mock.calls[0][0]).not.toHaveProperty("cpf");
-    });
-
     it("cadastro recusado fica no formulário com a mensagem", async () => {
       api.createUser.mockResolvedValue({ success: false, message: "CPF já cadastrado" });
       const { result } = renderModal("register");

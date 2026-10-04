@@ -52,8 +52,7 @@ export default function PrivacyPage() {
           <strong>Se você é cliente:</strong>
         </p>
         <LegalList>
-          <li>nome, e-mail, telefone e data de nascimento;</li>
-          <li>CPF, se você quiser informar (é opcional);</li>
+          <li>nome, e-mail, CPF, telefone e data de nascimento;</li>
           <li>senha (guardada de forma protegida, nunca em texto aberto);</li>
           <li>foto de perfil, se você enviar uma;</li>
           <li>
@@ -98,7 +97,7 @@ export default function PrivacyPage() {
             permitir que o restaurante e o entregador falem com você sobre o
             pedido;
           </li>
-          <li>identificar o titular da conta (CPF, quando informado);</li>
+          <li>identificar o titular da conta (CPF);</li>
           <li>atender pedidos de suporte e cumprir obrigações legais.</li>
         </LegalList>
         <p>
