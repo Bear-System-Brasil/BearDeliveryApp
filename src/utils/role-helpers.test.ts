@@ -4,7 +4,7 @@ import {
   isClientRole,
   isCompanyAdminRole,
   isCompanyStaffRole,
-  isManagerRole,
+  isManagementRole,
 } from "./role-helpers";
 
 describe("isCompanyStaffRole", () => {
@@ -64,18 +64,18 @@ describe("getProfileRoute", () => {
   });
 });
 
-describe("isManagerRole", () => {
+describe("isManagementRole", () => {
   it("reconhece owner, admin e manager", () => {
-    expect(isManagerRole("owner")).toBe(true);
-    expect(isManagerRole("admin")).toBe(true);
-    expect(isManagerRole("manager")).toBe(true);
+    expect(isManagementRole("owner")).toBe(true);
+    expect(isManagementRole("admin")).toBe(true);
+    expect(isManagementRole("manager")).toBe(true);
   });
 
   it("deixa de fora financial, cook, delivery, cliente e valor vazio", () => {
-    expect(isManagerRole("financial")).toBe(false);
-    expect(isManagerRole("cook")).toBe(false);
-    expect(isManagerRole("delivery")).toBe(false);
-    expect(isManagerRole("client")).toBe(false);
-    expect(isManagerRole(undefined)).toBe(false);
+    expect(isManagementRole("financial")).toBe(false);
+    expect(isManagementRole("cook")).toBe(false);
+    expect(isManagementRole("delivery")).toBe(false);
+    expect(isManagementRole("client")).toBe(false);
+    expect(isManagementRole(undefined)).toBe(false);
   });
 });

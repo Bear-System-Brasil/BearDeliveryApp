@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Payment, PaymentMethod, PaymentStatus } from "@/services/api";
 import { useAuthStore } from "@/stores";
 import { formatCurrency, getCustomerDisplayName } from "@/utils";
-import { isManagerRole } from "@/utils/role-helpers";
+import { isManagementRole } from "@/utils/role-helpers";
 import { DollarSign, Search } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -175,7 +175,7 @@ export default function FinancePage() {
   // Só a gerência altera forma de pagamento; `financial` vê Finanças, mas não
   // o botão. A restrição de verdade é do backend.
   const role = useAuthStore((state) => state.user?.role);
-  const canManagePayments = isManagerRole(role);
+  const canManagePayments = isManagementRole(role);
   const [paymentToChange, setPaymentToChange] = useState<Payment | null>(null);
   const [isChangingMethod, setIsChangingMethod] = useState(false);
 

@@ -37,13 +37,13 @@ export const COMPANY_ADMIN_ROLES = ['admin', 'owner'] as const
  * `financial` fica de fora de propósito: acessa Finanças, mas não altera
  * pagamento. O entregador também: ele só pode pedir à gerência.
  */
-export const MANAGER_ROLES = ['owner', 'admin', 'manager'] as const
+export const MANAGEMENT_ROLES = ['owner', 'admin', 'manager'] as const
 
 export const CLIENT_ROLES = ['client', 'customer', 'user'] as const
 
 export type CompanyRole = typeof COMPANY_ROLES[number]
 export type CompanyAdminRole = typeof COMPANY_ADMIN_ROLES[number]
-export type ManagerRole = typeof MANAGER_ROLES[number]
+export type ManagementRole = typeof MANAGEMENT_ROLES[number]
 export type ClientRole = typeof CLIENT_ROLES[number]
 export type UserRole = CompanyRole | ClientRole
 
@@ -69,9 +69,9 @@ export function isCompanyAdminRole(role?: string): boolean {
  * Gerência (owner, admin, manager). Esconder um botão por aqui não impede a
  * chamada direta à API - a restrição de verdade é do backend.
  */
-export function isManagerRole(role?: string): boolean {
+export function isManagementRole(role?: string): boolean {
   if (!role) return false
-  return MANAGER_ROLES.includes(role as ManagerRole)
+  return MANAGEMENT_ROLES.includes(role as ManagementRole)
 }
 
 /**

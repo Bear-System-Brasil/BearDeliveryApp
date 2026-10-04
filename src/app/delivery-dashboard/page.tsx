@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import type { Delivery, PaymentMethod } from "@/services/api";
 import { PAYMENT_CHANGE_REQUEST_ENABLED } from "@/services/manager-requests";
 import { useAuthStore } from "@/stores";
-import { isManagerRole } from "@/utils/role-helpers";
+import { isManagementRole } from "@/utils/role-helpers";
 
 type Filter = "all" | "inRoute" | "toPickUp" | "available";
 
@@ -146,8 +146,8 @@ export default function DeliveryDashboardPage() {
   // forma de pagamento direto. O entregador só avisa a gerência - e esse
   // botão fica escondido até o backend ter a rota (LDMF-284).
   const role = useAuthStore((state) => state.user?.role);
-  const isManager = isManagerRole(role);
-  const canTouchPayment = isManager || PAYMENT_CHANGE_REQUEST_ENABLED;
+  const isManagement = isManagementRole(role);
+  const canTouchPayment = isManagement || PAYMENT_CHANGE_REQUEST_ENABLED;
   const [paymentTarget, setPaymentTarget] = useState<Delivery | null>(null);
 
   const { shouldConfirm, setSkipConfirm } = useAcceptConfirmation();
@@ -265,7 +265,7 @@ export default function DeliveryDashboardPage() {
     if (!paymentTarget || !payment) return false;
 
     try {
-      const response = isManager
+      const response = isManagement
         ? await changePaymentMethod({
             deliveryId: paymentTarget.id,
             paymentId: payment.id,
@@ -294,7 +294,7 @@ export default function DeliveryDashboardPage() {
       onReturn={setReturnTarget}
       onChangePayment={canTouchPayment ? setPaymentTarget : undefined}
       changePaymentLabel={
-        isManager
+        isManagement
           ? "Alterar forma de pagamento"
           : "Pagou de outro jeito? Avisar o gerente"
       }
@@ -489,14 +489,14 @@ export default function DeliveryDashboardPage() {
             : undefined
         }
         onConfirm={handleConfirmPayment}
-        title={isManager ? "Alterar forma de pagamento" : "Avisar o gerente"}
+        title={isManagement ? "Alterar forma de pagamento" : "Avisar o gerente"}
         description={
-          isManager
+          isManagement
             ? `Pedido #${paymentTarget?.orderId.slice(0, 8) ?? ""}`
             : "O cliente pagou com outra forma? A gerência confirma a troca."
         }
-        confirmLabel={isManager ? "Salvar forma" : "Enviar aviso"}
-        withNote={!isManager}
+        confirmLabel={isManagement ? "Salvar forma" : "Enviar aviso"}
+        withNote={!isManagement}
         isLoading={isChangingPayment}
       />
     </>
