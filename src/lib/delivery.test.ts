@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { getPaymentSummary, isSameMoney } from "@/lib/delivery";
+import {
+  getChangeablePayment,
+  getPaymentSummary,
+  isSameMoney,
+} from "@/lib/delivery";
 import {
   PaymentMethod,
   PaymentStatus,
@@ -155,5 +159,57 @@ describe("isSameMoney", () => {
     expect(isSameMoney(35.9, 35.9)).toBe(true);
     expect(isSameMoney(0.1 + 0.2, 0.3)).toBe(true);
     expect(isSameMoney(35.9, 35.91)).toBe(false);
+  });
+});
+
+describe("getChangeablePayment", () => {
+  function withStatus(
+    status: Delivery["status"],
+    payments: Payment[],
+  ): Delivery {
+    return { ...makeDelivery(payments), status } as Delivery;
+  }
+
+  it("devolve o pagamento a receber de uma corrida aceita ou coletada", () => {
+    const payment = makePayment({ paymentMethod: PaymentMethod.DEBIT_CARD });
+
+    expect(getChangeablePayment(withStatus("ACCEPTED", [payment]))).toBe(payment);
+    expect(getChangeablePayment(withStatus("PICKED_UP", [payment]))).toBe(payment);
+  });
+
+  it("fora da corrida em andamento não oferece troca", () => {
+    const payment = makePayment();
+
+    expect(getChangeablePayment(withStatus("PENDING", [payment]))).toBeNull();
+    expect(getChangeablePayment(withStatus("DELIVERED", [payment]))).toBeNull();
+  });
+
+  it("ignora pagamento concluído, falho, cancelado ou estornado", () => {
+    const toReceive = makePayment({ id: "vivo" });
+    const delivery = withStatus("ACCEPTED", [
+      makePayment({ id: "pago", status: PaymentStatus.COMPLETED }),
+      makePayment({ id: "falho", status: PaymentStatus.FAILED }),
+      toReceive,
+    ]);
+
+    expect(getChangeablePayment(delivery)).toBe(toReceive);
+  });
+
+  it("pedido dividido em mais de um pagamento a receber fica de fora", () => {
+    const delivery = withStatus("ACCEPTED", [
+      makePayment({ id: "a" }),
+      makePayment({ id: "b", paymentMethod: PaymentMethod.PIX }),
+    ]);
+
+    expect(getChangeablePayment(delivery)).toBeNull();
+  });
+
+  it("sem pagamento a receber, não há o que trocar", () => {
+    expect(getChangeablePayment(withStatus("ACCEPTED", []))).toBeNull();
+    expect(
+      getChangeablePayment(
+        withStatus("ACCEPTED", [makePayment({ status: PaymentStatus.COMPLETED })]),
+      ),
+    ).toBeNull();
   });
 });
