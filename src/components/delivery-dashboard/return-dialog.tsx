@@ -16,16 +16,21 @@ import { formatAddressLines } from "@/lib/delivery";
 import type { Delivery } from "@/services/api";
 
 type Props = {
-  /** A entrega sendo cancelada, ou null com o diálogo fechado. */
+  /** A entrega sendo devolvida, ou null com o diálogo fechado. */
   delivery: Delivery | null;
-  isCanceling: boolean;
+  isReturning: boolean;
   onClose: () => void;
   onConfirm: (reason: string) => void;
 };
 
-export function CancelDialog({
+/**
+ * "Não consigo fazer essa entrega": devolve a corrida pra lista de
+ * disponíveis. Não cancela - a entrega continua valendo pro cliente e outro
+ * entregador pode aceitar.
+ */
+export function ReturnDialog({
   delivery,
-  isCanceling,
+  isReturning,
   onClose,
   onConfirm,
 }: Props) {
@@ -46,23 +51,29 @@ export function CancelDialog({
     <Dialog open={Boolean(delivery)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Cancelar entrega</DialogTitle>
-          {addressLine && (
-            <DialogDescription>{addressLine}</DialogDescription>
-          )}
+          <DialogTitle>Devolver entrega</DialogTitle>
+          <DialogDescription>
+            {addressLine && (
+              <span className="block font-semibold text-foreground">
+                {addressLine}
+              </span>
+            )}
+            Ela volta para a lista de disponíveis e outro entregador pode
+            aceitar.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <label
-            htmlFor="cancel-reason"
+            htmlFor="return-reason"
             className="text-sm font-medium text-foreground"
           >
-            Motivo do cancelamento
+            Motivo da devolução
           </label>
           <Textarea
-            id="cancel-reason"
+            id="return-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="Ex: endereço inacessível, cliente não atende..."
+            placeholder="Ex: moto com problema, imprevisto..."
             rows={3}
             className="rounded-xl"
           />
@@ -79,10 +90,10 @@ export function CancelDialog({
           <Button
             type="button"
             onClick={() => onConfirm(reason.trim())}
-            disabled={isCanceling || !reason.trim()}
+            disabled={isReturning || !reason.trim()}
             className="h-12 rounded-xl bg-red-500 text-white hover:bg-red-600"
           >
-            {isCanceling ? "Cancelando..." : "Confirmar cancelamento"}
+            {isReturning ? "Devolvendo..." : "Confirmar devolução"}
           </Button>
         </DialogFooter>
       </DialogContent>

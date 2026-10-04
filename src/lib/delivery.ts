@@ -36,7 +36,8 @@ export const isAvailable = (delivery: Delivery) =>
  * exclusivo: depois de pegar a comida no restaurante não dá mais pra
  * cancelar - a partir daí o caminho é entregar.
  */
-export const canCancel = (delivery: Delivery) => delivery.status === "ACCEPTED";
+/** Devolver à lista de disponíveis: só antes da coleta (delivery.md). */
+export const canReturn = (delivery: Delivery) => delivery.status === "ACCEPTED";
 
 /**
  * Dados pessoais do cliente (nome, foto, telefone, rua e número) só depois do

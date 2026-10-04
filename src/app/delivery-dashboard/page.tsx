@@ -5,9 +5,9 @@ import { Bell, BellOff, Crosshair, Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { AcceptConfirmDialog } from "@/components/delivery-dashboard/accept-confirm-dialog";
-import { CancelDialog } from "@/components/delivery-dashboard/cancel-dialog";
 import { DeliveryCard } from "@/components/delivery-dashboard/delivery-card";
 import { LocationDialog } from "@/components/delivery-dashboard/location-dialog";
+import { ReturnDialog } from "@/components/delivery-dashboard/return-dialog";
 import {
   HeaderIconButton,
   ScreenHeader,
@@ -123,9 +123,9 @@ export default function DeliveryDashboardPage() {
     acceptingId,
     advanceDelivery,
     advancingId,
-    cancelDelivery,
-    cancelingId,
-    isCanceling,
+    returnDelivery,
+    returningId,
+    isReturning,
     hasMorePages,
     counts,
   } = useDeliveryDriver();
@@ -137,7 +137,7 @@ export default function DeliveryDashboardPage() {
   const shows = (key: Filter) => filter === "all" || filter === key;
 
   const [acceptTarget, setAcceptTarget] = useState<Delivery | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<Delivery | null>(null);
+  const [returnTarget, setReturnTarget] = useState<Delivery | null>(null);
 
   // Diálogo de localização: abre sozinho quando o GPS falha no aceite, e pelo
   // botão do cabeçalho quando o entregador quer corrigir a posição.
@@ -232,11 +232,11 @@ export default function DeliveryDashboardPage() {
     advanceDelivery({ id: delivery.id, next });
   };
 
-  const handleConfirmCancel = (reason: string) => {
-    if (!cancelTarget || !reason) return;
-    cancelDelivery(
-      { id: cancelTarget.id, reason },
-      { onSuccess: () => setCancelTarget(null) },
+  const handleConfirmReturn = (reason: string) => {
+    if (!returnTarget || !reason) return;
+    returnDelivery(
+      { id: returnTarget.id, reason },
+      { onSuccess: () => setReturnTarget(null) },
     );
   };
 
@@ -246,8 +246,8 @@ export default function DeliveryDashboardPage() {
       key={delivery.id}
       delivery={delivery}
       onAdvance={handleAdvance}
-      onCancel={setCancelTarget}
-      busy={advancingId === delivery.id || cancelingId === delivery.id}
+      onReturn={setReturnTarget}
+      busy={advancingId === delivery.id || returningId === delivery.id}
     />
   );
 
@@ -418,11 +418,11 @@ export default function DeliveryDashboardPage() {
         onConfirmed={handleLocationConfirmed}
       />
 
-      <CancelDialog
-        delivery={cancelTarget}
-        isCanceling={isCanceling}
-        onClose={() => setCancelTarget(null)}
-        onConfirm={handleConfirmCancel}
+      <ReturnDialog
+        delivery={returnTarget}
+        isReturning={isReturning}
+        onClose={() => setReturnTarget(null)}
+        onConfirm={handleConfirmReturn}
       />
     </>
   );

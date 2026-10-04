@@ -267,15 +267,17 @@ export const useDeliveryDriver = () => {
     onError: () => toast.error("Erro de conexão"),
   });
 
-  const cancelMutation = useMutation({
+  // Devolver, não cancelar: a entrega volta pra lista de disponíveis e outro
+  // entregador pode pegar. Cancelar encerraria a entrega do cliente.
+  const returnMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      apiService.deliveries.cancel(id, reason),
+      apiService.deliveries.returnToPool(id, reason),
     onSuccess: (response) => {
       invalidate();
       if (response.success) {
-        toast.success("Entrega cancelada");
+        toast.success("Entrega devolvida - outro entregador pode aceitar");
       } else {
-        toast.error(response.message || "Erro ao cancelar entrega");
+        toast.error(response.message || "Erro ao devolver entrega");
       }
     },
     onError: () => toast.error("Erro de conexão"),
@@ -289,8 +291,8 @@ export const useDeliveryDriver = () => {
   const advancingId = advanceMutation.isPending
     ? (advanceMutation.variables?.id ?? null)
     : null;
-  const cancelingId = cancelMutation.isPending
-    ? (cancelMutation.variables?.id ?? null)
+  const returningId = returnMutation.isPending
+    ? (returnMutation.variables?.id ?? null)
     : null;
 
   return {
@@ -308,9 +310,9 @@ export const useDeliveryDriver = () => {
     acceptingId,
     advanceDelivery: advanceMutation.mutate,
     advancingId,
-    cancelDelivery: cancelMutation.mutate,
-    cancelingId,
-    isCanceling: cancelMutation.isPending,
+    returnDelivery: returnMutation.mutate,
+    returningId,
+    isReturning: returnMutation.isPending,
     /** Envelope da rota - `total` e `totalPages` da página pedida. */
     meta: data?.meta,
     /** Há entrega além desta página: a tela avisa em vez de truncar calada. */

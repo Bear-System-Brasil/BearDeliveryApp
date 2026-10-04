@@ -57,6 +57,7 @@ vi.mock("@/services/api", async (importOriginal) => {
         getMyDeliveries: vi.fn(),
         updateStatus: vi.fn(),
         cancel: vi.fn(),
+        returnToPool: vi.fn(),
       },
     },
   };
@@ -428,7 +429,7 @@ describe("useDeliveryDriver", () => {
 
       await waitFor(() => expect(result.current.acceptingId).toBe("n1"));
       expect(result.current.advancingId).toBeNull();
-      expect(result.current.cancelingId).toBeNull();
+      expect(result.current.returningId).toBeNull();
     });
 
     it("concluir a entrega avisa; coletar não mostra toast de sucesso", async () => {
@@ -464,23 +465,28 @@ describe("useDeliveryDriver", () => {
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Já entregue"));
     });
 
-    it("cancelar manda o motivo e avisa o sucesso", async () => {
-      deliveries.cancel.mockResolvedValue({ success: true });
+    it("devolver manda o motivo, não cancela, e avisa o sucesso", async () => {
+      deliveries.returnToPool.mockResolvedValue({ success: true });
       const { result } = await renderDriver();
 
-      act(() => result.current.cancelDelivery({ id: "a1", reason: "pneu furado" }));
+      act(() => result.current.returnDelivery({ id: "a1", reason: "pneu furado" }));
 
-      await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Entrega cancelada"));
-      expect(deliveries.cancel).toHaveBeenCalledWith("a1", "pneu furado");
+      await waitFor(() =>
+        expect(toast.success).toHaveBeenCalledWith(
+          "Entrega devolvida - outro entregador pode aceitar",
+        ),
+      );
+      expect(deliveries.returnToPool).toHaveBeenCalledWith("a1", "pneu furado");
+      expect(deliveries.cancel).not.toHaveBeenCalled();
     });
 
-    it("cancelamento recusado mostra o erro", async () => {
-      deliveries.cancel.mockResolvedValue({ success: false });
+    it("devolução recusada mostra o erro", async () => {
+      deliveries.returnToPool.mockResolvedValue({ success: false });
       const { result } = await renderDriver();
 
-      act(() => result.current.cancelDelivery({ id: "a1", reason: "pneu furado" }));
+      act(() => result.current.returnDelivery({ id: "a1", reason: "pneu furado" }));
 
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Erro ao cancelar entrega"));
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Erro ao devolver entrega"));
     });
 
     it("toda ação, mesmo recusada, atualiza a lista", async () => {

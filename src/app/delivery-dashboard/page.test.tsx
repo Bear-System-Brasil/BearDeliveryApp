@@ -38,8 +38,8 @@ vi.mock("@/components/delivery-dashboard/delivery-card", () => ({
 vi.mock("@/components/delivery-dashboard/accept-confirm-dialog", () => ({
   AcceptConfirmDialog: () => null,
 }));
-vi.mock("@/components/delivery-dashboard/cancel-dialog", () => ({
-  CancelDialog: () => null,
+vi.mock("@/components/delivery-dashboard/return-dialog", () => ({
+  ReturnDialog: () => null,
 }));
 vi.mock("@/components/delivery-dashboard/location-dialog", () => ({
   LocationDialog: () => null,
@@ -71,9 +71,9 @@ function setDriver(groups: {
     acceptingId: null,
     advanceDelivery: vi.fn(),
     advancingId: null,
-    cancelDelivery: vi.fn(),
-    cancelingId: null,
-    isCanceling: false,
+    returnDelivery: vi.fn(),
+    returningId: null,
+    isReturning: false,
     hasMorePages: false,
     counts: {
       mine: inRoute.length + toPickUp.length,

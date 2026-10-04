@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   buildMapsLink,
-  canCancel,
+  canReturn,
   canSeeCustomerData,
   formatVisibleAddressLines,
   getCourierEarnings,
@@ -43,7 +43,7 @@ type Props = {
   delivery: Delivery;
   onAccept?: (id: string) => void;
   onAdvance?: (delivery: Delivery) => void;
-  onCancel?: (delivery: Delivery) => void;
+  onReturn?: (delivery: Delivery) => void;
   /** Esta entrega tem um request em andamento - só ela trava, não a tela. */
   busy?: boolean;
   /** Entregas fechadas: sem ações, só o registro do que aconteceu. */
@@ -174,7 +174,7 @@ export function DeliveryCard({
   delivery,
   onAccept,
   onAdvance,
-  onCancel,
+  onReturn,
   busy = false,
   compact = false,
 }: Props) {
@@ -408,10 +408,10 @@ export function DeliveryCard({
           )}
         </div>
 
-        {canCancel(delivery) && onCancel && (
+        {canReturn(delivery) && onReturn && (
           <button
             type="button"
-            onClick={() => onCancel(delivery)}
+            onClick={() => onReturn(delivery)}
             disabled={busy}
             className="h-11 rounded-xl text-[13px] font-bold text-red-500 transition hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-950/40"
           >
