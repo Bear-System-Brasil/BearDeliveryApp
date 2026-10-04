@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import LegalHubPage from "./legal/page";
 import PrivacyPage from "./privacy/page";
 import TermsPage from "./terms/page";
 
@@ -20,5 +21,16 @@ describe("páginas legais", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Termos de uso" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Política de privacidade" })).toHaveAttribute("href", "/privacy");
     expect(screen.getByText(/comarca de Castelo\/ES/)).toBeInTheDocument();
+  });
+
+  it("tela do menu junta termos, política e contato", () => {
+    render(<LegalHubPage />);
+
+    expect(screen.getByRole("link", { name: /Termos de uso/ })).toHaveAttribute("href", "/terms");
+    expect(screen.getByRole("link", { name: /Política de privacidade/ })).toHaveAttribute("href", "/privacy");
+    expect(screen.getByRole("link", { name: /Fale com a gente/ })).toHaveAttribute(
+      "href",
+      "mailto:beardeliveryofc@gmail.com",
+    );
   });
 });
