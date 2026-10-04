@@ -1,6 +1,9 @@
 "use client";
 
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +49,8 @@ export default function AuthModal({
     forgotPasswordData, setForgotPasswordData,
     resetPasswordData, setResetPasswordData,
     registerData,
+    acceptedTerms,
+    setAcceptedTerms,
     otpData, setOtpData,
     passwordErrors,
     passwordMatch,
@@ -298,6 +303,29 @@ export default function AuthModal({
                     {passwordMatch && registerData.confirmPassword && registerData.password && (
                       <p className="text-xs text-green-600 dark:text-green-400 mt-1">✓ Senhas coincidem</p>
                     )}
+                  </div>
+
+                  <div className="flex items-start gap-2 pt-1">
+                    <Checkbox
+                      id="acceptTerms"
+                      checked={acceptedTerms}
+                      onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor="acceptTerms" className="text-[11px] sm:text-xs font-medium leading-snug text-foreground">
+                      <span>
+                        Tenho 18 anos ou mais e li e aceito os{" "}
+                        {/* Aba nova: navegar aqui fecharia o modal e perderia o cadastro. */}
+                        <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 underline dark:text-brand-400">
+                          Termos de uso
+                        </Link>{" "}
+                        e a{" "}
+                        <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 underline dark:text-brand-400">
+                          Política de privacidade
+                        </Link>
+                        .
+                      </span>
+                    </Label>
                   </div>
                 </TabsContent>
               </Tabs>
