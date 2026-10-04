@@ -10,7 +10,7 @@ rota vai devolver:
   "city": "Castelo",
   "ibgeCode": "3201407",
   "cep": "29360-000",
-  "center": { "lat": -20.6120106, "lng": -41.2061312 },
+  "center": { "lat": -20.6153082, "lng": -41.2063262 },
   "neighborhoods": [
     { "name": "Castelo III", "altNames": ["Castelo 3", "Castelo Três", "Pombal", "Ivo Martins"], "lat": -20.6335760, "lng": -41.2041395 }
   ]
@@ -22,7 +22,7 @@ rota vai devolver:
   os que são nomes diferentes (não só outra grafia) aparecem entre parênteses
   na opção da lista. O valor salvo é sempre o `name`.
 - `lat`/`lng`: ponto do bairro, ou `null` quando não há fonte real. Nunca
-  estimar coordenada.
+  estimar coordenada: todo valor tem a fonte registrada abaixo.
 - `center`: centro da área urbana (LDMF-264). É onde o pino começa quando o
   bairro não tem coordenada ou o cliente escolhe "Outro", sem chamar o
   Nominatim (a busca da cidade no Nominatim devolvia um ponto na zona rural).
@@ -39,12 +39,19 @@ rota vai devolver:
 - **CEP e código IBGE:** confirmados pela equipe (29360-000 e 3201407).
 - **Nomes alternativos de Castelo III:** "Castelo 3" e "Pombal" são como os
   moradores chamam o bairro (informado pela equipe); "Castelo Três" e
-  "Ivo Martins" vêm do OpenStreetMap.
-- **Coordenadas e demais nomes alternativos:** © colaboradores do OpenStreetMap,
-  disponíveis sob a Open Database License (ODbL),
-  https://www.openstreetmap.org/copyright. Levantamento de 03/10/2026 por
-  Overpass na área IBGE 3201407 e Nominatim (detalhes na LDMF-264). Cada
-  coordenada é o ponto de bairro marcado no OSM.
+  "Ivo Martins" vêm do OpenStreetMap. "Cava Roxa" (Cava-Roxa) também vem do
+  OpenStreetMap.
+
+### Fonte das coordenadas
+
+Os 32 bairros têm coordenada, de duas fontes.
+
+**24 do OpenStreetMap.** © colaboradores do OpenStreetMap, disponíveis sob a
+Open Database License (ODbL), https://www.openstreetmap.org/copyright.
+Levantamento de 03/10/2026 por Overpass na área IBGE 3201407 e Nominatim
+(detalhes na LDMF-264). Cada coordenada é o ponto de bairro marcado no OSM.
+A do Pantanal (node/3744557670, que no OSM tem o nome "Jardim Primavera" e o
+alternativo "Pantanal") fica com o Pantanal, confirmado pela equipe.
 
 | Bairro | Origem no OSM |
 | --- | --- |
@@ -73,17 +80,32 @@ rota vai devolver:
 | Vila Nova | node/3573536251 |
 | Volta Redonda | node/3573536291 |
 
-A coordenada do node/3744557670 (no OSM, "Jardim Primavera" com o alternativo
-"Pantanal") fica com o Pantanal, confirmado pela equipe.
+**8 do mapa oficial da Lei 4.641, leitura aproximada, erro de 100 a 220 m.**
+Mapa de bairros anexo à lei:
+https://castelo.es.gov.br/wp-content/uploads/2026/09/Mapa-dos-Bairros.pdf
+(grade UTM SIRGAS 2000, fuso 24S). A posição de cada bairro foi lida na grade
+e convertida para lat/lng; o erro foi medido aplicando o mesmo método a 4
+bairros com coordenada do OSM. Servem como ponto de partida do pino, não como
+ponto exato. Uso aprovado pela equipe em 03/10/2026 (comentário na LDMF-264).
 
-Sem coordenada (`null`): Caparaó, Jardim Primavera, Jardins, Maravilha, Pedra
-Luz, Santa Fé, Vista do Rio e Vista Linda. Para eles o pino começa no `center`.
+| Bairro | Origem |
+| --- | --- |
+| Caparaó | Mapa oficial, leitura aproximada |
+| Jardim Primavera | Mapa oficial, leitura aproximada |
+| Jardins | Mapa oficial, leitura aproximada |
+| Maravilha | Mapa oficial, leitura aproximada |
+| Pedra Luz | Mapa oficial, leitura aproximada |
+| Santa Fé | Mapa oficial, leitura aproximada |
+| Vista do Rio | Mapa oficial, leitura aproximada |
+| Vista Linda | Mapa oficial, leitura aproximada |
 
-**`center`:** média dos 24 bairros com coordenada da tabela acima, calculada
-por script em aritmética decimal exata a partir dos valores do JSON (04/10/2026):
+### `center`
 
-- soma das latitudes: -494,6882539 → ÷ 24 = -20,612010579… → **-20.6120106**
-- soma das longitudes: -988,9471489 → ÷ 24 = -41,206131204… → **-41.2061312**
+Média dos 32 bairros, calculada por script em aritmética decimal exata a
+partir dos valores do JSON (04/10/2026):
 
-Os 8 bairros sem coordenada não entram na média. O ponto é derivado das
-coordenadas do OpenStreetMap acima (mesma atribuição ODbL).
+- soma das latitudes: -659,6898639 → ÷ 32 = -20,615308246875 → **-20.6153082**
+- soma das longitudes: -1318,6024389 → ÷ 32 = -41,206326215625 → **-41.2063262**
+
+O ponto é derivado das duas fontes acima (inclui dados do OpenStreetMap, mesma
+atribuição ODbL).

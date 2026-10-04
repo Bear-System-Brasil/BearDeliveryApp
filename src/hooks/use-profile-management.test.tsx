@@ -98,11 +98,11 @@ const { getNeighborhoods: realGetNeighborhoods } = await vi.importActual<
 >("@/services/neighborhoods");
 
 const PIN = { lat: -25.44, lng: -49.29 };
-// `center` de es-castelo.json (média dos 24 bairros com coordenada).
-const CASTELO_CENTER = { lat: -20.6120106, lng: -41.2061312 };
+// `center` de es-castelo.json (média dos 32 bairros).
+const CASTELO_CENTER = { lat: -20.6153082, lng: -41.2063262 };
 
-// Caso "bairro sem coordenada" numa lista simulada com o mesmo center, para
-// não depender de qual bairro real ainda está sem ponto.
+// Todos os bairros da lista real têm coordenada; o caso "bairro sem
+// coordenada" usa uma lista simulada com o mesmo center.
 const UNPINNED = "Bairro Sem Ponto";
 const LIST_WITH_UNPINNED = {
   state: "ES",
@@ -1008,6 +1008,24 @@ describe("useProfileManagement", () => {
       await waitFor(() =>
         expect(result.current.addressCoords).toEqual({
           coords: { lat: -20.6030775, lng: -41.2051535 },
+          source: "neighborhood",
+        }),
+      );
+      expect(result.current.pinZoom).toBe(15);
+      expect(nominatimCalls(fetchMock)).toHaveLength(0);
+    });
+
+    it("Caparaó vai para a coordenada do mapa oficial, com zoom de bairro", async () => {
+      const fetchMock = stubNominatim(nominatimHit("-20.6", "-41.2"));
+      const { result } = await renderProfile();
+      fillCity(result);
+      await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
+
+      act(() => result.current.addressForm.setValue("neighborhood", "Caparaó"));
+
+      await waitFor(() =>
+        expect(result.current.addressCoords).toEqual({
+          coords: { lat: -20.60403, lng: -41.20758 },
           source: "neighborhood",
         }),
       );

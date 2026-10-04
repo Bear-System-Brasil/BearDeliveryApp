@@ -4,8 +4,8 @@
   "ibgeCode": "3201407",
   "cep": "29360-000",
   "center": {
-    "lat": -20.6120106,
-    "lng": -41.2061312
+    "lat": -20.6153082,
+    "lng": -41.2063262
   },
   "neighborhoods": [
     {
@@ -25,8 +25,8 @@
     },
     {
       "name": "Caparaó",
-      "lat": null,
-      "lng": null
+      "lat": -20.60403,
+      "lng": -41.20758
     },
     {
       "name": "Castelo III",
@@ -67,18 +67,18 @@
     },
     {
       "name": "Jardim Primavera",
-      "lat": null,
-      "lng": null
+      "lat": -20.64898,
+      "lng": -41.20755
     },
     {
       "name": "Jardins",
-      "lat": null,
-      "lng": null
+      "lat": -20.64247,
+      "lng": -41.21773
     },
     {
       "name": "Maravilha",
-      "lat": null,
-      "lng": null
+      "lat": -20.61878,
+      "lng": -41.19906
     },
     {
       "name": "Niterói",
@@ -97,8 +97,8 @@
     },
     {
       "name": "Pedra Luz",
-      "lat": null,
-      "lng": null
+      "lat": -20.63483,
+      "lng": -41.21332
     },
     {
       "name": "Pouso Alto",
@@ -117,8 +117,8 @@
     },
     {
       "name": "Santa Fé",
-      "lat": null,
-      "lng": null
+      "lat": -20.61054,
+      "lng": -41.21069
     },
     {
       "name": "Santa Mônica",
@@ -157,13 +157,13 @@
     },
     {
       "name": "Vista do Rio",
-      "lat": null,
-      "lng": null
+      "lat": -20.61463,
+      "lng": -41.20245
     },
     {
       "name": "Vista Linda",
-      "lat": null,
-      "lng": null
+      "lat": -20.62735,
+      "lng": -41.19691
     },
     {
       "name": "Volta Redonda",
