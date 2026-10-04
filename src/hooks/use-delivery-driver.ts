@@ -122,6 +122,17 @@ export const useDeliveryDriver = () => {
 
   const { myDeliveries, recentlyDelivered, availableDeliveries } = groups;
 
+  // "Em rota" e "A coletar" saem de `myDeliveries` em vez de filtrar de novo
+  // a resposta: as duas listas herdam a ordem e o critério de "ativa" dela.
+  const inRouteDeliveries = useMemo(
+    () => myDeliveries.filter((delivery) => delivery.status === "PICKED_UP"),
+    [myDeliveries],
+  );
+  const toPickUpDeliveries = useMemo(
+    () => myDeliveries.filter((delivery) => delivery.status === "ACCEPTED"),
+    [myDeliveries],
+  );
+
   // ─── Alerta sonoro pra entrega nova disponível ────────────────────────────
   // Toque único, sempre que aparece uma PENDING nova - inclusive com corrida
   // em andamento, já que o entregador leva vários pedidos na mesma saída.
@@ -256,15 +267,17 @@ export const useDeliveryDriver = () => {
     onError: () => toast.error("Erro de conexão"),
   });
 
-  const cancelMutation = useMutation({
+  // Devolver, não cancelar: a entrega volta pra lista de disponíveis e outro
+  // entregador pode pegar. Cancelar encerraria a entrega do cliente.
+  const returnMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      apiService.deliveries.cancel(id, reason),
+      apiService.deliveries.returnToPool(id, reason),
     onSuccess: (response) => {
       invalidate();
       if (response.success) {
-        toast.success("Entrega cancelada");
+        toast.success("Entrega devolvida - outro entregador pode aceitar");
       } else {
-        toast.error(response.message || "Erro ao cancelar entrega");
+        toast.error(response.message || "Erro ao devolver entrega");
       }
     },
     onError: () => toast.error("Erro de conexão"),
@@ -278,8 +291,8 @@ export const useDeliveryDriver = () => {
   const advancingId = advanceMutation.isPending
     ? (advanceMutation.variables?.id ?? null)
     : null;
-  const cancelingId = cancelMutation.isPending
-    ? (cancelMutation.variables?.id ?? null)
+  const returningId = returnMutation.isPending
+    ? (returnMutation.variables?.id ?? null)
     : null;
 
   return {
@@ -287,21 +300,27 @@ export const useDeliveryDriver = () => {
     isError,
     refetch,
     ...groups,
+    /** Já coletadas: o que está na rua e o entregador olha primeiro. */
+    inRouteDeliveries,
+    /** Aceitas e ainda não buscadas no restaurante. */
+    toPickUpDeliveries,
     soundEnabled,
     toggleSound: toggleMuted,
     acceptDelivery: acceptMutation.mutate,
     acceptingId,
     advanceDelivery: advanceMutation.mutate,
     advancingId,
-    cancelDelivery: cancelMutation.mutate,
-    cancelingId,
-    isCanceling: cancelMutation.isPending,
+    returnDelivery: returnMutation.mutate,
+    returningId,
+    isReturning: returnMutation.isPending,
     /** Envelope da rota - `total` e `totalPages` da página pedida. */
     meta: data?.meta,
     /** Há entrega além desta página: a tela avisa em vez de truncar calada. */
     hasMorePages: (data?.meta.totalPages ?? 1) > 1,
     counts: {
       mine: myDeliveries.length,
+      inRoute: inRouteDeliveries.length,
+      toPickUp: toPickUpDeliveries.length,
       recent: recentlyDelivered.length,
       available: availableDeliveries.length,
     },

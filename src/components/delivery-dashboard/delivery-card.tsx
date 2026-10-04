@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   Banknote,
   Check,
+  ChefHat,
   MapPin,
   MessageSquareText,
   Navigation,
@@ -16,8 +17,9 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   buildMapsLink,
-  canCancel,
-  formatAddressLines,
+  canReturn,
+  canSeeCustomerData,
+  formatVisibleAddressLines,
   getCourierEarnings,
   getCustomerName,
   getCustomerPhone,
@@ -28,6 +30,7 @@ import {
   getRestaurantLogo,
   getRestaurantName,
   isAvailable,
+  isWaitingKitchen,
   isSameMoney,
   STATUS_LABEL,
   STATUS_TONE,
@@ -40,7 +43,7 @@ type Props = {
   delivery: Delivery;
   onAccept?: (id: string) => void;
   onAdvance?: (delivery: Delivery) => void;
-  onCancel?: (delivery: Delivery) => void;
+  onReturn?: (delivery: Delivery) => void;
   /** Esta entrega tem um request em andamento - só ela trava, não a tela. */
   busy?: boolean;
   /** Entregas fechadas: sem ações, só o registro do que aconteceu. */
@@ -171,13 +174,15 @@ export function DeliveryCard({
   delivery,
   onAccept,
   onAdvance,
-  onCancel,
+  onReturn,
   busy = false,
   compact = false,
 }: Props) {
-  const addressLines = formatAddressLines(delivery.deliveryAddress);
-  const mapsLink = buildMapsLink(delivery.deliveryAddress);
-  const phone = getCustomerPhone(delivery);
+  // Antes do aceite, só a região: sem rua, nome, foto, telefone nem Maps.
+  const showCustomer = canSeeCustomerData(delivery);
+  const addressLines = formatVisibleAddressLines(delivery);
+  const mapsLink = showCustomer ? buildMapsLink(delivery.deliveryAddress) : null;
+  const phone = showCustomer ? getCustomerPhone(delivery) : null;
   const orderTotal = getOrderTotal(delivery);
   const earnings = getCourierEarnings(delivery);
   const nextStatus = getNextStatus(delivery);
@@ -252,7 +257,7 @@ export function DeliveryCard({
                 Endereço não informado
               </p>
             )}
-            {delivery.deliveryAddress?.reference && (
+            {showCustomer && delivery.deliveryAddress?.reference && (
               <p className="mt-1 text-[13px] font-medium text-muted-foreground">
                 Referência: {delivery.deliveryAddress.reference}
               </p>
@@ -274,22 +279,24 @@ export function DeliveryCard({
           </div>
         )}
 
-        <div className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2.5">
-          <Thumb
-            src={getCustomerPhoto(delivery)}
-            alt=""
-            fallback={<User className="h-4 w-4" />}
-            className="h-10 w-10 rounded-full"
-          />
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Cliente
-            </p>
-            <p className="mt-0.5 truncate text-[14px] font-semibold text-foreground">
-              {getCustomerName(delivery)}
-            </p>
+        {showCustomer && (
+          <div className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2.5">
+            <Thumb
+              src={getCustomerPhoto(delivery)}
+              alt=""
+              fallback={<User className="h-4 w-4" />}
+              className="h-10 w-10 rounded-full"
+            />
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Cliente
+              </p>
+              <p className="mt-0.5 truncate text-[14px] font-semibold text-foreground">
+                {getCustomerName(delivery)}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <PaymentRow payment={payment} />
 
@@ -340,6 +347,18 @@ export function DeliveryCard({
           </Button>
         )}
 
+        {/* Mesmo lugar e altura do botão de coletar, pra o card não pular
+            quando a cozinha libera (a lista atualiza sozinha a cada 15s). */}
+        {isWaitingKitchen(delivery) && onAdvance && (
+          <div
+            role="status"
+            className="flex h-14 w-full items-center justify-center rounded-xl bg-muted text-[15px] font-bold text-muted-foreground"
+          >
+            <ChefHat className="mr-2 h-5 w-5" />
+            Aguardando a cozinha
+          </div>
+        )}
+
         {nextStatus && onAdvance && (
           <Button
             type="button"
@@ -373,7 +392,8 @@ export function DeliveryCard({
               </a>
             </Button>
           )}
-          {/* Oculto até o telefone vir no payload do backend. */}
+          {/* Só depois do aceite (ver canSeeCustomerData) e com telefone
+              utilizável no payload. */}
           {phone && (
             <Button
               asChild
@@ -388,10 +408,10 @@ export function DeliveryCard({
           )}
         </div>
 
-        {canCancel(delivery) && onCancel && (
+        {canReturn(delivery) && onReturn && (
           <button
             type="button"
-            onClick={() => onCancel(delivery)}
+            onClick={() => onReturn(delivery)}
             disabled={busy}
             className="h-11 rounded-xl text-[13px] font-bold text-red-500 transition hover:bg-red-50 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-950/40"
           >

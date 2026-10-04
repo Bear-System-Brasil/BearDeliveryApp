@@ -57,6 +57,7 @@ vi.mock("@/services/api", async (importOriginal) => {
         getMyDeliveries: vi.fn(),
         updateStatus: vi.fn(),
         cancel: vi.fn(),
+        returnToPool: vi.fn(),
       },
     },
   };
@@ -154,7 +155,28 @@ describe("useDeliveryDriver", () => {
       expect(result.current.myDeliveries.map((d) => d.id)).toEqual(["p1", "a1"]);
       expect(result.current.recentlyDelivered.map((d) => d.id)).toEqual(["d1"]);
       expect(result.current.availableDeliveries.map((d) => d.id)).toEqual(["n1"]);
-      expect(result.current.counts).toEqual({ mine: 2, recent: 1, available: 1 });
+      expect(result.current.counts).toEqual({
+        mine: 2,
+        inRoute: 1,
+        toPickUp: 1,
+        recent: 1,
+        available: 1,
+      });
+    });
+
+    it("separa em rota (PICKED_UP) de a coletar (ACCEPTED), na ordem de chegada", async () => {
+      server = [
+        delivery("a1", "ACCEPTED", { created_at: new Date(Date.now() - 5 * MINUTE).toISOString() }),
+        delivery("p2", "PICKED_UP", { created_at: new Date(Date.now() - 2 * MINUTE).toISOString() }),
+        delivery("a2", "ACCEPTED", { created_at: new Date(Date.now() - 1 * MINUTE).toISOString() }),
+        delivery("p1", "PICKED_UP", { created_at: new Date(Date.now() - 8 * MINUTE).toISOString() }),
+        delivery("n1", "PENDING"),
+      ];
+
+      const { result } = await renderDriver();
+
+      expect(result.current.inRouteDeliveries.map((d) => d.id)).toEqual(["p1", "p2"]);
+      expect(result.current.toPickUpDeliveries.map((d) => d.id)).toEqual(["a1", "a2"]);
     });
 
     it("aceita a resposta como array cru, sem o envelope", async () => {
@@ -407,7 +429,7 @@ describe("useDeliveryDriver", () => {
 
       await waitFor(() => expect(result.current.acceptingId).toBe("n1"));
       expect(result.current.advancingId).toBeNull();
-      expect(result.current.cancelingId).toBeNull();
+      expect(result.current.returningId).toBeNull();
     });
 
     it("concluir a entrega avisa; coletar não mostra toast de sucesso", async () => {
@@ -443,23 +465,28 @@ describe("useDeliveryDriver", () => {
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Já entregue"));
     });
 
-    it("cancelar manda o motivo e avisa o sucesso", async () => {
-      deliveries.cancel.mockResolvedValue({ success: true });
+    it("devolver manda o motivo, não cancela, e avisa o sucesso", async () => {
+      deliveries.returnToPool.mockResolvedValue({ success: true });
       const { result } = await renderDriver();
 
-      act(() => result.current.cancelDelivery({ id: "a1", reason: "pneu furado" }));
+      act(() => result.current.returnDelivery({ id: "a1", reason: "pneu furado" }));
 
-      await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Entrega cancelada"));
-      expect(deliveries.cancel).toHaveBeenCalledWith("a1", "pneu furado");
+      await waitFor(() =>
+        expect(toast.success).toHaveBeenCalledWith(
+          "Entrega devolvida - outro entregador pode aceitar",
+        ),
+      );
+      expect(deliveries.returnToPool).toHaveBeenCalledWith("a1", "pneu furado");
+      expect(deliveries.cancel).not.toHaveBeenCalled();
     });
 
-    it("cancelamento recusado mostra o erro", async () => {
-      deliveries.cancel.mockResolvedValue({ success: false });
+    it("devolução recusada mostra o erro", async () => {
+      deliveries.returnToPool.mockResolvedValue({ success: false });
       const { result } = await renderDriver();
 
-      act(() => result.current.cancelDelivery({ id: "a1", reason: "pneu furado" }));
+      act(() => result.current.returnDelivery({ id: "a1", reason: "pneu furado" }));
 
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Erro ao cancelar entrega"));
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Erro ao devolver entrega"));
     });
 
     it("toda ação, mesmo recusada, atualiza a lista", async () => {

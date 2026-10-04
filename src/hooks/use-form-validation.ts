@@ -13,10 +13,28 @@ export const profileSchema = z.object({
   birthDate: z.string().optional(),
 });
 
+/** Valor salvo no número quando o cliente marca "Sem número". */
+export const NO_NUMBER = "S/N";
+
+export const NUMBER_MESSAGE = "Informe o número da casa ou marque Sem número";
+
+/** O número é o "Sem número" (S/N)? */
+export function isNoNumber(value: string | null | undefined) {
+  return (value ?? "").trim().toUpperCase() === NO_NUMBER;
+}
+
+/** Dígitos com uma letra opcional: 12, 12A, 12 A, 12-B. */
+const HOUSE_NUMBER = /^\d+(\s*-?\s*[a-z])?$/i;
+
 export const addressSchema = z.object({
   type: z.string().optional(),
   street: z.string().min(1, "Rua é obrigatória"),
-  number: z.string().min(1, "Número é obrigatório"),
+  number: z
+    .string()
+    .refine(
+      (value) => isNoNumber(value) || HOUSE_NUMBER.test(value.trim()),
+      NUMBER_MESSAGE,
+    ),
   complement: z.string().optional(),
   neighborhood: z.string().min(1, "Bairro é obrigatório"),
   city: z.string().min(1, "Cidade é obrigatória"),
