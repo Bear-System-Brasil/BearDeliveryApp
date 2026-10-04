@@ -113,12 +113,19 @@ export function useAuthModal({
     });
   };
 
+  // CPF é opcional (LDMF-281), mas se começou a preencher precisa estar
+  // completo - meio CPF iria pro backend e voltaria como "CPF inválido".
+  const isCpfOk = (cpf: string) => {
+    const digits = cpf.replace(/\D/g, "");
+    return digits.length === 0 || digits.length === 11;
+  };
+
   const isFormValid = () => {
     if (activeTab === "login") {
       return loginData.email && loginData.password;
     } else {
       return (
-        registerData.name && registerData.email && registerData.cpf &&
+        registerData.name && registerData.email && isCpfOk(registerData.cpf) &&
         registerData.phone && registerData.password && registerData.confirmPassword &&
         registerData.birthDate && passwordErrors.length === 0 && passwordMatch &&
         acceptedTerms
@@ -173,10 +180,13 @@ export function useAuthModal({
           setSubmitMessage({ type: "error", text: loginResponse.message || "Email ou senha incorretos. Tente novamente." });
         }
       } else {
+        const cpf = registerData.cpf.replace(/\D/g, "");
         const apiData = {
           name: registerData.name,
           email: registerData.email,
-          cpf: registerData.cpf.replace(/\D/g, ""),
+          // Sem CPF, o campo nem vai: string vazia o backend validaria como
+          // CPF inválido.
+          ...(cpf ? { cpf } : {}),
           phone: registerData.phone.replace(/\D/g, ""),
           password: registerData.password,
           birthDate: registerData.birthDate,
