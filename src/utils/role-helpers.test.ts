@@ -4,6 +4,7 @@ import {
   isClientRole,
   isCompanyAdminRole,
   isCompanyStaffRole,
+  isManagerRole,
 } from "./role-helpers";
 
 describe("isCompanyStaffRole", () => {
@@ -60,5 +61,21 @@ describe("getProfileRoute", () => {
     expect(getProfileRoute("financial")).toBe("/profile");
     expect(getProfileRoute("client")).toBe("/profile");
     expect(getProfileRoute(undefined)).toBe("/profile");
+  });
+});
+
+describe("isManagerRole", () => {
+  it("reconhece owner, admin e manager", () => {
+    expect(isManagerRole("owner")).toBe(true);
+    expect(isManagerRole("admin")).toBe(true);
+    expect(isManagerRole("manager")).toBe(true);
+  });
+
+  it("deixa de fora financial, cook, delivery, cliente e valor vazio", () => {
+    expect(isManagerRole("financial")).toBe(false);
+    expect(isManagerRole("cook")).toBe(false);
+    expect(isManagerRole("delivery")).toBe(false);
+    expect(isManagerRole("client")).toBe(false);
+    expect(isManagerRole(undefined)).toBe(false);
   });
 });
