@@ -32,9 +32,10 @@ rota vai devolver:
 
 ## es-castelo.json (Castelo/ES)
 
-- **Nomes oficiais:** Lei Municipal de Castelo nº 4.641, de 15/09/2026.
-  "Jardim Primavera" é nome alternativo do Pantanal (decisão de 03/10/2026),
-  então a lista tem 31 entradas.
+- **Nomes oficiais:** Lei Municipal de Castelo nº 4.641, de 15/09/2026. A
+  lista tem os 32 bairros da lei. Pantanal e Jardim Primavera são bairros
+  separados e vizinhos (a junção feita a partir do OSM foi revertida em
+  03/10/2026; ver LDMF-278).
 - **CEP e código IBGE:** confirmados pela equipe (29360-000 e 3201407).
 - **Nomes alternativos de Castelo III:** "Castelo 3" e "Pombal" são como os
   moradores chamam o bairro (informado pela equipe); "Castelo Três" e
@@ -72,8 +73,11 @@ rota vai devolver:
 | Vila Nova | node/3573536251 |
 | Volta Redonda | node/3573536291 |
 
-Sem coordenada (`null`): Caparaó, Jardins, Maravilha, Pedra Luz, Santa Fé,
-Vista do Rio e Vista Linda. Para eles o pino começa no `center`.
+A coordenada do node/3744557670 (no OSM, "Jardim Primavera" com o alternativo
+"Pantanal") fica com o Pantanal, confirmado pela equipe.
+
+Sem coordenada (`null`): Caparaó, Jardim Primavera, Jardins, Maravilha, Pedra
+Luz, Santa Fé, Vista do Rio e Vista Linda. Para eles o pino começa no `center`.
 
 **`center`:** média dos 24 bairros com coordenada da tabela acima, calculada
 por script em aritmética decimal exata a partir dos valores do JSON (04/10/2026):
@@ -81,5 +85,5 @@ por script em aritmética decimal exata a partir dos valores do JSON (04/10/2026
 - soma das latitudes: -494,6882539 → ÷ 24 = -20,612010579… → **-20.6120106**
 - soma das longitudes: -988,9471489 → ÷ 24 = -41,206131204… → **-41.2061312**
 
-Os 7 bairros sem coordenada não entram na média. O ponto é derivado das
+Os 8 bairros sem coordenada não entram na média. O ponto é derivado das
 coordenadas do OpenStreetMap acima (mesma atribuição ODbL).

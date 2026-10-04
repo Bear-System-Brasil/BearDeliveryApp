@@ -120,8 +120,8 @@ export function useAddressPin({ fields, onPin, otherNeighborhood = false }: Opti
     if (!key || key === baseline.current.neighborhood) return;
     if (otherNeighborhood) return;
 
-    // Nome oficial ou alternativo. Trocar um pelo outro (ex.: "Jardim
-    // Primavera" → "Pantanal") é o mesmo bairro e não mexe no pino.
+    // Nome oficial ou alternativo. Trocar um pelo outro (ex.: "Pombal" →
+    // "Castelo III") é o mesmo bairro e não mexe no pino.
     const item = findNeighborhood(neighborhoodList, key);
     const previous = findNeighborhood(neighborhoodList, baseline.current.neighborhood);
     baseline.current.neighborhood = key;

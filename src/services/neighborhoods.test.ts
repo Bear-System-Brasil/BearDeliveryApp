@@ -7,12 +7,12 @@ import {
   neighborhoodLabel,
 } from "./neighborhoods";
 
-// Lei Municipal de Castelo nº 4.641/2026, grafia conforme LDMF-264, sem
-// "Jardim Primavera", que virou nome alternativo do Pantanal (LDMF-278).
+// Lei Municipal de Castelo nº 4.641/2026, grafia conforme LDMF-264: os 32
+// bairros, com Pantanal e Jardim Primavera separados (LDMF-278).
 const OFFICIAL_CASTELO = [
   "Aracuí", "Baixa Itália", "Bela Vista", "Caparaó", "Castelo III", "Cava-Roxa",
   "Centro", "Esplanada", "Exposição", "Garagem", "Independência",
-  "Jardins", "Maravilha", "Niterói",
+  "Jardim Primavera", "Jardins", "Maravilha", "Niterói",
   "Nossa Senhora Aparecida", "Pantanal", "Pedra Luz", "Pouso Alto", "Prainha",
   "Santa Bárbara", "Santa Fé", "Santa Mônica", "Santo Agostinho",
   "Santo Andrezinho", "São Miguel", "Vila Barbosa", "Vila Izabel", "Vila Nova",
@@ -20,10 +20,23 @@ const OFFICIAL_CASTELO = [
 ];
 
 describe("getNeighborhoods", () => {
-  it("Castelo/ES tem os 31 bairros com a grafia da lei", async () => {
+  it("Castelo/ES tem os 32 bairros com a grafia da lei", async () => {
     const list = await getNeighborhoods("ES", "Castelo");
 
+    expect(OFFICIAL_CASTELO).toHaveLength(32);
     expect(list?.neighborhoods.map((n) => n.name)).toEqual(OFFICIAL_CASTELO);
+  });
+
+  it("Pantanal e Jardim Primavera são bairros separados, sem nome alternativo entre eles", async () => {
+    const list = await getNeighborhoods("ES", "Castelo");
+    const pantanal = list!.neighborhoods.find((n) => n.name === "Pantanal");
+    const primavera = list!.neighborhoods.find((n) => n.name === "Jardim Primavera");
+
+    expect(pantanal).toEqual({ name: "Pantanal", lat: -20.646966, lng: -41.2076957 });
+    expect(pantanal).not.toHaveProperty("altNames");
+    expect(primavera).toEqual({ name: "Jardim Primavera", lat: null, lng: null });
+    expect(findNeighborhood(list, "Jardim Primavera")?.name).toBe("Jardim Primavera");
+    expect(findNeighborhood(list, "Pantanal")?.name).toBe("Pantanal");
   });
 
   it("coordenadas exatamente como no levantamento da LDMF-264; sem fonte, null", async () => {
@@ -44,6 +57,7 @@ describe("getNeighborhoods", () => {
       Exposição: [-20.6096767, -41.2123698],
       Garagem: [-20.5957987, -41.2150298],
       Independência: [-20.5980544, -41.2053881],
+      "Jardim Primavera": null,
       Jardins: null,
       Maravilha: null,
       Niterói: [-20.607208, -41.1976926],
@@ -115,7 +129,6 @@ describe("getNeighborhoods", () => {
     expect(altNames).toEqual({
       "Castelo III": ["Castelo 3", "Castelo Três", "Pombal", "Ivo Martins"],
       "Cava-Roxa": ["Cava Roxa"],
-      Pantanal: ["Jardim Primavera"],
     });
     expect(JSON.stringify(list)).not.toContain("Garage\"");
   });
@@ -125,7 +138,6 @@ describe("findNeighborhood", () => {
   it("nome alternativo encontra o bairro oficial", async () => {
     const list = await getNeighborhoods("ES", "Castelo");
 
-    expect(findNeighborhood(list, "Jardim Primavera")?.name).toBe("Pantanal");
     expect(findNeighborhood(list, "castelo tres")?.name).toBe("Castelo III");
     expect(findNeighborhood(list, "Ivo Martins")?.name).toBe("Castelo III");
     expect(findNeighborhood(list, "Pombal")?.name).toBe("Castelo III");
@@ -156,7 +168,8 @@ describe("texto da opção na lista", () => {
       neighborhoodLabel(list!.neighborhoods.find((n) => n.name === name)!);
 
     expect(label("Castelo III")).toBe("Castelo III (Pombal, Ivo Martins)");
-    expect(label("Pantanal")).toBe("Pantanal (Jardim Primavera)");
+    expect(label("Pantanal")).toBe("Pantanal");
+    expect(label("Jardim Primavera")).toBe("Jardim Primavera");
     expect(label("Cava-Roxa")).toBe("Cava-Roxa");
     expect(label("Centro")).toBe("Centro");
   });

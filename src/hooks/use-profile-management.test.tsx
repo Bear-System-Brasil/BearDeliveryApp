@@ -101,6 +101,21 @@ const PIN = { lat: -25.44, lng: -49.29 };
 // `center` de es-castelo.json (média dos 24 bairros com coordenada).
 const CASTELO_CENTER = { lat: -20.6120106, lng: -41.2061312 };
 
+// Caso "bairro sem coordenada" numa lista simulada com o mesmo center, para
+// não depender de qual bairro real ainda está sem ponto.
+const UNPINNED = "Bairro Sem Ponto";
+const LIST_WITH_UNPINNED = {
+  state: "ES",
+  city: "Castelo",
+  ibgeCode: null,
+  cep: null,
+  center: CASTELO_CENTER,
+  neighborhoods: [
+    { name: "Centro", lat: -20.6030775, lng: -41.2051535 },
+    { name: UNPINNED, lat: null, lng: null },
+  ],
+};
+
 /** Resultado do Nominatim dentro (ou fora) de Castelo/ES. */
 const nominatimHit = (lat: string, lon: string, town = "Castelo") => [
   { lat, lon, address: { town, "ISO3166-2-lvl4": "BR-ES" } },
@@ -870,14 +885,18 @@ describe("useProfileManagement", () => {
 
       fillCity(result);
 
-      await waitFor(() => expect(result.current.neighborhoodOptions).toHaveLength(31));
+      await waitFor(() => expect(result.current.neighborhoodOptions).toHaveLength(32));
       expect(result.current.neighborhoodOptions).toContainEqual({
         value: "Castelo III",
         label: "Castelo III (Pombal, Ivo Martins)",
       });
       expect(result.current.neighborhoodOptions).toContainEqual({
         value: "Pantanal",
-        label: "Pantanal (Jardim Primavera)",
+        label: "Pantanal",
+      });
+      expect(result.current.neighborhoodOptions).toContainEqual({
+        value: "Jardim Primavera",
+        label: "Jardim Primavera",
       });
       expect(result.current.neighborhoodOptions).toContainEqual({
         value: "Cava-Roxa",
@@ -891,14 +910,40 @@ describe("useProfileManagement", () => {
       fillCity(result);
       await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
 
-      act(() => result.current.addressForm.setValue("neighborhood", "Jardim Primavera"));
+      act(() => result.current.addressForm.setValue("neighborhood", "Pombal"));
 
       await waitFor(() =>
-        expect(result.current.addressForm.getValues("neighborhood")).toBe("Pantanal"),
+        expect(result.current.addressForm.getValues("neighborhood")).toBe("Castelo III"),
       );
       expect(result.current.neighborhoodOptions?.map((option) => option.value)).not.toContain(
-        "Jardim Primavera",
+        "Pombal",
       );
+    });
+
+    it("endereço salvo como Jardim Primavera abre como Jardim Primavera, não como Pantanal", async () => {
+      savedAddresses = [
+        stored("a1", {
+          city: "Castelo",
+          state: "ES",
+          neighborhood: "Jardim Primavera",
+          latitude: -20.649,
+          longitude: -41.2075,
+        }),
+      ];
+      const fetchMock = stubNominatim([]);
+      const { result } = await renderProfile();
+      await waitFor(() => expect(result.current.addresses).toHaveLength(1));
+      act(() => result.current.handleEditAddress(result.current.addresses[0]));
+      await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
+      await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+
+      expect(result.current.addressForm.getValues("neighborhood")).toBe("Jardim Primavera");
+      expect(result.current.isOtherNeighborhood).toBe(false);
+      expect(result.current.addressCoords).toEqual({
+        coords: { lat: -20.649, lng: -41.2075 },
+        source: "stored",
+      });
+      expect(nominatimCalls(fetchMock)).toHaveLength(0);
     });
 
     it("endereço salvo com nome alternativo abre com o oficial e mantém o pino salvo", async () => {
@@ -906,7 +951,7 @@ describe("useProfileManagement", () => {
         stored("a1", {
           city: "Castelo",
           state: "ES",
-          neighborhood: "Jardim Primavera",
+          neighborhood: "Pombal",
           latitude: -20.64,
           longitude: -41.2,
         }),
@@ -917,7 +962,7 @@ describe("useProfileManagement", () => {
       act(() => result.current.handleEditAddress(result.current.addresses[0]));
 
       await waitFor(() =>
-        expect(result.current.addressForm.getValues("neighborhood")).toBe("Pantanal"),
+        expect(result.current.addressForm.getValues("neighborhood")).toBe("Castelo III"),
       );
       expect(result.current.addressCoords).toEqual({
         coords: { lat: -20.64, lng: -41.2 },
@@ -970,13 +1015,14 @@ describe("useProfileManagement", () => {
       expect(nominatimCalls(fetchMock)).toHaveLength(0);
     });
 
-    it("bairro sem coordenada (Caparaó) move o pino para o center da cidade, sem Nominatim", async () => {
+    it("bairro sem coordenada move o pino para o center da cidade, sem Nominatim", async () => {
+      vi.mocked(getNeighborhoods).mockResolvedValue(LIST_WITH_UNPINNED);
       const fetchMock = stubNominatim(nominatimHit("-20.6", "-41.2"));
       const { result } = await renderProfile();
       fillCity(result);
       await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
 
-      act(() => result.current.addressForm.setValue("neighborhood", "Caparaó"));
+      act(() => result.current.addressForm.setValue("neighborhood", UNPINNED));
 
       await waitFor(() =>
         expect(result.current.addressCoords).toEqual({
@@ -996,7 +1042,7 @@ describe("useProfileManagement", () => {
         cep: null,
         neighborhoods: [
           { name: "Centro", lat: -20.6033, lng: -41.1847 },
-          { name: "Caparaó", lat: null, lng: null },
+          { name: UNPINNED, lat: null, lng: null },
         ],
       });
       const fetchMock = stubNominatim(nominatimHit("-20.6", "-41.2"));
@@ -1010,7 +1056,7 @@ describe("useProfileManagement", () => {
       );
       expect(nominatimCalls(fetchMock)).toHaveLength(1);
 
-      act(() => result.current.changeNeighborhood("Caparaó"));
+      act(() => result.current.changeNeighborhood(UNPINNED));
 
       await waitFor(() =>
         expect(result.current.addressCoords).toEqual({
@@ -1126,12 +1172,13 @@ describe("useProfileManagement", () => {
         return { ok: true, status: 200, json: async () => body };
       });
       vi.stubGlobal("fetch", fetchMock);
+      vi.mocked(getNeighborhoods).mockResolvedValue(LIST_WITH_UNPINNED);
       const { result } = await renderProfile();
       fillCity(result);
       await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
 
-      // Caparaó não tem coordenada: o pino vai para o center da cidade.
-      act(() => result.current.addressForm.setValue("neighborhood", "Caparaó"));
+      // Bairro sem coordenada: o pino vai para o center da cidade.
+      act(() => result.current.addressForm.setValue("neighborhood", UNPINNED));
       await waitFor(() => expect(result.current.addressCoords?.source).toBe("neighborhood"));
       expect(result.current.pinZoom).toBe(13);
       const keyAfterNeighborhood = result.current.pinRecenterKey;

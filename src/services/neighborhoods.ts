@@ -36,9 +36,9 @@ export type CityNeighborhoods = {
 };
 
 // Lista local temporária (LDMF-260). Fonte dos nomes: Lei Municipal de Castelo
-// nº 4.641, de 15/09/2026, na grafia da lei. "Jardim Primavera" é nome
-// alternativo do Pantanal (LDMF-278), então a lista tem 31 entradas. Fontes e
-// atribuição em src/data/neighborhoods/README.md.
+// nº 4.641, de 15/09/2026, na grafia da lei: os 32 bairros, com Pantanal e
+// Jardim Primavera separados (LDMF-278). Fontes e atribuição em
+// src/data/neighborhoods/README.md.
 const LOCAL_LISTS: CityNeighborhoods[] = [casteloEs as CityNeighborhoods];
 
 /**

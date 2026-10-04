@@ -66,6 +66,11 @@
       "lng": -41.2053881
     },
     {
+      "name": "Jardim Primavera",
+      "lat": null,
+      "lng": null
+    },
+    {
       "name": "Jardins",
       "lat": null,
       "lng": null
@@ -87,7 +92,6 @@
     },
     {
       "name": "Pantanal",
-      "altNames": ["Jardim Primavera"],
       "lat": -20.6469660,
       "lng": -41.2076957
     },

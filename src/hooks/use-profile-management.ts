@@ -169,7 +169,7 @@ export const useProfileManagement = () => {
   };
 
   // Bairro digitado ou vindo do CEP/endereço salvo com nome alternativo (ex.:
-  // "Jardim Primavera") vira o nome oficial ("Pantanal"): o formulário exibe
+  // "Pombal") vira o nome oficial ("Castelo III"): o formulário exibe
   // e salva sempre o oficial (LDMF-278).
   // "Outro" escolhido agora, ou endereço salvo com bairro fora da lista (o
   // nome digitado antes continua editável no campo de texto).
