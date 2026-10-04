@@ -26,6 +26,7 @@ const IBGE: Record<string, unknown> = {
 };
 
 const onPreviousFieldChange = vi.fn();
+const handleAddAddress = vi.fn();
 
 function Harness(extra: { isSearchingAddress?: boolean; addressNotFound?: boolean }) {
   const form = useAddressForm();
@@ -37,7 +38,7 @@ function Harness(extra: { isSearchingAddress?: boolean; addressNotFound?: boolea
       <output data-testid="valor-bairro">{form.watch("neighborhood")}</output>
       <DeliveryForm
         handleCloseAddressModal={vi.fn()}
-        handleAddAddress={vi.fn()}
+        handleAddAddress={handleAddAddress}
         applyCoords={vi.fn()}
         addressForm={form}
         addressCoords={null}
@@ -101,6 +102,7 @@ async function fillUntilNumber() {
 describe("DeliveryForm: ordem e trava dos campos", () => {
   beforeEach(() => {
     onPreviousFieldChange.mockClear();
+    handleAddAddress.mockClear();
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => ({
@@ -322,6 +324,74 @@ describe("DeliveryForm: ordem e trava dos campos", () => {
 
       fireEvent.change(field(/Bairro/), { target: { value: "__outro__" } });
       expect(field(/Qual é o seu bairro/).value).toBe("");
+    });
+  });
+
+  describe("campo Número", () => {
+    const submit = () =>
+      fireEvent.submit(screen.getByRole("button", { name: "Salvar Endereço" }).closest("form")!);
+
+    async function fillUntilStreet() {
+      fireEvent.change(field(/CEP/), { target: { value: "29360000" } });
+      await pickState("ES");
+      await pickCity("Castelo");
+      fireEvent.change(field(/Bairro/), { target: { value: "Centro" } });
+      fireEvent.change(field(/Rua/), { target: { value: "Rua Principal" } });
+    }
+
+    it("recusa texto sem dígito (vtech) com a mensagem do Sem número", async () => {
+      renderForm();
+      await fillUntilStreet();
+      fireEvent.change(field(/Número/), { target: { value: "vtech" } });
+
+      submit();
+
+      await waitFor(() =>
+        expect(screen.getByText("Informe o número da casa ou marque Sem número")).toBeTruthy(),
+      );
+      expect(handleAddAddress).not.toHaveBeenCalled();
+    });
+
+    it.each(["12", "12A", "12-B"])("aceita %s", async (value) => {
+      renderForm();
+      await fillUntilStreet();
+      fireEvent.change(field(/Número/), { target: { value } });
+
+      submit();
+
+      await waitFor(() => expect(handleAddAddress).toHaveBeenCalledTimes(1));
+      expect(handleAddAddress.mock.calls[0][0]).toMatchObject({ number: value });
+      expect(screen.queryByText("Informe o número da casa ou marque Sem número")).toBeNull();
+    });
+
+    it("Sem número trava o campo e salva S/N; desmarcar libera vazio", async () => {
+      renderForm();
+      await fillUntilStreet();
+      fireEvent.change(field(/Número/), { target: { value: "45" } });
+
+      fireEvent.click(screen.getByLabelText("Sem número"));
+
+      expect(field(/Número/).disabled).toBe(true);
+      expect(field(/Número/).value).toBe("S/N");
+      await waitFor(() => expect(field(/Complemento/).disabled).toBe(false));
+
+      submit();
+
+      await waitFor(() => expect(handleAddAddress).toHaveBeenCalledTimes(1));
+      expect(handleAddAddress.mock.calls[0][0]).toMatchObject({ number: "S/N" });
+
+      fireEvent.click(screen.getByLabelText("Sem número"));
+
+      expect(field(/Número/).disabled).toBe(false);
+      expect(field(/Número/).value).toBe("");
+    });
+
+    it("Sem número fica travado até a rua ser preenchida", async () => {
+      renderForm();
+      await pickState("ES");
+      await pickCity("Castelo");
+
+      expect((screen.getByLabelText("Sem número") as HTMLInputElement).disabled).toBe(true);
     });
   });
 });

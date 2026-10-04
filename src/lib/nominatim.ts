@@ -156,7 +156,8 @@ export function createNominatimClient({
     }: CityRef & { street: string; number: string }) {
       return locate(
         {
-          street: `${number.trim()} ${street.trim()}`,
+          // Sem número (S/N chega vazio aqui): só a rua.
+          street: [number.trim(), street.trim()].filter(Boolean).join(" "),
           city: ref.city.trim(),
           state: stateName(ref.state),
         },

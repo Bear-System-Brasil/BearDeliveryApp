@@ -19,6 +19,7 @@ import type {
   SourcedCoords,
 } from "@/lib/address-coordinates";
 import type { AddressFieldLocks } from "@/hooks/use-address-fields";
+import { isNoNumber, NO_NUMBER } from "@/hooks/use-form-validation";
 import type { IbgeState } from "@/services/ibge";
 import { Coords } from "@/types/restaurant";
 import { toast } from "sonner";
@@ -103,12 +104,18 @@ export function DeliveryForm({
   pinZoom,
   pinRecenterKey,
 }: Props) {
-  const [currentState, currentCity, currentNeighborhood] = addressForm.watch([
-    "state",
-    "city",
-    "neighborhood",
-  ]);
+  const [currentState, currentCity, currentNeighborhood, currentNumber] =
+    addressForm.watch(["state", "city", "neighborhood", "number"]);
   const errors = addressForm.formState.errors;
+  // "Sem número" é o próprio valor S/N no campo: endereço salvo assim já abre
+  // com a caixa marcada, e trocar rua/bairro (que limpa o número) desmarca.
+  const noNumber = isNoNumber(currentNumber);
+
+  const setNoNumber = (checked: boolean) =>
+    addressForm.setValue("number", checked ? NO_NUMBER : "", {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
 
   return (
     <Dialog open onOpenChange={(open) => !open && handleCloseAddressModal()}>
@@ -320,8 +327,21 @@ export function DeliveryForm({
                 id="address-number"
                 {...addressForm.register("number")}
                 placeholder="123"
-                disabled={fieldLocks.number}
+                disabled={fieldLocks.number || noNumber}
               />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="address-no-number"
+                  checked={noNumber}
+                  onChange={(e) => setNoNumber(e.target.checked)}
+                  disabled={fieldLocks.number}
+                  className="h-4 w-4 rounded border-border text-brand-500 focus:ring-brand-500"
+                />
+                <label htmlFor="address-no-number" className="text-sm cursor-pointer">
+                  Sem número
+                </label>
+              </div>
               {errors.number && (
                 <p className="text-sm text-destructive">{errors.number.message}</p>
               )}

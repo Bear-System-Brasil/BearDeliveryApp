@@ -1048,6 +1048,36 @@ describe("useProfileManagement", () => {
       expect(calls[0].searchParams.get("street")).toBe("45 Rua Principal");
     });
 
+    it("Sem número (S/N) busca só pela rua e salva S/N", async () => {
+      api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
+      const fetchMock = stubNominatim(nominatimHit("-20.61", "-41.19"));
+      const { result } = await renderProfile();
+      fillCity(result);
+
+      act(() => {
+        result.current.addressForm.setValue("street", "Rua Principal");
+        result.current.addressForm.setValue("number", "S/N");
+      });
+
+      await waitFor(() => expect(result.current.addressCoords?.source).toBe("geocode"), {
+        timeout: 3000,
+      });
+      const calls = nominatimCalls(fetchMock);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].searchParams.get("street")).toBe("Rua Principal");
+
+      await act(async () => {
+        await result.current.handleAddAddress(
+          formData({ ...result.current.addressForm.getValues(), zipCode: "29360-000" }),
+        );
+      });
+
+      expect(api.address.createUserAddress.mock.calls[0][0]).toMatchObject({
+        street: "Rua Principal",
+        number: "S/N",
+      });
+    });
+
     it("resultado fora da cidade é ignorado e o pino fica onde estava", async () => {
       const fetchMock = stubNominatim(nominatimHit("-20.3", "-40.3", "Vitória"));
       const { result } = await renderProfile();

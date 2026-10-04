@@ -11,6 +11,8 @@ import {
 } from "@/services/neighborhoods";
 import { Coords } from "@/types/restaurant";
 
+import { isNoNumber } from "./use-form-validation";
+
 /**
  * Espera depois da última tecla em rua/número antes de buscar: uma busca por
  * endereço preenchido, nunca uma por letra.
@@ -43,9 +45,16 @@ type Options = {
   otherNeighborhood?: boolean;
 };
 
+/**
+ * Chave do endereço buscável, ou "" enquanto falta campo. "Sem número" (S/N)
+ * conta como preenchido: a busca vai só com a rua.
+ */
 function addressKey({ street, number, city, state }: AddressPinFields) {
-  const parts = [street, number, city, state].map((part) => normalizeText(part));
-  return parts.every(Boolean) ? parts.join("|") : "";
+  const numberKey = isNoNumber(number) ? "s/n" : normalizeText(number);
+  const parts = [street, city, state].map((part) => normalizeText(part));
+  return numberKey && parts.every(Boolean)
+    ? [parts[0], numberKey, parts[1], parts[2]].join("|")
+    : "";
 }
 
 /** Centro da área urbana que veio com a lista de bairros, se houver. */
@@ -59,8 +68,9 @@ function listCenter(list: CityNeighborhoods | null) {
  * 1. Bairro da lista escolhido → centro do bairro; sem coordenada do bairro,
  *    o `center` da lista (LDMF-264), sem chamar o Nominatim. Só cidade cuja
  *    lista não traz `center` busca o centro da cidade no Nominatim.
- * 2. Rua e número preenchidos → uma busca no Nominatim; só move o pino se o
- *    ponto cair dentro da cidade. Sem resultado, o pino fica onde estava.
+ * 2. Rua e número (ou "Sem número") preenchidos → uma busca no Nominatim; só
+ *    move o pino se o ponto cair dentro da cidade. Sem resultado, o pino fica
+ *    onde estava.
  *
  * Vale sempre a última ação do cliente. Nada aqui roda na hora de salvar.
  */
@@ -87,8 +97,9 @@ export function useAddressPin({ fields, onPin, otherNeighborhood = false }: Opti
   const city = fields.city?.trim() ?? "";
   const neighborhood = fields.neighborhood ?? "";
   const street = fields.street ?? "";
-  const number = fields.number ?? "";
-  const currentAddressKey = addressKey({ street, number, city, state });
+  // "Sem número": a busca vai só com a rua.
+  const number = isNoNumber(fields.number) ? "" : (fields.number ?? "");
+  const currentAddressKey = addressKey({ street, number: fields.number, city, state });
 
   useEffect(() => {
     let active = true;
