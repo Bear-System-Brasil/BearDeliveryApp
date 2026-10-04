@@ -39,6 +39,15 @@ export const isAvailable = (delivery: Delivery) =>
 export const canCancel = (delivery: Delivery) => delivery.status === "ACCEPTED";
 
 /**
+ * Ligar para o cliente só depois do aceite, enquanto a corrida é dele.
+ * Antes disso o telefone é de um cliente que ainda não é atendido por este
+ * entregador - mostrar a todos na lista de disponíveis expõe dado pessoal
+ * sem necessidade (LGPD).
+ */
+export const canCallCustomer = (delivery: Delivery) =>
+  delivery.status === "ACCEPTED" || delivery.status === "PICKED_UP";
+
+/**
  * Próximo status do fluxo, ou null quando não há avanço possível pelo
  * entregador. É o que decide a ação primária do card.
  */

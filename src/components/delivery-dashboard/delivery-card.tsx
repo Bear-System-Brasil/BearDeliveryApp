@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   buildMapsLink,
+  canCallCustomer,
   canCancel,
   formatAddressLines,
   getCourierEarnings,
@@ -177,7 +178,7 @@ export function DeliveryCard({
 }: Props) {
   const addressLines = formatAddressLines(delivery.deliveryAddress);
   const mapsLink = buildMapsLink(delivery.deliveryAddress);
-  const phone = getCustomerPhone(delivery);
+  const phone = canCallCustomer(delivery) ? getCustomerPhone(delivery) : null;
   const orderTotal = getOrderTotal(delivery);
   const earnings = getCourierEarnings(delivery);
   const nextStatus = getNextStatus(delivery);
@@ -373,7 +374,8 @@ export function DeliveryCard({
               </a>
             </Button>
           )}
-          {/* Oculto até o telefone vir no payload do backend. */}
+          {/* Só depois do aceite (ver canCallCustomer) e com telefone
+              utilizável no payload. */}
           {phone && (
             <Button
               asChild
