@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bell, BellOff, Crosshair, Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+import { ChangePaymentMethodDialog } from "@/components/change-payment-method-dialog";
 import { AcceptConfirmDialog } from "@/components/delivery-dashboard/accept-confirm-dialog";
 import { DeliveryCard } from "@/components/delivery-dashboard/delivery-card";
 import { LocationDialog } from "@/components/delivery-dashboard/location-dialog";
@@ -19,9 +20,16 @@ import {
   type PositionFailure,
 } from "@/hooks/use-courier-position";
 import { useDeliveryDriver } from "@/hooks/use-delivery-driver";
-import { getNextStatus, pluralizeAvailable } from "@/lib/delivery";
+import {
+  getChangeablePayment,
+  getNextStatus,
+  pluralizeAvailable,
+} from "@/lib/delivery";
 import { cn } from "@/lib/utils";
-import type { Delivery } from "@/services/api";
+import type { Delivery, PaymentMethod } from "@/services/api";
+import { PAYMENT_CHANGE_REQUEST_ENABLED } from "@/services/manager-requests";
+import { useAuthStore } from "@/stores";
+import { isManagerRole } from "@/utils/role-helpers";
 
 type Filter = "all" | "inRoute" | "toPickUp" | "available";
 
@@ -126,9 +134,21 @@ export default function DeliveryDashboardPage() {
     returnDelivery,
     returningId,
     isReturning,
+    changePaymentMethod,
+    requestPaymentChange,
+    changingPaymentId,
+    isChangingPayment,
     hasMorePages,
     counts,
   } = useDeliveryDriver();
+
+  // A tela também é usada pela gerência (owner, admin, manager), que altera a
+  // forma de pagamento direto. O entregador só avisa a gerência - e esse
+  // botão fica escondido até o backend ter a rota (LDMF-284).
+  const role = useAuthStore((state) => state.user?.role);
+  const isManager = isManagerRole(role);
+  const canTouchPayment = isManager || PAYMENT_CHANGE_REQUEST_ENABLED;
+  const [paymentTarget, setPaymentTarget] = useState<Delivery | null>(null);
 
   const { shouldConfirm, setSkipConfirm } = useAcceptConfirmation();
   const { position, resolvePosition } = useCourierPosition();
@@ -240,6 +260,31 @@ export default function DeliveryDashboardPage() {
     );
   };
 
+  const handleConfirmPayment = async (method: PaymentMethod, note: string) => {
+    const payment = paymentTarget ? getChangeablePayment(paymentTarget) : null;
+    if (!paymentTarget || !payment) return false;
+
+    try {
+      const response = isManager
+        ? await changePaymentMethod({
+            deliveryId: paymentTarget.id,
+            paymentId: payment.id,
+            paymentMethod: method,
+          })
+        : await requestPaymentChange({
+            deliveryId: paymentTarget.id,
+            orderId: paymentTarget.orderId,
+            paymentId: payment.id,
+            paymentMethod: method,
+            note: note || undefined,
+          });
+      return response.success;
+    } catch {
+      // O toast de erro já sai do onError da mutation.
+      return false;
+    }
+  };
+
   // Card das corridas em andamento - igual em "Em rota" e "A coletar".
   const renderActiveCard = (delivery: Delivery) => (
     <DeliveryCard
@@ -247,7 +292,17 @@ export default function DeliveryDashboardPage() {
       delivery={delivery}
       onAdvance={handleAdvance}
       onReturn={setReturnTarget}
-      busy={advancingId === delivery.id || returningId === delivery.id}
+      onChangePayment={canTouchPayment ? setPaymentTarget : undefined}
+      changePaymentLabel={
+        isManager
+          ? "Alterar forma de pagamento"
+          : "Pagou de outro jeito? Avisar o gerente"
+      }
+      busy={
+        advancingId === delivery.id ||
+        returningId === delivery.id ||
+        changingPaymentId === delivery.id
+      }
     />
   );
 
@@ -423,6 +478,26 @@ export default function DeliveryDashboardPage() {
         isReturning={isReturning}
         onClose={() => setReturnTarget(null)}
         onConfirm={handleConfirmReturn}
+      />
+
+      <ChangePaymentMethodDialog
+        open={paymentTarget !== null}
+        onClose={() => setPaymentTarget(null)}
+        currentMethod={
+          paymentTarget
+            ? getChangeablePayment(paymentTarget)?.paymentMethod
+            : undefined
+        }
+        onConfirm={handleConfirmPayment}
+        title={isManager ? "Alterar forma de pagamento" : "Avisar o gerente"}
+        description={
+          isManager
+            ? `Pedido #${paymentTarget?.orderId.slice(0, 8) ?? ""}`
+            : "O cliente pagou com outra forma? A gerência confirma a troca."
+        }
+        confirmLabel={isManager ? "Salvar forma" : "Enviar aviso"}
+        withNote={!isManager}
+        isLoading={isChangingPayment}
       />
     </>
   );

@@ -11,12 +11,17 @@ import {
   type DeliveryStatus,
 } from "@/lib/delivery";
 import { socketAuthProvider } from "@/lib/socket-auth";
+import {
+  requestPaymentMethodChange,
+  type PaymentChangeRequest,
+} from "@/services/manager-requests";
 import { useCourierPositionStore } from "@/stores/courier-position-store";
 import {
   apiService,
   MAX_PAGE_LIMIT,
   toPaginated,
   type Delivery,
+  type PaymentMethod,
   type PaginationParams,
 } from "@/services/api";
 import { useAuthStore } from "@/stores";
@@ -283,6 +288,42 @@ export const useDeliveryDriver = () => {
     onError: () => toast.error("Erro de conexão"),
   });
 
+  // Forma de pagamento trocada na porta. A gerência altera direto; o
+  // entregador só avisa a gerência (LDMF-284 - desligado até o backend ter a
+  // rota, ver services/manager-requests.ts).
+  const changePaymentMutation = useMutation({
+    mutationFn: ({
+      paymentId,
+      paymentMethod,
+    }: {
+      deliveryId: string;
+      paymentId: string;
+      paymentMethod: PaymentMethod;
+    }) => apiService.payments.update(paymentId, { paymentMethod }),
+    onSuccess: (response) => {
+      invalidate();
+      if (response.success) {
+        toast.success("Forma de pagamento alterada");
+      } else {
+        toast.error(response.message || "Erro ao alterar a forma de pagamento");
+      }
+    },
+    onError: () => toast.error("Erro de conexão"),
+  });
+
+  const requestPaymentChangeMutation = useMutation({
+    mutationFn: (request: PaymentChangeRequest) =>
+      requestPaymentMethodChange(request),
+    onSuccess: (response) => {
+      if (response.success) {
+        toast.success("Aviso enviado ao gerente");
+      } else {
+        toast.error(response.message || "Erro ao avisar o gerente");
+      }
+    },
+    onError: () => toast.error("Erro de conexão"),
+  });
+
   // Com vários cards na tela, travar todos os botões enquanto um request roda
   // esconderia qual entrega está sendo mexida - o estado é por entrega.
   const acceptingId = acceptMutation.isPending
@@ -294,6 +335,11 @@ export const useDeliveryDriver = () => {
   const returningId = returnMutation.isPending
     ? (returnMutation.variables?.id ?? null)
     : null;
+  const changingPaymentId = changePaymentMutation.isPending
+    ? (changePaymentMutation.variables?.deliveryId ?? null)
+    : requestPaymentChangeMutation.isPending
+      ? (requestPaymentChangeMutation.variables?.deliveryId ?? null)
+      : null;
 
   return {
     isLoading,
@@ -313,6 +359,12 @@ export const useDeliveryDriver = () => {
     returnDelivery: returnMutation.mutate,
     returningId,
     isReturning: returnMutation.isPending,
+    /** Resolve com a resposta; quem chama decide se fecha a janela. */
+    changePaymentMethod: changePaymentMutation.mutateAsync,
+    requestPaymentChange: requestPaymentChangeMutation.mutateAsync,
+    changingPaymentId,
+    isChangingPayment:
+      changePaymentMutation.isPending || requestPaymentChangeMutation.isPending,
     /** Envelope da rota - `total` e `totalPages` da página pedida. */
     meta: data?.meta,
     /** Há entrega além desta página: a tela avisa em vez de truncar calada. */
