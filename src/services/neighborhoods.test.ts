@@ -68,6 +68,23 @@ describe("getNeighborhoods", () => {
     expect(list!.neighborhoods.filter((n) => n.lat !== null)).toHaveLength(24);
   });
 
+  it("center é a média dos 24 bairros com coordenada, com 7 casas", async () => {
+    const list = await getNeighborhoods("ES", "Castelo");
+    const points = list!.neighborhoods.filter(
+      (item): item is typeof item & { lat: number; lng: number } =>
+        item.lat !== null && item.lng !== null,
+    );
+    const mean = (values: number[]) =>
+      Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(7));
+
+    expect(points).toHaveLength(24);
+    expect(list!.center).toEqual({
+      lat: mean(points.map((item) => item.lat)),
+      lng: mean(points.map((item) => item.lng)),
+    });
+    expect(list!.center).toEqual({ lat: -20.6120106, lng: -41.2061312 });
+  });
+
   it("traz o CEP da cidade e o código IBGE confirmados", async () => {
     const list = await getNeighborhoods("ES", "Castelo");
 

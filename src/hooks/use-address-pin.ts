@@ -48,11 +48,17 @@ function addressKey({ street, number, city, state }: AddressPinFields) {
   return parts.every(Boolean) ? parts.join("|") : "";
 }
 
+/** Centro da área urbana que veio com a lista de bairros, se houver. */
+function listCenter(list: CityNeighborhoods | null) {
+  return list?.center ? parseCoords(list.center.lat, list.center.lng) : null;
+}
+
 /**
  * Pino que acompanha o preenchimento do endereço (LDMF-261):
  *
  * 1. Bairro da lista escolhido → centro do bairro; sem coordenada do bairro,
- *    centro da cidade pelo Nominatim.
+ *    o `center` da lista (LDMF-264), sem chamar o Nominatim. Só cidade cuja
+ *    lista não traz `center` busca o centro da cidade no Nominatim.
  * 2. Rua e número preenchidos → uma busca no Nominatim; só move o pino se o
  *    ponto cair dentro da cidade. Sem resultado, o pino fica onde estava.
  *
@@ -117,6 +123,12 @@ export function useAddressPin({ fields, onPin, otherNeighborhood = false }: Opti
       return;
     }
 
+    const urbanCenter = listCenter(neighborhoodList);
+    if (urbanCenter) {
+      onPinRef.current(urbanCenter, "neighborhood", CITY_ZOOM);
+      return;
+    }
+
     let active = true;
     setIsLocatingNeighborhood(true);
 
@@ -169,15 +181,25 @@ export function useAddressPin({ fields, onPin, otherNeighborhood = false }: Opti
   }, [currentAddressKey, street, number, city, state]);
 
   /**
-   * Marca os valores atuais como já representados no pino: ao abrir um
-   * endereço salvo para edição (o pino já está na coordenada dele) ou ao
-   * limpar o formulário.
+   * "Outro" escolhido: pino no centro da cidade, como bairro sem coordenada -
+   * o `center` da lista quando houver, senão a busca da cidade no Nominatim.
    */
-  /** "Outro" escolhido: pino no centro da cidade, como bairro sem coordenada. */
   const locateCityCenter = useCallback(() => {
     if (!city || !state) return;
 
     const lookup = ++cityLookup.current;
+
+    const sameCity =
+      neighborhoodList &&
+      normalizeText(neighborhoodList.city) === normalizeText(city) &&
+      normalizeText(neighborhoodList.state) === normalizeText(state);
+    const urbanCenter = sameCity ? listCenter(neighborhoodList) : null;
+    if (urbanCenter) {
+      setIsLocatingNeighborhood(false);
+      onPinRef.current(urbanCenter, "neighborhood", CITY_ZOOM);
+      return;
+    }
+
     setIsLocatingNeighborhood(true);
 
     nominatim
@@ -190,8 +212,13 @@ export function useAddressPin({ fields, onPin, otherNeighborhood = false }: Opti
       .finally(() => {
         if (lookup === cityLookup.current) setIsLocatingNeighborhood(false);
       });
-  }, [city, state]);
+  }, [city, state, neighborhoodList]);
 
+  /**
+   * Marca os valores atuais como já representados no pino: ao abrir um
+   * endereço salvo para edição (o pino já está na coordenada dele) ou ao
+   * limpar o formulário.
+   */
   const resetBaseline = useCallback((values: AddressPinFields = {}) => {
     cityLookup.current += 1;
     baseline.current = {

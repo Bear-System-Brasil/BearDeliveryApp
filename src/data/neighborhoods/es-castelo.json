@@ -3,6 +3,10 @@
   "city": "Castelo",
   "ibgeCode": "3201407",
   "cep": "29360-000",
+  "center": {
+    "lat": -20.6120106,
+    "lng": -41.2061312
+  },
   "neighborhoods": [
     {
       "name": "Aracuí",

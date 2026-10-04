@@ -10,6 +10,7 @@ rota vai devolver:
   "city": "Castelo",
   "ibgeCode": "3201407",
   "cep": "29360-000",
+  "center": { "lat": -20.6120106, "lng": -41.2061312 },
   "neighborhoods": [
     { "name": "Castelo III", "altNames": ["Castelo 3", "Castelo Três", "Pombal", "Ivo Martins"], "lat": -20.6335760, "lng": -41.2041395 }
   ]
@@ -22,6 +23,12 @@ rota vai devolver:
   na opção da lista. O valor salvo é sempre o `name`.
 - `lat`/`lng`: ponto do bairro, ou `null` quando não há fonte real. Nunca
   estimar coordenada.
+- `center`: centro da área urbana (LDMF-264). É onde o pino começa quando o
+  bairro não tem coordenada ou o cliente escolhe "Outro", sem chamar o
+  Nominatim (a busca da cidade no Nominatim devolvia um ponto na zona rural).
+  Calculado como a média simples das `lat` e das `lng` dos bairros que têm
+  coordenada, arredondada para 7 casas decimais. Recalcular sempre que uma
+  coordenada da lista mudar.
 
 ## es-castelo.json (Castelo/ES)
 
@@ -66,4 +73,13 @@ rota vai devolver:
 | Volta Redonda | node/3573536291 |
 
 Sem coordenada (`null`): Caparaó, Jardins, Maravilha, Pedra Luz, Santa Fé,
-Vista do Rio e Vista Linda. Para eles o pino começa no centro da cidade.
+Vista do Rio e Vista Linda. Para eles o pino começa no `center`.
+
+**`center`:** média dos 24 bairros com coordenada da tabela acima, calculada
+por script em aritmética decimal exata a partir dos valores do JSON (04/10/2026):
+
+- soma das latitudes: -494,6882539 → ÷ 24 = -20,612010579… → **-20.6120106**
+- soma das longitudes: -988,9471489 → ÷ 24 = -41,206131204… → **-41.2061312**
+
+Os 7 bairros sem coordenada não entram na média. O ponto é derivado das
+coordenadas do OpenStreetMap acima (mesma atribuição ODbL).

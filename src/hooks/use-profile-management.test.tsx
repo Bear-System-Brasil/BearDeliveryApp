@@ -98,6 +98,8 @@ const { getNeighborhoods: realGetNeighborhoods } = await vi.importActual<
 >("@/services/neighborhoods");
 
 const PIN = { lat: -25.44, lng: -49.29 };
+// `center` de es-castelo.json (média dos 24 bairros com coordenada).
+const CASTELO_CENTER = { lat: -20.6120106, lng: -41.2061312 };
 
 /** Resultado do Nominatim dentro (ou fora) de Castelo/ES. */
 const nominatimHit = (lat: string, lon: string, town = "Castelo") => [
@@ -784,7 +786,7 @@ describe("useProfileManagement", () => {
       expect(result.current.addressCoords).toBeNull();
     });
 
-    it("Outro: pino no centro da cidade e o nome digitado é salvo como foi escrito", async () => {
+    it("Outro: pino no center da cidade, sem Nominatim, e o nome digitado é salvo como foi escrito", async () => {
       api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
       const fetchMock = stubNominatim(nominatimHit("-20.6", "-41.2"));
       const { result } = await renderProfile();
@@ -795,21 +797,19 @@ describe("useProfileManagement", () => {
 
       await waitFor(() =>
         expect(result.current.addressCoords).toEqual({
-          coords: { lat: -20.6, lng: -41.2 },
+          coords: CASTELO_CENTER,
           source: "neighborhood",
         }),
       );
       expect(result.current.pinZoom).toBe(13);
       expect(result.current.isOtherNeighborhood).toBe(true);
-      const [cityCall] = nominatimCalls(fetchMock);
-      expect(cityCall.searchParams.get("city")).toBe("Castelo");
-      expect(cityCall.searchParams.has("street")).toBe(false);
+      expect(nominatimCalls(fetchMock)).toHaveLength(0);
 
       // Mesmo um nome alternativo da lista fica como foi digitado em "Outro".
       act(() => result.current.changeOtherNeighborhood("pombal "));
       await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
       expect(result.current.addressForm.getValues("neighborhood")).toBe("pombal ");
-      expect(result.current.addressCoords?.coords).toEqual({ lat: -20.6, lng: -41.2 });
+      expect(result.current.addressCoords?.coords).toEqual(CASTELO_CENTER);
 
       await act(async () => {
         await result.current.handleAddAddress(
@@ -824,8 +824,8 @@ describe("useProfileManagement", () => {
 
       expect(api.address.createUserAddress.mock.calls[0][0]).toMatchObject({
         neighborhood: "pombal ",
-        latitude: -20.6,
-        longitude: -41.2,
+        latitude: CASTELO_CENTER.lat,
+        longitude: CASTELO_CENTER.lng,
       });
     });
 
@@ -970,13 +970,47 @@ describe("useProfileManagement", () => {
       expect(nominatimCalls(fetchMock)).toHaveLength(0);
     });
 
-    it("bairro sem coordenada move o pino para o centro da cidade, pelo Nominatim", async () => {
+    it("bairro sem coordenada (Caparaó) move o pino para o center da cidade, sem Nominatim", async () => {
       const fetchMock = stubNominatim(nominatimHit("-20.6", "-41.2"));
       const { result } = await renderProfile();
       fillCity(result);
       await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
 
       act(() => result.current.addressForm.setValue("neighborhood", "Caparaó"));
+
+      await waitFor(() =>
+        expect(result.current.addressCoords).toEqual({
+          coords: CASTELO_CENTER,
+          source: "neighborhood",
+        }),
+      );
+      expect(result.current.pinZoom).toBe(13);
+      expect(nominatimCalls(fetchMock)).toHaveLength(0);
+    });
+
+    it("lista sem center: bairro sem coordenada e Outro buscam o centro da cidade no Nominatim", async () => {
+      vi.mocked(getNeighborhoods).mockResolvedValue({
+        state: "ES",
+        city: "Castelo",
+        ibgeCode: null,
+        cep: null,
+        neighborhoods: [
+          { name: "Centro", lat: -20.6033, lng: -41.1847 },
+          { name: "Caparaó", lat: null, lng: null },
+        ],
+      });
+      const fetchMock = stubNominatim(nominatimHit("-20.6", "-41.2"));
+      const { result } = await renderProfile();
+      fillCity(result);
+      await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
+
+      act(() => result.current.selectOtherNeighborhood());
+      await waitFor(() =>
+        expect(result.current.addressCoords?.coords).toEqual({ lat: -20.6, lng: -41.2 }),
+      );
+      expect(nominatimCalls(fetchMock)).toHaveLength(1);
+
+      act(() => result.current.changeNeighborhood("Caparaó"));
 
       await waitFor(() =>
         expect(result.current.addressCoords).toEqual({
@@ -1066,7 +1100,7 @@ describe("useProfileManagement", () => {
       fillCity(result);
       await waitFor(() => expect(result.current.neighborhoodOptions).not.toBeNull());
 
-      // Caparaó não tem coordenada: o pino vai para o centro da cidade.
+      // Caparaó não tem coordenada: o pino vai para o center da cidade.
       act(() => result.current.addressForm.setValue("neighborhood", "Caparaó"));
       await waitFor(() => expect(result.current.addressCoords?.source).toBe("neighborhood"));
       expect(result.current.pinZoom).toBe(13);

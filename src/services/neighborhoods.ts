@@ -26,6 +26,12 @@ export type CityNeighborhoods = {
   city: string;
   ibgeCode: string | null;
   cep: string | null;
+  /**
+   * Centro da área urbana: média das coordenadas dos bairros que têm
+   * coordenada. O pino começa nele quando o bairro não tem coordenada ou o
+   * cliente escolhe "Outro". Opcional: sem ele, vale a busca da cidade.
+   */
+  center?: { lat: number; lng: number } | null;
   neighborhoods: Neighborhood[];
 };
 
