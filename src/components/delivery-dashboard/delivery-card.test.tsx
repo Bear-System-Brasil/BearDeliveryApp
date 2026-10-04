@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Delivery } from "@/services/api";
 import { DeliveryCard } from "./delivery-card";
 
@@ -66,5 +66,40 @@ describe("DeliveryCard - dados do cliente antes do aceite", () => {
     expect(screen.getByText(/Portão azul/)).toBeInTheDocument();
     expect(screen.getByText("Maria Souza")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Maps/ })).toBeInTheDocument();
+  });
+});
+
+describe("DeliveryCard - coleta só com o pedido pronto", () => {
+  const accepted = (orderStatus?: string) => {
+    const base = delivery("ACCEPTED");
+    return {
+      ...base,
+      order: { ...base.order, status: orderStatus },
+    } as unknown as Delivery;
+  };
+
+  it.each(["IN_PRODUCTION", "ORDERED", undefined])(
+    "pedido %s: mostra aguardando a cozinha, sem botão de coletar",
+    (orderStatus) => {
+      render(<DeliveryCard delivery={accepted(orderStatus)} onAdvance={vi.fn()} />);
+
+      expect(screen.getByRole("status")).toHaveTextContent("Aguardando a cozinha");
+      expect(screen.queryByRole("button", { name: /Coletei/ })).toBeNull();
+    },
+  );
+
+  it("pedido pronto: libera o botão de coletar", () => {
+    render(
+      <DeliveryCard delivery={accepted("READY_FOR_PICKUP")} onAdvance={vi.fn()} />,
+    );
+
+    expect(screen.getByRole("button", { name: /Coletei o pedido/ })).toBeInTheDocument();
+    expect(screen.queryByText("Aguardando a cozinha")).toBeNull();
+  });
+
+  it("em rota não depende do status do pedido", () => {
+    render(<DeliveryCard delivery={delivery("PICKED_UP")} onAdvance={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: /Entreguei o pedido/ })).toBeInTheDocument();
   });
 });

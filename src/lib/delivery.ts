@@ -49,10 +49,21 @@ export const canSeeCustomerData = (delivery: Delivery) =>
   delivery.status === "ACCEPTED" || delivery.status === "PICKED_UP";
 
 /**
+ * Aceita, mas a cozinha ainda não marcou o pedido como pronto: o entregador
+ * não pode coletar. O backend hoje não barra essa transição, então a regra
+ * vive aqui (decisão da LDMF-279). Só `READY_FOR_PICKUP` libera - com o
+ * pedido ausente no payload, também espera, pra não liberar às cegas.
+ */
+export const isWaitingKitchen = (delivery: Delivery) =>
+  delivery.status === "ACCEPTED" &&
+  delivery.order?.status !== "READY_FOR_PICKUP";
+
+/**
  * Próximo status do fluxo, ou null quando não há avanço possível pelo
  * entregador. É o que decide a ação primária do card.
  */
 export function getNextStatus(delivery: Delivery): DeliveryStatus | null {
+  if (isWaitingKitchen(delivery)) return null;
   if (delivery.status === "ACCEPTED") return "PICKED_UP";
   if (delivery.status === "PICKED_UP") return "DELIVERED";
   return null;

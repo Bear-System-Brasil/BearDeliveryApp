@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   Banknote,
   Check,
+  ChefHat,
   MapPin,
   MessageSquareText,
   Navigation,
@@ -29,6 +30,7 @@ import {
   getRestaurantLogo,
   getRestaurantName,
   isAvailable,
+  isWaitingKitchen,
   isSameMoney,
   STATUS_LABEL,
   STATUS_TONE,
@@ -343,6 +345,18 @@ export function DeliveryCard({
             <Package className="mr-2 h-5 w-5" />
             {busy ? "Aceitando..." : "Aceitar entrega"}
           </Button>
+        )}
+
+        {/* Mesmo lugar e altura do botão de coletar, pra o card não pular
+            quando a cozinha libera (a lista atualiza sozinha a cada 15s). */}
+        {isWaitingKitchen(delivery) && onAdvance && (
+          <div
+            role="status"
+            className="flex h-14 w-full items-center justify-center rounded-xl bg-muted text-[15px] font-bold text-muted-foreground"
+          >
+            <ChefHat className="mr-2 h-5 w-5" />
+            Aguardando a cozinha
+          </div>
         )}
 
         {nextStatus && onAdvance && (
