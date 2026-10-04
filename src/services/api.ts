@@ -80,8 +80,7 @@ const encodeOrderId = (orderId: string): string => {
 export interface CreateUserRequest {
   name: string;
   email: string;
-  /** Opcional no cadastro do cliente (LDMF-281): vazio, nem vai no corpo. */
-  cpf?: string;
+  cpf: string;
   phone: string;
   password: string;
   birthDate: string;
