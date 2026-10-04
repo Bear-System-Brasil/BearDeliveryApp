@@ -39,12 +39,13 @@ export const isAvailable = (delivery: Delivery) =>
 export const canCancel = (delivery: Delivery) => delivery.status === "ACCEPTED";
 
 /**
- * Ligar para o cliente só depois do aceite, enquanto a corrida é dele.
- * Antes disso o telefone é de um cliente que ainda não é atendido por este
- * entregador - mostrar a todos na lista de disponíveis expõe dado pessoal
- * sem necessidade (LGPD).
+ * Dados pessoais do cliente (nome, foto, telefone, rua e número) só depois do
+ * aceite, enquanto a corrida é deste entregador. Na lista de disponíveis
+ * todos os entregadores veem a entrega - mostrar ali expõe dado pessoal sem
+ * necessidade (LGPD). Antes do aceite fica só a região (bairro e cidade),
+ * que é o que ele precisa pra decidir se pega.
  */
-export const canCallCustomer = (delivery: Delivery) =>
+export const canSeeCustomerData = (delivery: Delivery) =>
   delivery.status === "ACCEPTED" || delivery.status === "PICKED_UP";
 
 /**
@@ -159,6 +160,26 @@ export function formatAddressLines(address?: Address): string[] {
   return [line1, address.complement, line2, address.zipCode]
     .map((part) => part?.trim())
     .filter((part): part is string => Boolean(part));
+}
+
+/**
+ * Endereço que o entregador pode ver agora: completo depois do aceite, só a
+ * região (bairro · cidade · UF) antes - ver `canSeeCustomerData`.
+ */
+export function formatVisibleAddressLines(delivery: Delivery): string[] {
+  if (canSeeCustomerData(delivery)) {
+    return formatAddressLines(delivery.deliveryAddress);
+  }
+
+  const address = delivery.deliveryAddress;
+  if (!address) return [];
+
+  const area = [address.neighborhood, address.city, address.state]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" · ");
+
+  return area ? [area] : [];
 }
 
 /**

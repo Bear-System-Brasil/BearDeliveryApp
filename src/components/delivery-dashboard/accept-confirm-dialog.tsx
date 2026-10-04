@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  formatAddressLines,
+  formatVisibleAddressLines,
   getCourierEarnings,
   getOrderTotal,
   getPaymentSummary,
@@ -44,9 +44,8 @@ export function AcceptConfirmDialog({
     setSkipNext(false);
   }, [delivery?.id]);
 
-  const addressLines = delivery
-    ? formatAddressLines(delivery.deliveryAddress)
-    : [];
+  // A entrega ainda é PENDING aqui: só a região, como no card.
+  const addressLines = delivery ? formatVisibleAddressLines(delivery) : [];
   const orderTotal = delivery ? getOrderTotal(delivery) : null;
   const earnings = delivery ? getCourierEarnings(delivery) : null;
   const payment = delivery ? getPaymentSummary(delivery) : null;

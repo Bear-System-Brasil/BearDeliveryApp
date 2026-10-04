@@ -10,8 +10,16 @@ const delivery = (status: Delivery["status"], phone?: string) =>
     status,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+    deliveryAddress: {
+      street: "Rua das Flores",
+      number: "10",
+      neighborhood: "Centro",
+      city: "Castelo",
+      state: "ES",
+      reference: "Portão azul",
+    },
     order: {
-      customer: { id: "c1", name: "Cliente", phone },
+      customer: { id: "c1", name: "Maria Souza", phone },
     },
   }) as unknown as Delivery;
 
@@ -37,5 +45,26 @@ describe("DeliveryCard - botão Ligar", () => {
     render(<DeliveryCard delivery={delivery("ACCEPTED")} />);
 
     expect(callLink()).toBeNull();
+  });
+});
+
+describe("DeliveryCard - dados do cliente antes do aceite", () => {
+  it("disponível mostra só bairro e cidade, sem nome, rua, referência nem Maps", () => {
+    render(<DeliveryCard delivery={delivery("PENDING", "27999998888")} />);
+
+    expect(screen.getByText("Centro · Castelo · ES")).toBeInTheDocument();
+    expect(screen.queryByText(/Rua das Flores/)).toBeNull();
+    expect(screen.queryByText(/Portão azul/)).toBeNull();
+    expect(screen.queryByText("Maria Souza")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Maps/ })).toBeNull();
+  });
+
+  it("depois do aceite mostra endereço completo, nome e Maps", () => {
+    render(<DeliveryCard delivery={delivery("ACCEPTED", "27999998888")} />);
+
+    expect(screen.getByText("Rua das Flores, 10")).toBeInTheDocument();
+    expect(screen.getByText(/Portão azul/)).toBeInTheDocument();
+    expect(screen.getByText("Maria Souza")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Maps/ })).toBeInTheDocument();
   });
 });

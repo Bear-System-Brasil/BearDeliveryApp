@@ -16,9 +16,9 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   buildMapsLink,
-  canCallCustomer,
   canCancel,
-  formatAddressLines,
+  canSeeCustomerData,
+  formatVisibleAddressLines,
   getCourierEarnings,
   getCustomerName,
   getCustomerPhone,
@@ -176,9 +176,11 @@ export function DeliveryCard({
   busy = false,
   compact = false,
 }: Props) {
-  const addressLines = formatAddressLines(delivery.deliveryAddress);
-  const mapsLink = buildMapsLink(delivery.deliveryAddress);
-  const phone = canCallCustomer(delivery) ? getCustomerPhone(delivery) : null;
+  // Antes do aceite, só a região: sem rua, nome, foto, telefone nem Maps.
+  const showCustomer = canSeeCustomerData(delivery);
+  const addressLines = formatVisibleAddressLines(delivery);
+  const mapsLink = showCustomer ? buildMapsLink(delivery.deliveryAddress) : null;
+  const phone = showCustomer ? getCustomerPhone(delivery) : null;
   const orderTotal = getOrderTotal(delivery);
   const earnings = getCourierEarnings(delivery);
   const nextStatus = getNextStatus(delivery);
@@ -253,7 +255,7 @@ export function DeliveryCard({
                 Endereço não informado
               </p>
             )}
-            {delivery.deliveryAddress?.reference && (
+            {showCustomer && delivery.deliveryAddress?.reference && (
               <p className="mt-1 text-[13px] font-medium text-muted-foreground">
                 Referência: {delivery.deliveryAddress.reference}
               </p>
@@ -275,22 +277,24 @@ export function DeliveryCard({
           </div>
         )}
 
-        <div className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2.5">
-          <Thumb
-            src={getCustomerPhoto(delivery)}
-            alt=""
-            fallback={<User className="h-4 w-4" />}
-            className="h-10 w-10 rounded-full"
-          />
-          <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-              Cliente
-            </p>
-            <p className="mt-0.5 truncate text-[14px] font-semibold text-foreground">
-              {getCustomerName(delivery)}
-            </p>
+        {showCustomer && (
+          <div className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2.5">
+            <Thumb
+              src={getCustomerPhoto(delivery)}
+              alt=""
+              fallback={<User className="h-4 w-4" />}
+              className="h-10 w-10 rounded-full"
+            />
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Cliente
+              </p>
+              <p className="mt-0.5 truncate text-[14px] font-semibold text-foreground">
+                {getCustomerName(delivery)}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <PaymentRow payment={payment} />
 
@@ -374,7 +378,7 @@ export function DeliveryCard({
               </a>
             </Button>
           )}
-          {/* Só depois do aceite (ver canCallCustomer) e com telefone
+          {/* Só depois do aceite (ver canSeeCustomerData) e com telefone
               utilizável no payload. */}
           {phone && (
             <Button
