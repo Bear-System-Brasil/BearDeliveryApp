@@ -60,6 +60,8 @@ export async function getActiveRestaurants(userLocation?: UserLocation) {
   const nearbyIds = new Set(nearby.map((restaurant) => restaurant.id));
 
   // Loja sem geocodificação so entra se o endereço for da cidade do cliente.
+  // Sem coordenada não ha como saber a distancia, entao ela vai marcada como
+  // fora do raio: mesma cidade não quer dizer perto (LDMF-229).
   const unmappedInUserCity = catalogResponse.data
     .filter(
       (restaurant) =>
@@ -69,7 +71,7 @@ export async function getActiveRestaurants(userLocation?: UserLocation) {
         isInUserCity(restaurant, userLocation.city),
     )
     .map((restaurant) =>
-      withDeliveryDefaults({ ...restaurant, isWithinRadius: true }),
+      withDeliveryDefaults({ ...restaurant, isWithinRadius: false }),
     );
 
   return [...nearby, ...unmappedInUserCity];
