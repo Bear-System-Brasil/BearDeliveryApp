@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthModal } from "@/hooks/useAuthModal";
 import { PASSWORD_RECOVERY_UNAVAILABLE } from "@/constants/password-change";
+import { LEGAL_CONTACT_EMAIL } from "@/components/legal-page";
 import type { RawAuthUser } from "@/services/api";
 import {
   ArrowRight,
@@ -416,6 +417,17 @@ export default function AuthModal({
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">Esqueceu sua senha?</h3>
                 <p className="text-sm text-muted-foreground">{PASSWORD_RECOVERY_UNAVAILABLE}</p>
+                {/* mailto é link externo: <a>, não <Link>. */}
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Precisa entrar agora? Mande um e-mail para{" "}
+                  <a
+                    href={`mailto:${LEGAL_CONTACT_EMAIL}`}
+                    className="font-medium text-brand-600 dark:text-brand-400 underline break-all"
+                  >
+                    {LEGAL_CONTACT_EMAIL}
+                  </a>{" "}
+                  com o telefone da sua conta que a gente ajuda.
+                </p>
               </div>
 
               <Button

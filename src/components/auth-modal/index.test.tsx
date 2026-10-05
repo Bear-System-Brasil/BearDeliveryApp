@@ -54,4 +54,12 @@ describe("AuthModal - Esqueci minha senha", () => {
       screen.getByRole("button", { name: /voltar ao login/i }),
     ).toBeInTheDocument();
   });
+
+  it("indica o e-mail de contato para quem precisa entrar agora", () => {
+    render(<AuthModal isOpen onClose={noop} />);
+
+    expect(
+      screen.getByRole("link", { name: "beardeliveryofc@gmail.com" }),
+    ).toHaveAttribute("href", "mailto:beardeliveryofc@gmail.com");
+  });
 });
