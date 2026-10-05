@@ -750,5 +750,26 @@ describe("useCompanyProfileManagement", () => {
       expect(toast.error).toHaveBeenCalledWith(message);
       expect(toast.success).not.toHaveBeenCalled();
     });
+
+    it("senha válida avisa que a troca não está disponível, sem fingir sucesso", async () => {
+      const { result } = await renderCompany();
+      act(() => {
+        result.current.setIsChangingPassword(true);
+        result.current.updatePasswordField("currentPassword", "Velha@1");
+        result.current.updatePasswordField("newPassword", "Nova@1");
+        result.current.updatePasswordField("confirmPassword", "Nova@1");
+      });
+
+      await act(async () => {
+        await result.current.handleChangePassword();
+      });
+
+      expect(toast.error).toHaveBeenCalledWith(
+        "A troca de senha ainda não está disponível. Sua senha não foi alterada.",
+      );
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(result.current.isChangingPassword).toBe(true);
+      expect(result.current.passwordData.newPassword).toBe("Nova@1");
+    });
   });
 });
