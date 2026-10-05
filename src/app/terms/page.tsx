@@ -4,10 +4,10 @@ import Link from "next/link";
 import {
   LEGAL_CONTACT_EMAIL,
   LEGAL_RESPONSIBLES,
-  LEGAL_UPDATED_AT,
   LegalList,
   LegalPage,
   LegalSection,
+  TERMS_UPDATED_AT,
 } from "@/components/legal-page";
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Termos de uso" updatedAt={LEGAL_UPDATED_AT}>
+    <LegalPage title="Termos de uso" updatedAt={TERMS_UPDATED_AT}>
       <p>
         Estes termos são as regras para usar o BearDelivery. Ao criar uma
         conta, você declara que leu e concorda com eles e com a nossa{" "}

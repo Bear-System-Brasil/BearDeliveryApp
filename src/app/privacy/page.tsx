@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 import {
   LEGAL_CONTACT_EMAIL,
   LEGAL_RESPONSIBLES,
-  LEGAL_UPDATED_AT,
   LegalList,
   LegalPage,
   LegalSection,
+  PRIVACY_UPDATED_AT,
 } from "@/components/legal-page";
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 // ou com quem compartilha? Esta página precisa mudar junto.
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Política de privacidade" updatedAt={LEGAL_UPDATED_AT}>
+    <LegalPage title="Política de privacidade" updatedAt={PRIVACY_UPDATED_AT}>
       <p>
         Esta política explica quais dados pessoais o BearDelivery coleta, para
         que usamos, com quem compartilhamos e quais são os seus direitos, de
