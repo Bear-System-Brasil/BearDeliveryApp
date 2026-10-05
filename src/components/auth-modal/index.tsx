@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthModal } from "@/hooks/useAuthModal";
+import { PASSWORD_RECOVERY_UNAVAILABLE } from "@/constants/password-change";
 import type { RawAuthUser } from "@/services/api";
 import {
   ArrowRight,
@@ -46,7 +47,6 @@ export default function AuthModal({
     step, setStep,
     isLoading,
     loginData,
-    forgotPasswordData, setForgotPasswordData,
     resetPasswordData, setResetPasswordData,
     registerData,
     acceptedTerms,
@@ -60,7 +60,6 @@ export default function AuthModal({
     isFormValid,
     handleSubmit,
     handleOTPSubmit,
-    handleForgotPasswordSubmit,
     handleResetPasswordSubmit,
     handleClose,
   } = useAuthModal({ isOpen, onClose, onAuthSuccess, defaultTab });
@@ -408,54 +407,16 @@ export default function AuthModal({
               </Button>
             </div>
           ) : step === "forgot-password" ? (
+            // Sem envio de código no backend, o formulário prometia um código
+            // que nunca chegava. Fica só o aviso até a recuperação voltar.
             <div className="space-y-4 sm:space-y-6">
               <div className="text-center">
                 <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Lock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">Esqueceu sua senha?</h3>
-                <p className="text-sm text-muted-foreground">Digite seu telefone e enviaremos um código para redefinir sua senha</p>
+                <p className="text-sm text-muted-foreground">{PASSWORD_RECOVERY_UNAVAILABLE}</p>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="forgot-phone" className="text-sm font-semibold text-foreground">Telefone</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    id="forgot-phone"
-                    type="tel"
-                    placeholder="(11) 99999-9999"
-                    value={formatPhone(forgotPasswordData.phone)}
-                    onChange={(e) => setForgotPasswordData({ phone: e.target.value.replace(/\D/g, "") })}
-                    maxLength={15}
-                    className="pl-10 rounded-xl border-2 border-border focus:border-brand-400"
-                  />
-                </div>
-              </div>
-
-              {submitMessage && (
-                <div className={`p-3 rounded-xl text-sm font-medium ${submitMessage.type === "success" ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800" : "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"}`}>
-                  {submitMessage.text}
-                </div>
-              )}
-
-              <Button
-                onClick={handleForgotPasswordSubmit}
-                disabled={isLoading || forgotPasswordData.phone.length !== 11}
-                className="w-full h-12 rounded-xl bg-linear-to-r from-brand-500 to-brand-500 hover:from-brand-600 hover:to-brand-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all cursor-pointer"
-              >
-                {isLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Enviando...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Phone className="h-4 w-4" />
-                    <span>Enviar Código</span>
-                  </div>
-                )}
-              </Button>
 
               <Button
                 variant="ghost"
