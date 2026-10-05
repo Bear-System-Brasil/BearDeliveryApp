@@ -1,6 +1,6 @@
-# Contributing to BearDelivery App
+# Contributing to Bear Delivery App
 
-Thank you for your interest in contributing to BearDelivery! This document provides guidelines and best practices for contributing to the project.
+Thank you for your interest in contributing to Bear Delivery! This document provides guidelines and best practices for contributing to the project.
 
 ## Table of Contents
 

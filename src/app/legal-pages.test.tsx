@@ -28,7 +28,9 @@ describe("páginas legais", () => {
 
     expect(screen.getByRole("link", { name: /Termos de uso/ })).toHaveAttribute("href", "/terms");
     expect(screen.getByRole("link", { name: /Política de privacidade/ })).toHaveAttribute("href", "/privacy");
-    expect(screen.getByRole("link", { name: /Fale com a gente/ })).toHaveAttribute(
+    expect(screen.getByText("Fale com a gente")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copiar e-mail" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir app de e-mail" })).toHaveAttribute(
       "href",
       "mailto:beardeliveryofc@gmail.com",
     );
