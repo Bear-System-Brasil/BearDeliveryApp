@@ -22,12 +22,20 @@ const FAILED_CASH: Payment = {
   status: "FAILED" as Payment["status"],
 };
 
+const COMPLETED_PIX: Payment = {
+  ...PENDING_DEBIT,
+  id: "pay-3",
+  orderId: "order-cccccccc",
+  paymentMethod: "PIX" as Payment["paymentMethod"],
+  status: "COMPLETED" as Payment["status"],
+};
+
 const updatePayment = vi.fn();
 const fetchPaymentsByFilters = vi.fn();
 
 // Referências estáveis: mock de hook com identidade nova a cada chamada
 // causa laço infinito de render neste projeto.
-const PAYMENTS = [PENDING_DEBIT, FAILED_CASH];
+const PAYMENTS = [PENDING_DEBIT, FAILED_CASH, COMPLETED_PIX];
 const HOOK = {
   payments: PAYMENTS,
   paymentsMeta: null,
@@ -73,7 +81,8 @@ describe("Finanças - alterar forma de pagamento", () => {
     AUTH.user = { role };
     render(<FinancePage />);
 
-    // Um no card do celular e um na tabela, só para o pagamento pendente.
+    // Um no card do celular e um na tabela, só para o pagamento pendente:
+    // o concluído já foi lançado no caixa com a forma dele.
     expect(changeLinks()).toHaveLength(2);
   });
 

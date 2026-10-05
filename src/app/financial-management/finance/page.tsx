@@ -285,10 +285,11 @@ export default function FinancePage() {
     handleSearch();
   };
 
-  // Forma só muda em pagamento vivo: falho, cancelado e estornado ficam como
-  // estão.
+  // Forma só muda em pagamento pendente. Ao aprovar, o backend lança a venda
+  // no caixa com a forma daquele momento (financial.md); trocar depois deixa
+  // o caixa com a forma antiga e os totais por forma errados.
   const canChangeMethod = (payment: Payment) =>
-    canManagePayments && (isPending(payment) || isCompleted(payment));
+    canManagePayments && isPending(payment);
 
   const handleChangeMethod = async (method: PaymentMethod) => {
     if (!paymentToChange) return false;
