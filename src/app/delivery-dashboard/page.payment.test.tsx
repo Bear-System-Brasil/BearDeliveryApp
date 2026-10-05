@@ -118,6 +118,7 @@ describe("DeliveryDashboardPage - forma de pagamento", () => {
         deliveryId: "del-1",
         paymentId: "pay-1",
         paymentMethod: "CREDIT_CARD",
+        amount: 35.9,
       });
       expect(requestPaymentChange).not.toHaveBeenCalled();
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

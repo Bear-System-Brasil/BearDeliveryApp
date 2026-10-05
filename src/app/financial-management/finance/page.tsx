@@ -141,6 +141,18 @@ function RowActionButton({
   );
 }
 
+/**
+ * Acrescenta o `amount` atual do pagamento ao corpo do PATCH, quando ele é
+ * um número utilizável. O valor pode chegar como texto da API.
+ */
+function withCurrentAmount<T extends object>(
+  payment: Pick<Payment, "amount">,
+  body: T,
+): T & { amount?: number } {
+  const amount = Number(payment.amount);
+  return Number.isFinite(amount) && amount > 0 ? { ...body, amount } : body;
+}
+
 function ChangeMethodLink({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -282,9 +294,12 @@ export default function FinancePage() {
     if (!paymentToChange) return false;
     setIsChangingMethod(true);
     try {
-      const updated = await updatePayment(paymentToChange.id, {
-        paymentMethod: method,
-      });
+      // O valor vai junto, sem mudar: só com `paymentMethod` o backend
+      // respondeu "Valor inválido" no preview (04/10).
+      const updated = await updatePayment(
+        paymentToChange.id,
+        withCurrentAmount(paymentToChange, { paymentMethod: method }),
+      );
       if (!updated) return false;
       handleSearch();
       return true;

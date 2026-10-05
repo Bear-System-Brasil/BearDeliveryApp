@@ -95,7 +95,12 @@ describe("Finanças - alterar forma de pagamento", () => {
     await user.click(within(dialog).getByRole("button", { name: /Crédito/ }));
     await user.click(within(dialog).getByRole("button", { name: "Salvar forma" }));
 
-    expect(updatePayment).toHaveBeenCalledWith("pay-1", { paymentMethod: "CREDIT_CARD" });
+    // O valor atual vai junto, sem mudança: sem ele o backend respondeu
+    // "Valor inválido" no preview.
+    expect(updatePayment).toHaveBeenCalledWith("pay-1", {
+      paymentMethod: "CREDIT_CARD",
+      amount: 35.9,
+    });
     expect(fetchPaymentsByFilters).toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -110,7 +115,7 @@ describe("Finanças - alterar forma de pagamento", () => {
     await user.click(within(dialog).getByRole("button", { name: /PIX/ }));
     await user.click(within(dialog).getByRole("button", { name: "Salvar forma" }));
 
-    expect(updatePayment).toHaveBeenCalledWith("pay-1", { paymentMethod: "PIX" });
+    expect(updatePayment).toHaveBeenCalledWith("pay-1", { paymentMethod: "PIX", amount: 35.9 });
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

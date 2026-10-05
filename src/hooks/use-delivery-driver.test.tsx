@@ -493,7 +493,7 @@ describe("useDeliveryDriver", () => {
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Erro ao devolver entrega"));
     });
 
-    it("gerência altera a forma do pagamento só com paymentMethod", async () => {
+    it("gerência altera a forma mandando o valor atual junto", async () => {
       payments.update.mockResolvedValue({ success: true });
       const { result } = await renderDriver();
 
@@ -502,11 +502,13 @@ describe("useDeliveryDriver", () => {
           deliveryId: "a1",
           paymentId: "pay-1",
           paymentMethod: PaymentMethod.CREDIT_CARD,
+          amount: 35.9,
         });
       });
 
       expect(payments.update).toHaveBeenCalledWith("pay-1", {
         paymentMethod: PaymentMethod.CREDIT_CARD,
+        amount: 35.9,
       });
       expect(toast.success).toHaveBeenCalledWith("Forma de pagamento alterada");
     });

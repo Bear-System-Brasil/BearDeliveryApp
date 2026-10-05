@@ -295,11 +295,18 @@ export const useDeliveryDriver = () => {
     mutationFn: ({
       paymentId,
       paymentMethod,
+      amount,
     }: {
       deliveryId: string;
       paymentId: string;
       paymentMethod: PaymentMethod;
-    }) => apiService.payments.update(paymentId, { paymentMethod }),
+      /** Valor atual, sem mudança: o backend recusa o PATCH sem ele. */
+      amount?: number;
+    }) =>
+      apiService.payments.update(
+        paymentId,
+        amount !== undefined ? { paymentMethod, amount } : { paymentMethod },
+      ),
     onSuccess: (response) => {
       invalidate();
       if (response.success) {

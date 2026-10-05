@@ -117,6 +117,12 @@ function FilterBar({
   );
 }
 
+/** Valor atual do pagamento como número, ou nada se não for utilizável. */
+function currentAmount(value: unknown): number | undefined {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? amount : undefined;
+}
+
 export default function DeliveryDashboardPage() {
   const {
     isLoading,
@@ -270,6 +276,7 @@ export default function DeliveryDashboardPage() {
             deliveryId: paymentTarget.id,
             paymentId: payment.id,
             paymentMethod: method,
+            amount: currentAmount(payment.amount),
           })
         : await requestPaymentChange({
             deliveryId: paymentTarget.id,
