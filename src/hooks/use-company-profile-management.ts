@@ -1,4 +1,5 @@
 import { apiService, type Address, type Specialty } from "@/services/api";
+import { PASSWORD_CHANGE_UNAVAILABLE } from "@/constants/password-change";
 import { unsetDefaultAddress } from "@/lib/default-address";
 import { geocodeAddress } from "@/lib/geocode";
 import { useAuthStore } from "@/stores";
@@ -788,18 +789,10 @@ export const useCompanyProfileManagement = () => {
       return;
     }
 
-    try {
-      // TODO: Implementar endpoint no backend
-      toast.success("Senha alterada com sucesso!");
-      setIsChangingPassword(false);
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-    } catch (error) {
-      toast.error("Erro ao alterar senha");
-    }
+    // Sem rota no backend: antes saía "Senha alterada com sucesso!" sem chamar
+    // API nenhuma. O formulário fica preenchido para não parecer que algo foi
+    // salvo.
+    toast.error(PASSWORD_CHANGE_UNAVAILABLE);
   };
 
   /**
