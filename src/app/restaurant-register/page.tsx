@@ -2,6 +2,7 @@
 
 import { Footer } from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   AnimatedBackground,
@@ -28,6 +29,7 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 export default function RestaurantRegisterPage() {
   const {
@@ -40,6 +42,10 @@ export default function RestaurantRegisterPage() {
     submitMessage,
     handleSubmit,
   } = useRestaurantRegistration();
+
+  // Aceite dos termos e da política (LDMF-281). Só trava o envio na tela: o
+  // backend não tem campo pra guardar o aceite, então não vai no corpo.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   return (
     <>
@@ -95,7 +101,16 @@ export default function RestaurantRegisterPage() {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              <form
+                onSubmit={(event) => {
+                  if (!acceptedTerms) {
+                    event.preventDefault();
+                    return;
+                  }
+                  void handleSubmit(event);
+                }}
+                className="space-y-5"
+              >
                 <div className="space-y-2">
                   <Label
                     htmlFor="tradeName"
@@ -305,6 +320,28 @@ export default function RestaurantRegisterPage() {
                   )}
                 </div>
 
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="acceptTerms"
+                    checked={acceptedTerms}
+                    onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="acceptTerms" className="text-sm font-medium leading-snug text-foreground">
+                    <span>
+                      Li e aceito os{" "}
+                      <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 underline dark:text-brand-400">
+                        Termos de uso
+                      </Link>{" "}
+                      e a{" "}
+                      <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 underline dark:text-brand-400">
+                        Política de privacidade
+                      </Link>
+                      .
+                    </span>
+                  </Label>
+                </div>
+
                 {submitMessage && (
                   <div
                     className={`p-4 rounded-xl text-sm ${
@@ -322,7 +359,7 @@ export default function RestaurantRegisterPage() {
                   fullWidth
                   size="lg"
                   className="h-14 text-lg"
-                  disabled={!isFormValid || isLoading}
+                  disabled={!isFormValid || !acceptedTerms || isLoading}
                   isLoading={isLoading}
                   loadingText="Cadastrando..."
                 >

@@ -20,6 +20,7 @@ import { getProfileRoute, isCompanyStaffRole } from "@/utils/role-helpers";
 import clsx from "clsx";
 import {
   ChevronDown,
+  FileText,
   LogOut,
   MapPin,
   Menu,
@@ -624,6 +625,17 @@ export function MainHeader({
                             {area.label}
                           </Button>
                         ))}
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start rounded-xl"
+                          onClick={() => {
+                            router.push("/legal");
+                            setMobileMenuOpen(false);
+                          }}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Termos e privacidade
+                        </Button>
                         <button
                           type="button"
                           onClick={() => {
