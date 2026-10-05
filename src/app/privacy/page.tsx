@@ -122,10 +122,10 @@ export default function PrivacyPage() {
           <li>
             <strong>Serviços que fazem o app funcionar:</strong> hospedagem do
             site (Vercel), servidor e banco de dados (Hostinger), armazenamento
-            de imagens (Amazon Web Services), mapas e busca de endereço
-            (OpenStreetMap e Nominatim), consulta de CEP (ViaCEP e BrasilAPI) e
-            identificação da cidade pela localização (BigDataCloud). Eles
-            recebem apenas o necessário para a sua função.
+            de imagens (Cloudflare e Amazon Web Services), mapas e busca de
+            endereço (OpenStreetMap e Nominatim), consulta de CEP (ViaCEP e
+            BrasilAPI) e identificação da cidade pela localização
+            (BigDataCloud). Eles recebem apenas o necessário para a sua função.
           </li>
         </LegalList>
         <p>
