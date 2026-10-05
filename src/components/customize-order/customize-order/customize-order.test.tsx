@@ -316,4 +316,27 @@ describe("CustomizeOrder - tamanhos vendáveis", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Adicionar/ })).toBeEnabled();
   });
+
+  it("lista os tamanhos do mais barato pro mais caro", () => {
+    variationsResult = {
+      data: [
+        { ...VARIATION, id: "var-2l", name: "2L", priceModifier: 8 },
+        { ...VARIATION, id: "var-500", name: "500ml", priceModifier: 0 },
+        { ...VARIATION, id: "var-1l", name: "1L", priceModifier: 4 },
+      ],
+      isLoading: false,
+    };
+    renderModal();
+
+    const labels = ["500ml", "1L", "2L"].map((label) => screen.getByText(label));
+    // Cada rótulo vem depois do anterior no DOM.
+    expect(
+      labels[0].compareDocumentPosition(labels[1]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      labels[1].compareDocumentPosition(labels[2]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });

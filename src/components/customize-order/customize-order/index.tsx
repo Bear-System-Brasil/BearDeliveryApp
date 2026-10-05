@@ -150,11 +150,15 @@ export function CustomizeOrder({
         // garante que o preço anunciado seja o que o cliente paga de fato.
         required: true,
         basePrice: Number(productData.salePrice || 0),
-        options: availableVariations.map((v) => ({
-          id: v.id,
-          label: v.name,
-          price: v.priceModifier,
-        })),
+        // Do mais barato pro mais caro - a ordem que a API devolve é a de
+        // cadastro. `sort` é estável: empate mantém a ordem de cadastro.
+        options: [...availableVariations]
+          .sort((a, b) => a.priceModifier - b.priceModifier)
+          .map((v) => ({
+            id: v.id,
+            label: v.name,
+            price: v.priceModifier,
+          })),
       });
     }
 
