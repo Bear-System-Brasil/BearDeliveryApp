@@ -243,14 +243,20 @@ describe("useAuthModal", () => {
       expect(result.current.passwordMatch).toBe(false);
     });
 
-    it("só é válido com todos os campos, senha forte e confirmação igual", () => {
+    it("só é válido com todos os campos, senha forte, confirmação igual e termos aceitos", () => {
       const { result } = renderModal("register");
 
       type(result, { ...validRegister, birthDate: "" });
+      act(() => result.current.setAcceptedTerms(true));
       expect(result.current.isFormValid()).toBeFalsy();
 
       type(result, { birthDate: "01011990" });
       expect(result.current.isFormValid()).toBeTruthy();
+
+      // Sem o aceite dos termos e da política, não cadastra (LDMF-281).
+      act(() => result.current.setAcceptedTerms(false));
+      expect(result.current.isFormValid()).toBeFalsy();
+      act(() => result.current.setAcceptedTerms(true));
 
       type(result, { password: "fraca" });
       expect(result.current.isFormValid()).toBeFalsy();
