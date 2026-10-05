@@ -262,7 +262,7 @@ export function CustomizeOrder({
 
   const handleConfirmAddToCart = async () => {
     if (!productData || !restaurant || isCustomizationLoading) return;
-    if (pendingRequiredGroup) return;
+    if (pendingRequiredGroup || hasNoSellableVariation) return;
 
     // Visitante: pede o login aqui, sem fechar o modal nem descartar o que
     // ele montou. Checar antes de `addToCart` evita o toast de "precisa
@@ -354,6 +354,14 @@ export function CustomizeOrder({
   const unitPrice = productData.salePrice + extrasTotal;
 
   const totalPrice = unitPrice * quantity;
+
+  // Prato com tamanhos cadastrados, mas nenhum vendável: sem o grupo
+  // Tamanho o item iria pro carrinho sem variação, pelo preço base - e não
+  // está confirmado que o backend aceita isso. Trava o "Adicionar".
+  const hasNoSellableVariation =
+    !variationsLoading &&
+    variations.length > 0 &&
+    !variations.some(isSellableVariation);
 
   const pendingRequiredGroup = extraGroups.find(
     (group) => group.required && (selections[group.id]?.length ?? 0) === 0,
@@ -506,7 +514,10 @@ export function CustomizeOrder({
           <Button
             onClick={handleConfirmAddToCart}
             disabled={
-              isAddingToCart || isCustomizationLoading || !!pendingRequiredGroup
+              isAddingToCart ||
+              isCustomizationLoading ||
+              !!pendingRequiredGroup ||
+              hasNoSellableVariation
             }
             className="h-10 flex-1 rounded-[10px] bg-brand-500 text-[13.5px] font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/30 hover:bg-brand-600 disabled:opacity-60"
           >
@@ -520,6 +531,8 @@ export function CustomizeOrder({
                 <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
                 Adicionando...
               </span>
+            ) : hasNoSellableVariation ? (
+              <span>Sem tamanhos disponíveis</span>
             ) : pendingRequiredGroup ? (
               <span>Selecione {pendingRequiredGroup.title.toLowerCase()}</span>
             ) : (

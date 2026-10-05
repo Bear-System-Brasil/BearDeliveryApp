@@ -285,4 +285,35 @@ describe("CustomizeOrder - tamanhos vendáveis", () => {
       }),
     );
   });
+
+  it("trava o Adicionar quando nenhum tamanho é vendável", async () => {
+    isAuthenticated = true;
+    variationsResult = {
+      data: [
+        { ...VARIATION, stockQuantity: 0 },
+        { ...VARIATION, id: "var-pequeno", name: "Pequeno", isAvailable: false },
+      ],
+      isLoading: false,
+    };
+    const user = userEvent.setup();
+    renderModal();
+
+    const button = screen.getByRole("button", {
+      name: "Sem tamanhos disponíveis",
+    });
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+    expect(addToCart).not.toHaveBeenCalled();
+  });
+
+  it("não trava prato que não tem tamanhos cadastrados", () => {
+    variationsResult = { data: [], isLoading: false };
+    renderModal();
+
+    expect(
+      screen.queryByRole("button", { name: "Sem tamanhos disponíveis" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Adicionar/ })).toBeEnabled();
+  });
 });
