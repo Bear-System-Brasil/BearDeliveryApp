@@ -36,13 +36,35 @@ export const isAvailable = (delivery: Delivery) =>
  * exclusivo: depois de pegar a comida no restaurante não dá mais pra
  * cancelar - a partir daí o caminho é entregar.
  */
-export const canCancel = (delivery: Delivery) => delivery.status === "ACCEPTED";
+/** Devolver à lista de disponíveis: só antes da coleta (delivery.md). */
+export const canReturn = (delivery: Delivery) => delivery.status === "ACCEPTED";
+
+/**
+ * Dados pessoais do cliente (nome, foto, telefone, rua e número) só depois do
+ * aceite, enquanto a corrida é deste entregador. Na lista de disponíveis
+ * todos os entregadores veem a entrega - mostrar ali expõe dado pessoal sem
+ * necessidade (LGPD). Antes do aceite fica só a região (bairro e cidade),
+ * que é o que ele precisa pra decidir se pega.
+ */
+export const canSeeCustomerData = (delivery: Delivery) =>
+  delivery.status === "ACCEPTED" || delivery.status === "PICKED_UP";
+
+/**
+ * Aceita, mas a cozinha ainda não marcou o pedido como pronto: o entregador
+ * não pode coletar. O backend hoje não barra essa transição, então a regra
+ * vive aqui (decisão da LDMF-279). Só `READY_FOR_PICKUP` libera - com o
+ * pedido ausente no payload, também espera, pra não liberar às cegas.
+ */
+export const isWaitingKitchen = (delivery: Delivery) =>
+  delivery.status === "ACCEPTED" &&
+  delivery.order?.status !== "READY_FOR_PICKUP";
 
 /**
  * Próximo status do fluxo, ou null quando não há avanço possível pelo
  * entregador. É o que decide a ação primária do card.
  */
 export function getNextStatus(delivery: Delivery): DeliveryStatus | null {
+  if (isWaitingKitchen(delivery)) return null;
   if (delivery.status === "ACCEPTED") return "PICKED_UP";
   if (delivery.status === "PICKED_UP") return "DELIVERED";
   return null;
@@ -150,6 +172,26 @@ export function formatAddressLines(address?: Address): string[] {
   return [line1, address.complement, line2, address.zipCode]
     .map((part) => part?.trim())
     .filter((part): part is string => Boolean(part));
+}
+
+/**
+ * Endereço que o entregador pode ver agora: completo depois do aceite, só a
+ * região (bairro · cidade · UF) antes - ver `canSeeCustomerData`.
+ */
+export function formatVisibleAddressLines(delivery: Delivery): string[] {
+  if (canSeeCustomerData(delivery)) {
+    return formatAddressLines(delivery.deliveryAddress);
+  }
+
+  const address = delivery.deliveryAddress;
+  if (!address) return [];
+
+  const area = [address.neighborhood, address.city, address.state]
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" · ");
+
+  return area ? [area] : [];
 }
 
 /**
