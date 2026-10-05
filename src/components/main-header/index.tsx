@@ -313,7 +313,7 @@ export function MainHeader({
               <Link
                 href={logoHref}
                 className="shrink-0"
-                aria-label="BearDelivery - início"
+                aria-label="Bear Delivery - início"
               >
                 <BearDeliveryLogo
                   small={logoSmall}

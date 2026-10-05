@@ -11,7 +11,7 @@ import {
 
 export const metadata: Metadata = {
   title: "Termos e privacidade",
-  description: "Termos de uso, política de privacidade e contato do BearDelivery.",
+  description: "Termos de uso, política de privacidade e contato do Bear Delivery.",
 };
 
 function LinkRow({
@@ -71,7 +71,7 @@ export default function LegalHubPage() {
           href="/terms"
           icon={<FileText className="h-5 w-5" />}
           title="Termos de uso"
-          description="As regras para usar o BearDelivery."
+          description="As regras para usar o Bear Delivery."
         />
         <LinkRow
           href="/privacy"

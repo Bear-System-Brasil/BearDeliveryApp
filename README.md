@@ -1,4 +1,4 @@
-# BearDelivery App
+# Bear Delivery App
 
 > A modern, full-featured food delivery platform built with Next.js 15 and React 19
 
@@ -21,7 +21,7 @@
 
 ## Overview
 
-BearDelivery is a comprehensive food delivery platform that connects customers with restaurants. The application provides a seamless experience for browsing restaurants, managing orders, and tracking deliveries in real-time.
+Bear Delivery is a comprehensive food delivery platform that connects customers with restaurants. The application provides a seamless experience for browsing restaurants, managing orders, and tracking deliveries in real-time.
 
 **Key Roles** (enforced via `middleware.ts` route protection):
 - **client** - Browse restaurants, place orders, track deliveries
