@@ -31,6 +31,10 @@ export function useAuthModal({
     name: "", email: "", cpf: "", phone: "", password: "", confirmPassword: "", birthDate: "", role: "client",
   });
   const [otpData, setOtpData] = useState({ phone: "", code: "" });
+  // Aceite dos termos e da política (LDMF-281). Fora do `registerData` de
+  // propósito: o backend não tem esse campo e roda com forbidNonWhitelisted,
+  // então mandar no corpo do cadastro derrubaria a requisição com 400.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   // Validações e Feedbacks
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
@@ -116,7 +120,8 @@ export function useAuthModal({
       return (
         registerData.name && registerData.email && registerData.cpf &&
         registerData.phone && registerData.password && registerData.confirmPassword &&
-        registerData.birthDate && passwordErrors.length === 0 && passwordMatch
+        registerData.birthDate && passwordErrors.length === 0 && passwordMatch &&
+        acceptedTerms
       );
     }
   };
@@ -126,6 +131,7 @@ export function useAuthModal({
     setLoginData({ email: "", password: "" });
     setRegisterData({ name: "", email: "", cpf: "", phone: "", password: "", confirmPassword: "", birthDate: "", role: "client" });
     setOtpData({ phone: "", code: "" });
+    setAcceptedTerms(false);
     setForgotPasswordData({ phone: "" });
     setResetPasswordData({ phone: "", code: "", newPassword: "", confirmPassword: "" });
     setSubmitMessage(null);
@@ -291,6 +297,7 @@ export function useAuthModal({
     forgotPasswordData, setForgotPasswordData,
     resetPasswordData, setResetPasswordData,
     registerData,
+    acceptedTerms, setAcceptedTerms,
     otpData, setOtpData,
     passwordErrors,
     passwordMatch,
