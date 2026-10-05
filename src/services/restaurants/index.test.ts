@@ -17,7 +17,8 @@ const CASTELO = { lat: -20.6022, lng: -41.2032, city: "Castelo, ES" };
 
 function store(
   id: string,
-  overrides: Partial<Restaurant> & {
+  overrides: Omit<Partial<Restaurant>, "Address"> & {
+    Address?: Record<string, unknown>[];
     city?: string;
     latitude?: unknown;
     longitude?: unknown;
@@ -139,6 +140,84 @@ describe("getActiveRestaurants", () => {
 
     expect(result.map((restaurant) => restaurant.id)).toEqual(["near"]);
     expect(byId(result, "near")?.isWithinRadius).toBe(true);
+  });
+
+  describe("endereço apagado (soft delete, isActive: false)", () => {
+    const deleted = {
+      city: "Castelo",
+      latitude: "-20.60",
+      longitude: "-41.20",
+      isActive: false,
+    };
+
+    it("tira do raio a loja cuja única coordenada é de endereço apagado", async () => {
+      const onlyDeleted = store("only-deleted", { Address: [deleted] });
+      mockResponses([onlyDeleted], [onlyDeleted]);
+
+      const result = await getActiveRestaurants(CASTELO);
+
+      expect(byId(result, "only-deleted")?.isWithinRadius).toBe(false);
+    });
+
+    it("tira do raio quando o endereço ativo não tem coordenada", async () => {
+      const activeUnmapped = store("active-unmapped", {
+        Address: [
+          deleted,
+          { city: "Castelo", latitude: null, longitude: null },
+        ],
+      });
+      mockResponses([activeUnmapped], [activeUnmapped]);
+
+      const result = await getActiveRestaurants(CASTELO);
+
+      expect(byId(result, "active-unmapped")?.isWithinRadius).toBe(false);
+    });
+
+    it("mantém no raio quando sobra outro endereço ativo com coordenada", async () => {
+      const withActive = store("with-active", {
+        Address: [
+          deleted,
+          { city: "Castelo", latitude: "-20.61", longitude: "-41.21" },
+        ],
+      });
+      mockResponses([withActive], [withActive]);
+
+      const result = await getActiveRestaurants(CASTELO);
+
+      expect(byId(result, "with-active")?.isWithinRadius).toBe(true);
+    });
+
+    it("sem isActive na resposta, confia no backend", async () => {
+      const noFlag = store("no-flag", {
+        latitude: "-20.60",
+        longitude: "-41.20",
+      });
+      mockResponses([noFlag], [noFlag]);
+
+      const result = await getActiveRestaurants(CASTELO);
+
+      expect(byId(result, "no-flag")?.isWithinRadius).toBe(true);
+    });
+
+    it("sem endereços na resposta, confia no backend", async () => {
+      const noAddress = store("no-address", { Address: [] });
+      mockResponses([noAddress], [noAddress]);
+
+      const result = await getActiveRestaurants(CASTELO);
+
+      expect(byId(result, "no-address")?.isWithinRadius).toBe(true);
+    });
+
+    it("não resgata pela cidade de um endereço apagado", async () => {
+      const deletedNoCoords = store("deleted-no-coords", {
+        Address: [{ city: "Castelo", isActive: false }],
+      });
+      mockResponses([], [deletedNoCoords]);
+
+      const result = await getActiveRestaurants(CASTELO);
+
+      expect(byId(result, "deleted-no-coords")).toBeUndefined();
+    });
   });
 
   it("sem o catalogo devolve só a busca por raio", async () => {
