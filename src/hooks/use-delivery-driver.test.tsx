@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { io } from "socket.io-client";
-import { apiService, PaymentMethod, type Delivery } from "@/services/api";
+import { apiService, PaymentMethod, PaymentStatus, type Delivery } from "@/services/api";
 import { socketAuthProvider } from "@/lib/socket-auth";
 import { useAuthStore } from "@/stores";
 import { useCourierPositionStore } from "@/stores/courier-position-store";
@@ -493,23 +493,26 @@ describe("useDeliveryDriver", () => {
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Erro ao devolver entrega"));
     });
 
-    it("gerência altera a forma mandando o valor atual junto", async () => {
+    it("gerência manda o corpo recebido para o PATCH do pagamento", async () => {
       payments.update.mockResolvedValue({ success: true });
       const { result } = await renderDriver();
+      const update = {
+        orderId: "order-a1",
+        customerId: "cus-1",
+        amount: 35.9,
+        paymentMethod: PaymentMethod.CREDIT_CARD,
+        status: PaymentStatus.PENDING,
+      };
 
       await act(async () => {
         await result.current.changePaymentMethod({
           deliveryId: "a1",
           paymentId: "pay-1",
-          paymentMethod: PaymentMethod.CREDIT_CARD,
-          amount: 35.9,
+          update,
         });
       });
 
-      expect(payments.update).toHaveBeenCalledWith("pay-1", {
-        paymentMethod: PaymentMethod.CREDIT_CARD,
-        amount: 35.9,
-      });
+      expect(payments.update).toHaveBeenCalledWith("pay-1", update);
       expect(toast.success).toHaveBeenCalledWith("Forma de pagamento alterada");
     });
 
@@ -521,7 +524,7 @@ describe("useDeliveryDriver", () => {
         await result.current.changePaymentMethod({
           deliveryId: "a1",
           paymentId: "pay-1",
-          paymentMethod: PaymentMethod.PIX,
+          update: { paymentMethod: PaymentMethod.PIX },
         });
       });
 

@@ -117,8 +117,13 @@ describe("DeliveryDashboardPage - forma de pagamento", () => {
       expect(changePaymentMethod).toHaveBeenCalledWith({
         deliveryId: "del-1",
         paymentId: "pay-1",
-        paymentMethod: "CREDIT_CARD",
-        amount: 35.9,
+        update: {
+          orderId: "order-aaaaaaaa",
+          customerId: "cus-1",
+          amount: 35.9,
+          paymentMethod: "CREDIT_CARD",
+          status: "PENDING",
+        },
       });
       expect(requestPaymentChange).not.toHaveBeenCalled();
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

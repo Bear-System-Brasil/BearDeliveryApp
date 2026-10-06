@@ -21,7 +21,7 @@ import {
   MAX_PAGE_LIMIT,
   toPaginated,
   type Delivery,
-  type PaymentMethod,
+  type UpdatePaymentRequest,
   type PaginationParams,
 } from "@/services/api";
 import { useAuthStore } from "@/stores";
@@ -294,19 +294,13 @@ export const useDeliveryDriver = () => {
   const changePaymentMutation = useMutation({
     mutationFn: ({
       paymentId,
-      paymentMethod,
-      amount,
+      update,
     }: {
       deliveryId: string;
       paymentId: string;
-      paymentMethod: PaymentMethod;
-      /** Valor atual, sem mudança: o backend recusa o PATCH sem ele. */
-      amount?: number;
-    }) =>
-      apiService.payments.update(
-        paymentId,
-        amount !== undefined ? { paymentMethod, amount } : { paymentMethod },
-      ),
+      /** Corpo inteiro do PATCH - ver lib/payment-update.ts. */
+      update: UpdatePaymentRequest;
+    }) => apiService.payments.update(paymentId, update),
     onSuccess: (response) => {
       invalidate();
       if (response.success) {

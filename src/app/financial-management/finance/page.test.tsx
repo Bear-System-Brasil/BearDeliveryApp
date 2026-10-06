@@ -104,11 +104,14 @@ describe("Finanças - alterar forma de pagamento", () => {
     await user.click(within(dialog).getByRole("button", { name: /Crédito/ }));
     await user.click(within(dialog).getByRole("button", { name: "Salvar forma" }));
 
-    // O valor atual vai junto, sem mudança: sem ele o backend respondeu
-    // "Valor inválido" no preview.
+    // Corpo inteiro com os valores atuais: o backend valida todos os campos
+    // ("Valor inválido" e "Id inválido" no preview). Só a forma muda.
     expect(updatePayment).toHaveBeenCalledWith("pay-1", {
-      paymentMethod: "CREDIT_CARD",
+      orderId: "order-aaaaaaaa",
+      customerId: "cus-1",
       amount: 35.9,
+      paymentMethod: "CREDIT_CARD",
+      status: "PENDING",
     });
     expect(fetchPaymentsByFilters).toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -124,7 +127,10 @@ describe("Finanças - alterar forma de pagamento", () => {
     await user.click(within(dialog).getByRole("button", { name: /PIX/ }));
     await user.click(within(dialog).getByRole("button", { name: "Salvar forma" }));
 
-    expect(updatePayment).toHaveBeenCalledWith("pay-1", { paymentMethod: "PIX", amount: 35.9 });
+    expect(updatePayment).toHaveBeenCalledWith(
+      "pay-1",
+      expect.objectContaining({ paymentMethod: "PIX" }),
+    );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

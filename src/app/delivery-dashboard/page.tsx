@@ -25,6 +25,7 @@ import {
   getNextStatus,
   pluralizeAvailable,
 } from "@/lib/delivery";
+import { buildPaymentMethodUpdate } from "@/lib/payment-update";
 import { cn } from "@/lib/utils";
 import type { Delivery, PaymentMethod } from "@/services/api";
 import { PAYMENT_CHANGE_REQUEST_ENABLED } from "@/services/manager-requests";
@@ -115,12 +116,6 @@ function FilterBar({
       ))}
     </div>
   );
-}
-
-/** Valor atual do pagamento como número, ou nada se não for utilizável. */
-function currentAmount(value: unknown): number | undefined {
-  const amount = Number(value);
-  return Number.isFinite(amount) && amount > 0 ? amount : undefined;
 }
 
 export default function DeliveryDashboardPage() {
@@ -275,8 +270,7 @@ export default function DeliveryDashboardPage() {
         ? await changePaymentMethod({
             deliveryId: paymentTarget.id,
             paymentId: payment.id,
-            paymentMethod: method,
-            amount: currentAmount(payment.amount),
+            update: buildPaymentMethodUpdate(payment, method),
           })
         : await requestPaymentChange({
             deliveryId: paymentTarget.id,
