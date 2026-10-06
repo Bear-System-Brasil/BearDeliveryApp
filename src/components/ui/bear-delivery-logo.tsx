@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Identidade visual BearDelivery - Mascote real
+ * Identidade visual Bear Delivery - Mascote real
  * O arquivo bear_delivery_icon.png vai em /public/brand/
  */
 import Image from "next/image";

@@ -14,6 +14,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StockQuantityInput } from "@/components/ui/stock-quantity-input";
 import { useConfirm } from "@/contexts/confirm-provider";
+import {
+  isBaseSizeVariation,
+  isSellableVariation,
+} from "@/lib/product-variation";
 import { cn } from "@/lib/utils";
 import {
   useCreateProductVariation,
@@ -25,6 +29,7 @@ import type { ProductVariation } from "@/services/api";
 import { formatCurrency } from "@/utils";
 import { Edit, Loader2, Plus, Ruler, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface Props {
   productId: string | null;
@@ -62,6 +67,11 @@ const emptyForm: FormState = {
  */
 const roundToCents = (value: number) => Math.round(value * 100) / 100;
 
+// Nome do tamanho base (ver isBaseSizeVariation) criado pelo app.
+const BASE_SIZE_NAME = "Pequeno";
+// Usado quando o restaurante já chamou de "Pequeno" um tamanho mais caro.
+const BASE_SIZE_FALLBACK_NAME = "Pequeno (base)";
+
 const fieldClassName =
   "h-9 rounded-[10px] border-border bg-card text-xs shadow-none focus-visible:ring-1 focus-visible:ring-brand-500";
 
@@ -74,10 +84,12 @@ export function ProductVariationsDialog({
   onOpenChange,
 }: Props) {
   const { confirm } = useConfirm();
-  const { data: variations = [], isLoading } = useProductVariations(
-    productId,
-    companyId,
-  );
+  const {
+    data: variations = [],
+    isLoading,
+    isSuccess,
+    isFetching,
+  } = useProductVariations(productId, companyId);
   const createVariation = useCreateProductVariation();
   const updateVariation = useUpdateProductVariation();
   const deleteVariation = useDeleteProductVariation();
@@ -86,6 +98,10 @@ export function ProductVariationsDialog({
   const [form, setForm] = useState<FormState>(emptyForm);
 
   const isSaving = createVariation.isPending || updateVariation.isPending;
+  // Enquanto a lista não chegou (ou está sendo refeita depois de um POST),
+  // não dá pra saber se este é o primeiro tamanho - criar nessa janela
+  // poderia duplicar o tamanho base.
+  const isListSettled = isSuccess && !isFetching;
 
   const trimmedName = form.name.trim();
   // Total abaixo da base viraria priceModifier negativo, ou seja, um
@@ -97,6 +113,52 @@ export function ProductVariationsDialog({
       v.id !== editingId &&
       v.name.trim().toLowerCase() === trimmedName.toLowerCase(),
   );
+
+  // Prato com tamanhos e sem tamanho base vendável (dados antigos, ou o
+  // base foi apagado): o cliente não tem como pedir pelo preço base.
+  const baseSize = variations.find(isBaseSizeVariation);
+  const isMissingBaseSize =
+    isListSettled && variations.length > 0 && !baseSize;
+  // Base existe mas está indisponível ou sem estoque - criar outro
+  // duplicaria o tamanho; o caminho é editar o que já existe.
+  const isBaseSizeUnsellable =
+    isListSettled && !!baseSize && !isSellableVariation(baseSize);
+
+  const handleCreateBaseSize = async () => {
+    if (!productId || !isMissingBaseSize) return;
+
+    const hasPequeno = variations.some(
+      (v) => v.name.trim().toLowerCase() === BASE_SIZE_NAME.toLowerCase(),
+    );
+    const baseName = hasPequeno ? BASE_SIZE_FALLBACK_NAME : BASE_SIZE_NAME;
+
+    // Estoque copiado do tamanho mais barato que o cliente consegue pedir
+    // hoje (ou do mais barato, se nenhum é vendável) - é o vizinho mais
+    // próximo do base. O restaurante ajusta depois pela edição.
+    const byPrice = [...variations].sort(
+      (a, b) => a.priceModifier - b.priceModifier,
+    );
+    const stockSource = byPrice.find(isSellableVariation) ?? byPrice[0];
+
+    try {
+      await createVariation.mutateAsync({
+        productId,
+        data: {
+          name: baseName,
+          priceModifier: 0,
+          stockQuantity: stockSource.stockQuantity ?? 0,
+          isAvailable: true,
+        },
+      });
+    } catch {
+      // O toast de erro já sai do hook.
+      return;
+    }
+
+    toast.info(
+      `O preço base virou o tamanho "${baseName}". Dá pra renomear na lista.`,
+    );
+  };
 
   const resetForm = () => {
     setEditingId(null);
@@ -133,8 +195,56 @@ export function ProductVariationsDialog({
 
     if (editingId) {
       await updateVariation.mutateAsync({ id: editingId, productId, data });
-    } else {
+      resetForm();
+      return;
+    }
+
+    if (!isListSettled) return;
+
+    // Primeiro tamanho mais caro que o base: o preço base vira um tamanho
+    // junto, senão o cliente perde a opção de pedir pelo preço base. Se o
+    // primeiro tamanho já é o próprio preço base, ele mesmo cumpre o papel.
+    const shouldCreateBaseSize =
+      variations.length === 0 && data.priceModifier > 0;
+
+    if (shouldCreateBaseSize) {
+      const baseName =
+        data.name.toLowerCase() === BASE_SIZE_NAME.toLowerCase()
+          ? BASE_SIZE_FALLBACK_NAME
+          : BASE_SIZE_NAME;
+
+      try {
+        await createVariation.mutateAsync({
+          productId,
+          data: {
+            name: baseName,
+            priceModifier: 0,
+            stockQuantity: data.stockQuantity,
+            isAvailable: true,
+          },
+        });
+      } catch {
+        // O toast de erro já sai do hook. Sem o base não segue pro
+        // segundo POST - o restaurante tenta de novo com o form intacto.
+        return;
+      }
+
+      toast.info(
+        `O preço base virou o tamanho "${baseName}". Dá pra renomear na lista.`,
+      );
+    }
+
+    try {
       await createVariation.mutateAsync({ productId, data });
+    } catch {
+      // O base fica criado (não desfaz). O form continua preenchido pra
+      // tentar de novo - e como a lista já tem o base, não duplica.
+      if (shouldCreateBaseSize) {
+        toast.error(
+          `O tamanho base foi criado, mas "${data.name}" não. Tente adicionar de novo.`,
+        );
+      }
+      return;
     }
 
     resetForm();
@@ -272,6 +382,7 @@ export function ProductVariationsDialog({
                   onClick={handleSubmit}
                   disabled={
                     isSaving ||
+                    (!editingId && !isListSettled) ||
                     !form.name.trim() ||
                     form.totalPrice === undefined ||
                     form.stockQuantity === undefined ||
@@ -294,6 +405,41 @@ export function ProductVariationsDialog({
               </div>
             </div>
           </div>
+
+          {isMissingBaseSize && (
+            <div className="mt-3 flex items-center gap-3 rounded-[10px] border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+              <p className="min-w-0 flex-1 text-[11.5px] font-semibold text-foreground">
+                Nenhum tamanho tem o preço base ({formatCurrency(salePrice)}).
+                Sem ele, o cliente não consegue pedir o prato por esse valor.
+              </p>
+              <Button
+                type="button"
+                onClick={handleCreateBaseSize}
+                disabled={isSaving}
+                className="h-8 shrink-0 cursor-pointer rounded-[8px] bg-brand-500 px-2.5 text-[11.5px] font-extrabold text-white hover:bg-brand-600"
+              >
+                Criar tamanho base
+              </Button>
+            </div>
+          )}
+
+          {isBaseSizeUnsellable && baseSize && (
+            <div className="mt-3 flex items-center gap-3 rounded-[10px] border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+              <p className="min-w-0 flex-1 text-[11.5px] font-semibold text-foreground">
+                O tamanho com o preço base (&quot;{baseSize.name}&quot;) está
+                indisponível ou sem estoque. O cliente não consegue pedir o
+                prato por {formatCurrency(salePrice)}.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => handleEdit(baseSize)}
+                className="h-8 shrink-0 cursor-pointer rounded-[8px] px-2.5 text-[11.5px] font-bold text-foreground hover:bg-card"
+              >
+                Editar
+              </Button>
+            </div>
+          )}
 
           <div className="mt-3 divide-y divide-border">
             {isLoading &&
@@ -325,8 +471,13 @@ export function ProductVariationsDialog({
                   className="flex items-center gap-2 py-2.5"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12.5px] font-bold text-foreground">
-                      {variation.name}
+                    <p className="flex min-w-0 items-center gap-1.5 text-[12.5px] font-bold text-foreground">
+                      <span className="truncate">{variation.name}</span>
+                      {isBaseSizeVariation(variation) && (
+                        <span className="shrink-0 rounded-md bg-muted px-1.5 py-[1px] text-[9.5px] font-extrabold tracking-wide text-muted-foreground">
+                          PREÇO BASE
+                        </span>
+                      )}
                     </p>
                     <p className="text-[10.5px] font-semibold text-muted-foreground">
                       {variation.isAvailable ? "Disponível" : "Indisponível"}

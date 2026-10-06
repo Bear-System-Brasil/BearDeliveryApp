@@ -55,4 +55,8 @@ export function LegalList({ children }: { children: ReactNode }) {
 /** Dados de contato e responsáveis, iguais nas duas páginas. */
 export const LEGAL_CONTACT_EMAIL = "beardeliveryofc@gmail.com";
 export const LEGAL_RESPONSIBLES = "Kauan Alves Prata e Wesley da Silva Brum";
-export const LEGAL_UPDATED_AT = "4 de outubro de 2026";
+// Uma data por documento: mudar um não muda a data do outro.
+export const TERMS_UPDATED_AT = "4 de outubro de 2026";
+export const PRIVACY_UPDATED_AT = "5 de outubro de 2026";
+/** A mais recente das duas, para a tela que reúne os documentos. */
+export const LEGAL_UPDATED_AT = PRIVACY_UPDATED_AT;

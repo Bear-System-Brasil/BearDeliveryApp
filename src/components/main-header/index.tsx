@@ -313,7 +313,7 @@ export function MainHeader({
               <Link
                 href={logoHref}
                 className="shrink-0"
-                aria-label="BearDelivery - início"
+                aria-label="Bear Delivery - início"
               >
                 <BearDeliveryLogo
                   small={logoSmall}
@@ -603,7 +603,9 @@ export function MainHeader({
                             variant="outline"
                             className="w-full justify-start rounded-xl"
                             onClick={() => {
-                              router.push("/restaurant-landing-page");
+                              // Logado: direto pro formulário, que cadastra
+                              // o restaurante na própria conta (LDMF-295).
+                              router.push("/restaurant-register");
                               setMobileMenuOpen(false);
                             }}
                           >
