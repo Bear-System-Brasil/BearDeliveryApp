@@ -29,7 +29,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Textarea } from "@/components/ui/textarea";
 
 import { AddressMap } from "@/components/address-map";
 import {
@@ -548,18 +547,6 @@ export function DeliveryForm({
           </div>
         </section>
       )}
-
-      <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
-        <Field htmlFor="observations" label="Observacoes do pedido" optional>
-          <Textarea
-            id="observations"
-            placeholder="Ex: entregar na portaria"
-            value={deliveryInfo.observations}
-            onChange={(e) => handleInputChange("observations", e.target.value)}
-            className="min-h-[72px] resize-none rounded-lg border-border bg-muted text-sm shadow-none focus-visible:border-brand-400 focus-visible:ring-brand-200"
-          />
-        </Field>
-      </section>
     </form>
   );
 }

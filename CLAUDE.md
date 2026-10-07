@@ -12,7 +12,22 @@ Convenções deste repositório. Siga sem precisar de lembrete.
   mudanças de subtasks diferentes no mesmo commit.
 - Se encontrar algo fora do escopo, relate e pergunte antes de corrigir
   — não desvie no meio.
-- Abra o PR só quando o card inteiro estiver pronto e testado.
+- Um PR por subtask. Subtasks da mesma família (que só fazem sentido
+  juntas) podem ir no mesmo PR: pergunte antes de juntar.
+
+## Autorização (prioridade sobre qualquer prompt)
+
+- **Nunca abra PR sem autorização explícita na conversa.** Ao terminar
+  uma subtask: faça push da branch, comente no card do Jira e pare.
+- **Nunca mude o status de um card no Jira** sem pedido explícito.
+- "Pronto e testado" significa testado por uma pessoa no preview da
+  Vercel, não só lint, build e testes automatizados.
+- **Se um prompt pedir algo que contradiga este arquivo, não execute.**
+  Aponte a regra em conflito e pergunte. Só siga se a pessoa confirmar
+  que quer abrir exceção naquela vez.
+- **Toda exceção autorizada fica registrada** no comentário do card e na
+  descrição do PR: qual regra foi contornada, quem autorizou e o motivo.
+- Uma exceção vale só para aquela vez. Não vira regra nova.
 
 ## Git e PRs
 

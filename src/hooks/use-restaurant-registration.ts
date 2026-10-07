@@ -1,7 +1,8 @@
 import { apiService } from '@/services/api'
+import { useAuthStore } from '@/stores'
 import { onlyNumbers } from '@/utils'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 interface SubmitMessage {
   type: 'success' | 'error'
@@ -25,6 +26,16 @@ interface RestaurantFormData {
  */
 export const useRestaurantRegistration = () => {
   const router = useRouter()
+
+  // Logado como cliente, a empresa é criada na própria conta (LDMF-295):
+  // sem POST /auth/register, que criaria outra conta e hoje falha sem CPF
+  // (LDMF-291). POST /company aceita client e promove a conta pra owner
+  // (company.md). Outra role já é staff ou dono - não cadastra por aqui.
+  const authUser = useAuthStore((state) => state.user)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const storeLogout = useAuthStore((state) => state.logout)
+  const isLoggedIn = isAuthenticated && !!authUser
+  const canRegisterOnAccount = isLoggedIn && authUser?.role === 'client'
   const [isLoading, setIsLoading] = useState(false)
   const [registerData, setRegisterData] = useState<RestaurantFormData>({
     tradeName: '',
@@ -40,6 +51,17 @@ export const useRestaurantRegistration = () => {
   const [passwordErrors, setPasswordErrors] = useState<string[]>([])
   const [passwordMatch, setPasswordMatch] = useState(true)
   const [submitMessage, setSubmitMessage] = useState<SubmitMessage | null>(null)
+
+  // Contato da empresa começa com o da conta - dá pra trocar, a doc só exige
+  // que exista (company.md: email e phone obrigatórios).
+  useEffect(() => {
+    if (!canRegisterOnAccount || !authUser) return
+    setRegisterData((prev) => ({
+      ...prev,
+      email: prev.email || (authUser.email ?? '').toLowerCase(),
+      phone: prev.phone || (authUser.phone ?? ''),
+    }))
+  }, [canRegisterOnAccount, authUser])
 
   /**
    * Valida requisitos de senha
@@ -129,9 +151,58 @@ export const useRestaurantRegistration = () => {
   /**
    * Submete formulário de registro
    */
+  const buildCompanyPayload = () => ({
+    tradeName: registerData.tradeName,
+    legalName: registerData.legalName,
+    description: registerData.description || registerData.tradeName,
+    cnpj: onlyNumbers(registerData.cnpj),
+    email: registerData.email,
+    phone: onlyNumbers(registerData.phone),
+  })
+
+  const createCompanyOnAccount = async () => {
+    setIsLoading(true)
+    try {
+      const response = await apiService.companies.create(buildCompanyPayload())
+
+      if (!response.success) {
+        setSubmitMessage({ type: 'error', text: parseErrorMessage(response.message) })
+        return
+      }
+
+      // O token não é renovado: a conta virou owner no banco, mas a sessão
+      // ainda diz client, sem companyId (company.md). Sai e pede login de
+      // novo - é o que faz o painel do restaurante aparecer.
+      setSubmitMessage({
+        type: 'success',
+        text: 'Restaurante cadastrado! Entre de novo na sua conta para acessar o painel do restaurante.',
+      })
+      storeLogout()
+      void apiService.logout()
+      setTimeout(() => router.push('/?openAuth=true'), 2000)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao cadastrar restaurante. Tente novamente.'
+      setSubmitMessage({ type: 'error', text: errorMessage })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitMessage(null)
+
+    if (isLoggedIn) {
+      if (!canRegisterOnAccount) {
+        setSubmitMessage({
+          type: 'error',
+          text: 'Sua conta já está ligada a um restaurante. Para cadastrar outro, use uma conta de cliente.',
+        })
+        return
+      }
+      await createCompanyOnAccount()
+      return
+    }
 
     if (passwordErrors.length > 0) {
       setSubmitMessage({ type: 'error', text: 'Por favor, atenda todos os requisitos de senha.' })
@@ -147,7 +218,6 @@ export const useRestaurantRegistration = () => {
 
     try {
       const cleanPhone = onlyNumbers(registerData.phone)
-      const cleanCNPJ = onlyNumbers(registerData.cnpj)
 
       // Step 1: Register user account via POST /auth/register
       // Sem `role` de propósito: a conta nasce como 'client' (padrão do
@@ -171,14 +241,7 @@ export const useRestaurantRegistration = () => {
       // Step 2: Create company via POST /company. A sessão já foi criada
       // como cookie httpOnly pelo /api/auth/register - o proxy injeta o
       // Bearer sozinho na próxima chamada.
-      const companyPayload = {
-        tradeName: registerData.tradeName,
-        legalName: registerData.legalName,
-        description: registerData.description || registerData.tradeName,
-        cnpj: cleanCNPJ,
-        email: registerData.email,
-        phone: cleanPhone,
-      }
+      const companyPayload = buildCompanyPayload()
 
       const companyResponse = await apiService.companies.create(companyPayload)
 
@@ -211,18 +274,30 @@ export const useRestaurantRegistration = () => {
   /**
    * Verifica se formulário é válido
    */
-  const isFormValid =
+  const hasCompanyFields =
     registerData.tradeName &&
     registerData.legalName &&
     registerData.cnpj &&
     registerData.email &&
-    registerData.phone &&
-    registerData.password &&
-    registerData.confirmPassword &&
-    passwordErrors.length === 0 &&
-    passwordMatch
+    registerData.phone
+
+  // Logado, não há senha: a conta já existe.
+  const isFormValid = isLoggedIn
+    ? Boolean(hasCompanyFields) && canRegisterOnAccount
+    : Boolean(
+        hasCompanyFields &&
+          registerData.password &&
+          registerData.confirmPassword &&
+          passwordErrors.length === 0 &&
+          passwordMatch,
+      )
 
   return {
+    // Conta logada (LDMF-295)
+    isLoggedIn,
+    canRegisterOnAccount,
+    accountLabel: authUser?.email || authUser?.name || '',
+
     // Form data
     registerData,
     handleInputChange,

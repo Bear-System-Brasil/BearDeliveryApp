@@ -1,12 +1,11 @@
 import {
-  addressTextKey,
   parseBrasilApiCoords,
-  resolveAddressCoordinates,
   withCoords,
   type CoordinateSource,
   type SourcedCoords,
 } from "@/lib/address-coordinates";
 import { parseCoords } from "@/lib/geocode";
+import { findNeighborhood, neighborhoodLabel } from "@/services/neighborhoods";
 import { apiService } from "@/services/api";
 import {
   restorePendingDefaultAddress,
@@ -18,8 +17,15 @@ import { getErrorMessage, onlyNumbers } from "@/utils";
 import { isCompanyAdminRole } from "@/utils/role-helpers";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useAddressFields } from "./use-address-fields";
+import {
+  NEIGHBORHOOD_ZOOM,
+  STREET_ZOOM,
+  useAddressPin,
+  type PinSource,
+} from "./use-address-pin";
 import { useUserAddresses } from "./use-addresses";
 import { useProfile } from "./use-api";
 import {
@@ -79,19 +85,17 @@ export const useProfileManagement = () => {
   const [isLoadingCep, setIsLoadingCep] = useState(false);
   const [lastFetchedCep, setLastFetchedCep] = useState<string | null>(null);
 
-  // Coordenada do endereço + de onde ela veio. Este formulário nunca gravou
-  // coordenada nenhuma: agora vem do CEP, da geocodificação do endereço
-  // digitado ou do clique no mapa, nessa ordem de prioridade.
-  const [addressCoords, setAddressCoords] = useState<SourcedCoords | null>(
-    null,
-  );
-
-  // Endereço como estava ao abrir a edição. Enquanto o texto não muda, a
-  // coordenada já salva continua valendo (o cliente pode ter ajustado o pino
-  // no mapa antes); assim que muda, ela é descartada e recalculada.
-  const [editingAddressTextKey, setEditingAddressTextKey] = useState<
-    string | null
+  // Posição do pino + de onde ela veio. É exatamente o que vai para o
+  // backend ao salvar (LDMF-261): sem pino, não salva. `zoom` e `seq` só
+  // dizem ao mapa como recentralizar a cada novo posicionamento.
+  const [pin, setPin] = useState<
+    (SourcedCoords & { zoom?: number; seq: number }) | null
   >(null);
+  const pinSeq = useRef(0);
+  const addressCoords = useMemo<SourcedCoords | null>(
+    () => (pin ? { coords: pin.coords, source: pin.source } : null),
+    [pin],
+  );
 
   // Form management with validation
   const profileForm = useProfileForm({
@@ -119,7 +123,7 @@ export const useProfileManagement = () => {
     "state",
   ]);
   const [
-    watchedCep,
+    ,
     watchedStreet,
     watchedNumber,
     watchedNeighborhood,
@@ -127,14 +131,69 @@ export const useProfileManagement = () => {
     watchedState,
   ] = watchedAddress;
 
-  const watchedAddressTextKey = addressTextKey({
-    zipCode: watchedCep,
-    street: watchedStreet,
-    number: watchedNumber,
-    neighborhood: watchedNeighborhood,
-    city: watchedCity,
-    state: watchedState,
+  // Bairro, rua e número movem o pino na frente do cliente - o salvar não
+  // geocodifica nada escondido.
+  // Ordem e trava dos campos; trocar estado, cidade ou bairro limpa os
+  // seguintes e o pino. As ações do pino chegam por ref porque o hook do pino
+  // também precisa saber se o bairro está em "Outro".
+  const pinActions = useRef<{
+    resetBaseline: () => void;
+    locateCityCenter: () => void;
+  } | null>(null);
+  const addressFields = useAddressFields({
+    form: addressForm,
+    enabled: addingAddressState.isOpen,
+    onPreviousFieldChange: () => {
+      setPin(null);
+      pinActions.current?.resetBaseline();
+    },
+    // "Outro": pino no centro da cidade.
+    onOtherNeighborhood: () => pinActions.current?.locateCityCenter(),
   });
+
+  const addressPin = useAddressPin({
+    otherNeighborhood: addressFields.otherNeighborhood,
+    fields: {
+      state: watchedState,
+      city: watchedCity,
+      neighborhood: watchedNeighborhood,
+      street: watchedStreet,
+      number: watchedNumber,
+    },
+    onPin: (coords: Coords, source: PinSource, zoom: number) =>
+      setPin({ coords, source, zoom, seq: ++pinSeq.current }),
+  });
+  pinActions.current = {
+    resetBaseline: addressPin.resetBaseline,
+    locateCityCenter: addressPin.locateCityCenter,
+  };
+
+  // Bairro digitado ou vindo do CEP/endereço salvo com nome alternativo (ex.:
+  // "Pombal") vira o nome oficial ("Castelo III"): o formulário exibe
+  // e salva sempre o oficial (LDMF-278).
+  // "Outro" escolhido agora, ou endereço salvo com bairro fora da lista (o
+  // nome digitado antes continua editável no campo de texto).
+  const isOtherNeighborhood =
+    addressFields.otherNeighborhood ||
+    (!!addressPin.neighborhoodList &&
+      !!watchedNeighborhood?.trim() &&
+      !findNeighborhood(addressPin.neighborhoodList, watchedNeighborhood));
+
+  // Em "Outro" o nome digitado é salvo como foi escrito, sem conversão.
+  useEffect(() => {
+    if (addressFields.otherNeighborhood) return;
+
+    const item = findNeighborhood(addressPin.neighborhoodList, watchedNeighborhood);
+    if (item && item.name !== watchedNeighborhood) {
+      addressForm.setValue("neighborhood", item.name, { shouldValidate: true });
+    }
+  }, [
+    addressFields.otherNeighborhood,
+    addressPin.neighborhoodList,
+    watchedNeighborhood,
+    addressForm,
+  ]);
+
 
   /**
    * Prevent SSR issues
@@ -264,25 +323,27 @@ export const useProfileManagement = () => {
   }, [user?.id, queryClient]);
 
   /**
-   * O endereço mudou desde que a edição abriu, então a coordenada que estava
-   * salva aponta para outro lugar - descarta para o save geocodificar de novo.
-   */
-  useEffect(() => {
-    if (!editingAddressTextKey) return;
-    if (watchedAddressTextKey === editingAddressTextKey) return;
-
-    setEditingAddressTextKey(null);
-    setAddressCoords((coords) =>
-      coords?.source === "stored" ? null : coords,
-    );
-  }, [watchedAddressTextKey, editingAddressTextKey]);
-
-  /**
    * Registra uma coordenada respeitando a prioridade das fontes
    * (clique no mapa > geocodificação > CEP).
    */
   const applyCoords = (coords: Coords | null, source: CoordinateSource) => {
-    setAddressCoords((current) => withCoords(current, coords, source));
+    if (source === "manual" && coords) addressPin.clearNotice();
+
+    setPin((current) => {
+      const base = current
+        ? { coords: current.coords, source: current.source }
+        : null;
+      const next = withCoords(base, coords, source);
+      if (next === base || !next) return current;
+
+      // Toque/arrasto mantém o zoom do cliente; a coordenada do CEP é do
+      // logradouro (ou da cidade inteira), então aproxima só até o bairro.
+      return {
+        ...next,
+        zoom: source === "cep" ? NEIGHBORHOOD_ZOOM : undefined,
+        seq: ++pinSeq.current,
+      };
+    });
   };
 
   /**
@@ -308,10 +369,13 @@ export const useProfileManagement = () => {
       }
 
       const data = await response.json();
-      addressForm.setValue("street", data.street || "");
-      addressForm.setValue("neighborhood", data.neighborhood || "");
-      addressForm.setValue("city", data.city || "");
-      addressForm.setValue("state", data.state || "");
+      // CEP preenche estado e cidade. Se a cidade mudou, os campos seguintes
+      // e o pino são limpos como em qualquer troca de campo anterior.
+      if (data.state) addressFields.changeState(data.state);
+      if (data.city) addressFields.changeCity(data.city);
+      // CEP de rua (não o de cidade inteira) também traz bairro e rua.
+      if (data.neighborhood) addressForm.setValue("neighborhood", data.neighborhood);
+      if (data.street) addressForm.setValue("street", data.street);
 
       // A BrasilAPI já devolve a coordenada do logradouro - usa como ponto de
       // partida e centra o mapa nela. É a fonte de menor prioridade: cede
@@ -390,13 +454,29 @@ export const useProfileManagement = () => {
 
     const storedCoords = parseCoords(address.latitude, address.longitude);
 
-    setAddressCoords(
-      storedCoords ? { coords: storedCoords, source: "stored" } : null,
+    setPin(
+      storedCoords
+        ? {
+            coords: storedCoords,
+            source: "stored",
+            zoom: STREET_ZOOM,
+            seq: ++pinSeq.current,
+          }
+        : null,
     );
-    setEditingAddressTextKey(storedCoords ? addressTextKey(address) : null);
+    // O pino abre na coordenada salva: só mudança de bairro, rua ou número
+    // dispara nova posição. Mudar o complemento mantém.
+    addressPin.resetBaseline({
+      state: address.state,
+      city: address.city,
+      neighborhood: address.neighborhood,
+      street: address.street,
+      number: String(address.number ?? ""),
+    });
     setEditingAddressId(address.id);
     setEditingAddressOriginalComplement(address.complement || "");
     setLastFetchedCep(onlyNumbers(address.zipCode));
+    addressFields.resetOtherNeighborhood();
     addingAddressState.open();
   };
 
@@ -429,20 +509,23 @@ export const useProfileManagement = () => {
       trimmedComplement.length > 0 &&
       trimmedComplement.length < 5;
 
+    // "Outro" exige o nome do bairro (só espaços não vale).
+    if (isOtherNeighborhood && !data.neighborhood?.trim()) {
+      toast.error("Informe qual é o seu bairro.");
+      return;
+    }
+
+    // Salvar = confirmar o pino. Endereço sem coordenada some das buscas por
+    // proximidade, então sem pino não sai nada.
+    if (!addressCoords) {
+      toast.error("Marque no mapa onde fica o endereço antes de salvar.");
+      return;
+    }
+
+    const pinCoords = addressCoords.coords;
+
     setIsSavingAddress(true);
     try {
-      // Sem gesto explícito do cliente (clique no mapa) nem coordenada salva
-      // ainda válida, geocodifica o endereço digitado - é o que a loja já faz
-      // em use-company-profile-management. Sem isso este formulário gravava o
-      // endereço sem coordenada nenhuma, e o cliente sumia das buscas por
-      // proximidade.
-      const resolvedCoords = await resolveAddressCoordinates(
-        data,
-        addressCoords,
-      );
-
-      if (resolvedCoords) setAddressCoords(resolvedCoords);
-
       const payload = {
         street: data.street,
         number: data.number,
@@ -450,8 +533,8 @@ export const useProfileManagement = () => {
         neighborhood: data.neighborhood,
         city: data.city,
         state: data.state,
-        longitude: resolvedCoords?.coords.lng,
-        latitude: resolvedCoords?.coords.lat,
+        longitude: pinCoords.lng,
+        latitude: pinCoords.lat,
         zipCode: onlyNumbers(data.zipCode),
         isDefault: data.isDefault ?? false,
       };
@@ -505,8 +588,9 @@ export const useProfileManagement = () => {
         setEditingAddressOriginalComplement("");
         addingAddressState.close();
         setLastFetchedCep(null);
-        setAddressCoords(null);
-        setEditingAddressTextKey(null);
+        setPin(null);
+        addressPin.resetBaseline();
+        addressFields.resetOtherNeighborhood();
 
         toast.success(
           editingAddressId
@@ -546,8 +630,9 @@ export const useProfileManagement = () => {
     setLastFetchedCep(null);
     setEditingAddressId(null);
     setEditingAddressOriginalComplement("");
-    setAddressCoords(null);
-    setEditingAddressTextKey(null);
+    setPin(null);
+    addressPin.resetBaseline();
+    addressFields.resetOtherNeighborhood();
     addingAddressState.close();
   };
 
@@ -656,6 +741,27 @@ export const useProfileManagement = () => {
     editingAddressId,
     addressCoords,
     applyCoords,
+    neighborhoodOptions:
+      addressPin.neighborhoodList?.neighborhoods.map((item) => ({
+        value: item.name,
+        label: neighborhoodLabel(item),
+      })) ?? null,
+    stateOptions: addressFields.stateOptions,
+    cityOptions: addressFields.cityOptions,
+    isLoadingCities: addressFields.isLoadingCities,
+    citiesError: addressFields.citiesError,
+    fieldLocks: addressFields.locks,
+    changeState: addressFields.changeState,
+    changeCity: addressFields.changeCity,
+    changeNeighborhood: addressFields.changeNeighborhood,
+    isOtherNeighborhood,
+    selectOtherNeighborhood: addressFields.selectOtherNeighborhood,
+    changeOtherNeighborhood: addressFields.changeOtherNeighborhood,
+    isLocatingPin: addressPin.isLocatingNeighborhood,
+    isSearchingAddress: addressPin.isSearchingAddress,
+    addressNotFound: addressPin.addressNotFound,
+    pinZoom: pin?.zoom,
+    pinRecenterKey: pin?.seq,
     // CEP
     isLoadingCep,
     formatCep,

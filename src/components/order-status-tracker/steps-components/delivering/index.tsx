@@ -1,8 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 import { OrderInfo } from "@/hooks";
-import { GoogleMap, Marker, useLoadScript } from "@react-google-maps/api";
-import { useMemo } from "react";
 
 type Props = {
   order: OrderInfo | null;
@@ -10,59 +10,23 @@ type Props = {
   lng: number;
 };
 
+// Leaflet depende de `window`: o mapa só é carregado no navegador.
+const LeafletDeliveringMap = dynamic(() => import("./leaflet-delivering-map"), {
+  ssr: false,
+  loading: () => <div className="h-[220px] animate-pulse rounded-[10px] bg-muted" />,
+});
+
 /**
  * Mapa do entregador em tempo real. A mensagem de status fica no tracker, para
  * não duplicar o mesmo bloco em cima do mapa.
  */
 export function DeliveringMap({ order, lat, lng }: Props) {
-  const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: googleMapsApiKey ?? "",
-  });
-
-  const center = useMemo(() => ({ lat, lng }), [lat, lng]);
-
   if (!order) return null;
 
-  if (!googleMapsApiKey) {
-    return (
-      <div className="rounded-[10px] border border-border bg-card p-3 text-[11.5px] font-medium text-muted-foreground">
-        Mapa indisponível no momento. Configuração do Google Maps ausente.
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="rounded-[10px] border border-border bg-card p-3 text-[11.5px] font-medium text-muted-foreground">
-        Erro ao carregar o mapa
-      </div>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <div className="h-[220px] animate-pulse rounded-[10px] bg-muted" />
-    );
-  }
-
   return (
-    <div className="overflow-hidden rounded-[10px] border border-border">
-      <GoogleMap
-        mapContainerStyle={{ width: "100%", height: "220px" }}
-        center={center}
-        zoom={18}
-        options={{
-          disableDefaultUI: true,
-          draggable: false,
-          zoomControl: false,
-          scrollwheel: false,
-          disableDoubleClickZoom: true,
-          gestureHandling: "none",
-        }}
-      >
-        <Marker position={center} />
-      </GoogleMap>
+    // `isolate` segura os z-index internos do Leaflet dentro do mapa.
+    <div className="isolate overflow-hidden rounded-[10px] border border-border">
+      <LeafletDeliveringMap lat={lat} lng={lng} />
     </div>
   );
 }

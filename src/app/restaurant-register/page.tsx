@@ -2,6 +2,7 @@
 
 import { Footer } from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   AnimatedBackground,
@@ -28,9 +29,13 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 export default function RestaurantRegisterPage() {
   const {
+    isLoggedIn,
+    canRegisterOnAccount,
+    accountLabel,
     registerData,
     handleInputChange,
     passwordErrors,
@@ -40,6 +45,10 @@ export default function RestaurantRegisterPage() {
     submitMessage,
     handleSubmit,
   } = useRestaurantRegistration();
+
+  // Aceite dos termos e da política (LDMF-281). Só trava o envio na tela: o
+  // backend não tem campo pra guardar o aceite, então não vai no corpo.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   return (
     <>
@@ -89,13 +98,44 @@ export default function RestaurantRegisterPage() {
                   <strong className="text-brand-600 dark:text-brand-400">
                     Processo de cadastro:
                   </strong>{" "}
-                  Preencha os dados abaixo para criar sua conta e cadastrar seu
-                  restaurante na plataforma. Após o cadastro, faça login para
-                  acessar o painel de gerenciamento.
+                  {isLoggedIn
+                    ? "Preencha os dados do restaurante. Ele será cadastrado na sua conta, sem criar outra."
+                    : "Preencha os dados abaixo para criar sua conta e cadastrar seu restaurante na plataforma. Após o cadastro, faça login para acessar o painel de gerenciamento."}
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Logado: a empresa vai pra conta atual (LDMF-295). Staff ou
+                  dono já têm restaurante - aí só explica, sem formulário útil. */}
+              {isLoggedIn && (
+                <div
+                  className={
+                    canRegisterOnAccount
+                      ? "rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-foreground dark:border-brand-800/50 dark:bg-brand-950/40"
+                      : "rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+                  }
+                >
+                  {canRegisterOnAccount ? (
+                    <>
+                      Cadastrando o restaurante na conta{" "}
+                      <strong className="break-all">{accountLabel}</strong>. Depois
+                      do cadastro, você vai entrar de novo para acessar o painel.
+                    </>
+                  ) : (
+                    "Sua conta já está ligada a um restaurante. Para cadastrar outro, use uma conta de cliente."
+                  )}
+                </div>
+              )}
+
+              <form
+                onSubmit={(event) => {
+                  if (!acceptedTerms) {
+                    event.preventDefault();
+                    return;
+                  }
+                  void handleSubmit(event);
+                }}
+                className="space-y-5"
+              >
                 <div className="space-y-2">
                   <Label
                     htmlFor="tradeName"
@@ -230,79 +270,105 @@ export default function RestaurantRegisterPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-4 border-t-2 border-border">
-                  <Label
-                    htmlFor="password"
-                    className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
-                  >
-                    <Lock className="h-4 w-4 text-brand-500" />
-                    Senha
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Digite uma senha forte"
-                    value={registerData.password}
-                    onChange={(e) =>
-                      handleInputChange("password", e.target.value)
-                    }
-                    className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
-                    required
-                  />
-                  {registerData.password && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {passwordErrors.length === 0 ? (
-                        <Badge className="bg-green-500 hover:bg-green-600 gap-1 border-0">
-                          <CheckCircle className="h-3 w-3" />
-                          Senha forte
-                        </Badge>
-                      ) : (
-                        passwordErrors.map((error, idx) => (
-                          <p
-                            key={idx}
-                            className="text-destructive text-xs border-0"
-                          >
-                            {error}
-                          </p>
-                        ))
+                {!isLoggedIn && (
+                  <>
+                    <div className="space-y-2 pt-4 border-t-2 border-border">
+                      <Label
+                        htmlFor="password"
+                        className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
+                      >
+                        <Lock className="h-4 w-4 text-brand-500" />
+                        Senha
+                      </Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="Digite uma senha forte"
+                        value={registerData.password}
+                        onChange={(e) =>
+                          handleInputChange("password", e.target.value)
+                        }
+                        className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
+                        required
+                      />
+                      {registerData.password && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {passwordErrors.length === 0 ? (
+                            <Badge className="bg-green-500 hover:bg-green-600 gap-1 border-0">
+                              <CheckCircle className="h-3 w-3" />
+                              Senha forte
+                            </Badge>
+                          ) : (
+                            passwordErrors.map((error, idx) => (
+                              <p
+                                key={idx}
+                                className="text-destructive text-xs border-0"
+                              >
+                                {error}
+                              </p>
+                            ))
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
 
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="confirmPassword"
-                    className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
-                  >
-                    <Lock className="h-4 w-4 text-brand-500" />
-                    Confirmar Senha
-                  </Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Digite a senha novamente"
-                    value={registerData.confirmPassword}
-                    onChange={(e) =>
-                      handleInputChange("confirmPassword", e.target.value)
-                    }
-                    className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
-                    required
-                  />
-                  {registerData.confirmPassword && (
-                    <div className="mt-2">
-                      {passwordMatch ? (
-                        <Badge className="bg-green-500 hover:bg-green-600 gap-1 border-0">
-                          <CheckCircle className="h-3 w-3" />
-                          Senhas coincidem
-                        </Badge>
-                      ) : (
-                        <p className="border-0 text-destructive text-xs">
-                          Senhas não coincidem
-                        </p>
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="confirmPassword"
+                        className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer"
+                      >
+                        <Lock className="h-4 w-4 text-brand-500" />
+                        Confirmar Senha
+                      </Label>
+                      <Input
+                        id="confirmPassword"
+                        type="password"
+                        placeholder="Digite a senha novamente"
+                        value={registerData.confirmPassword}
+                        onChange={(e) =>
+                          handleInputChange("confirmPassword", e.target.value)
+                        }
+                        className="h-12 rounded-xl border-2 border-border focus:border-brand-400 transition-colors"
+                        required
+                      />
+                      {registerData.confirmPassword && (
+                        <div className="mt-2">
+                          {passwordMatch ? (
+                            <Badge className="bg-green-500 hover:bg-green-600 gap-1 border-0">
+                              <CheckCircle className="h-3 w-3" />
+                              Senhas coincidem
+                            </Badge>
+                          ) : (
+                            <p className="border-0 text-destructive text-xs">
+                              Senhas não coincidem
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
+                  </>
+                )}
+
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="acceptTerms"
+                    checked={acceptedTerms}
+                    onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="acceptTerms" className="text-sm font-medium leading-snug text-foreground">
+                    <span>
+                      Li e aceito os{" "}
+                      <Link href="/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 underline dark:text-brand-400">
+                        Termos de uso
+                      </Link>{" "}
+                      e a{" "}
+                      <Link href="/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-600 underline dark:text-brand-400">
+                        Política de privacidade
+                      </Link>
+                      .
+                    </span>
+                  </Label>
                 </div>
 
                 {submitMessage && (
@@ -322,7 +388,7 @@ export default function RestaurantRegisterPage() {
                   fullWidth
                   size="lg"
                   className="h-14 text-lg"
-                  disabled={!isFormValid || isLoading}
+                  disabled={!isFormValid || !acceptedTerms || isLoading}
                   isLoading={isLoading}
                   loadingText="Cadastrando..."
                 >

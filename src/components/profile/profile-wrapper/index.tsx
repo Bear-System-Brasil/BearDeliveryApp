@@ -76,6 +76,23 @@ export function ProfileWrapper() {
     editingAddressId,
     addressCoords,
     applyCoords,
+    neighborhoodOptions,
+    isLocatingPin,
+    stateOptions,
+    cityOptions,
+    isLoadingCities,
+    citiesError,
+    fieldLocks,
+    changeState,
+    changeCity,
+    changeNeighborhood,
+    isOtherNeighborhood,
+    selectOtherNeighborhood,
+    changeOtherNeighborhood,
+    isSearchingAddress,
+    addressNotFound,
+    pinZoom,
+    pinRecenterKey,
     // CEP
     isLoadingCep,
   } = useProfileManagement();
@@ -216,6 +233,27 @@ export function ProfileWrapper() {
           addressForm={addressForm}
           addressCoords={addressCoords}
           addresses={addresses}
+          neighborhoodOptions={neighborhoodOptions}
+          isLocatingPin={isLocatingPin}
+          addressFieldProps={{
+            stateOptions,
+            cityOptions,
+            isLoadingCities,
+            citiesError,
+            fieldLocks,
+            onStateChange: changeState,
+            onCityChange: changeCity,
+            onNeighborhoodChange: changeNeighborhood,
+            isOtherNeighborhood,
+            onSelectOtherNeighborhood: selectOtherNeighborhood,
+            onOtherNeighborhoodChange: changeOtherNeighborhood,
+          }}
+          pinStatusProps={{
+            isSearchingAddress,
+            addressNotFound,
+            pinZoom,
+            pinRecenterKey,
+          }}
         />
 
         {/* Security */}

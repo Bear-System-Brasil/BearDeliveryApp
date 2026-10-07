@@ -1,5 +1,5 @@
 import type { Product } from "@/services/api";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +34,14 @@ const ADD_ON = {
   productId: "prod-1",
 };
 
+// Referência estável entre renders (mock com identidade nova a cada
+// chamada causa laço de render). Os testes trocam o objeto inteiro.
+const DEFAULT_VARIATIONS_RESULT = { data: [VARIATION], isLoading: false };
+let variationsResult: {
+  data: (typeof VARIATION)[];
+  isLoading: boolean;
+} = DEFAULT_VARIATIONS_RESULT;
+
 vi.mock("@/hooks", () => ({
   useAllCategories: () => ({ data: [] }),
   useCartActions: () => ({ handleAddToCart: addToCart }),
@@ -41,7 +49,7 @@ vi.mock("@/hooks", () => ({
     data: { id: "comp-1", tradeName: "Lanchonete do Bear" },
     isLoading: false,
   }),
-  usePublicProductVariations: () => ({ data: [VARIATION], isLoading: false }),
+  usePublicProductVariations: () => variationsResult,
   usePublicProductAddOns: () => ({ data: [ADD_ON], isLoading: false }),
 }));
 
@@ -190,9 +198,145 @@ describe("CustomizeOrder - preços dos extras", () => {
 
     // Tamanho: 35 de base + 5 = R$ 40,00, sem "+" - é o que o cliente paga
     // naquele tamanho, igual ao que a gestão do cardápio mostra.
-    expect(screen.getByText("R$ 40,00")).toBeInTheDocument();
+    const sizeOption = screen.getByRole("button", { name: /Grande/ });
+    expect(within(sizeOption).getByText("R$ 40,00")).toBeInTheDocument();
     expect(screen.queryByText("+ R$ 5,00")).not.toBeInTheDocument();
     // Complemento continua somando por cima.
     expect(screen.getByText("+ R$ 3,00")).toBeInTheDocument();
+  });
+});
+
+describe("CustomizeOrder - tamanhos vendáveis", () => {
+  beforeEach(() => {
+    addToCart.mockReset();
+    showAuthModal.mockReset();
+    isAuthenticated = false;
+    variationsResult = DEFAULT_VARIATIONS_RESULT;
+  });
+
+  it("esconde tamanho sem estoque ou indisponível, como o cardápio", () => {
+    variationsResult = {
+      data: [
+        VARIATION,
+        { ...VARIATION, id: "var-familia", name: "Família", stockQuantity: 0 },
+        { ...VARIATION, id: "var-gigante", name: "Gigante", isAvailable: false },
+      ],
+      isLoading: false,
+    };
+    renderModal();
+
+    expect(screen.getByText("Grande")).toBeInTheDocument();
+    expect(screen.queryByText("Família")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gigante")).not.toBeInTheDocument();
+  });
+
+  it("pré-seleciona o tamanho vendável mais barato", async () => {
+    isAuthenticated = true;
+    addToCart.mockResolvedValue(true);
+    variationsResult = {
+      data: [
+        VARIATION,
+        { ...VARIATION, id: "var-pequeno", name: "Pequeno", priceModifier: 0 },
+        // Mais barato de todos, mas sem estoque - não pode ser o escolhido.
+        { ...VARIATION, id: "var-mini", name: "Mini", priceModifier: 0, stockQuantity: 0 },
+      ],
+      isLoading: false,
+    };
+    const user = userEvent.setup();
+    renderModal();
+
+    // Botão já liberado, com o total do Pequeno (35 + 0).
+    const addButton = await screen.findByRole("button", {
+      name: /Adicionar.*R\$\s35,00/,
+    });
+    await user.click(addButton);
+
+    expect(addToCart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        price: 35,
+        variations: [{ productVariationId: "var-pequeno" }],
+        variationLabel: "Pequeno",
+      }),
+    );
+  });
+
+  it("respeita a troca de tamanho feita pelo cliente", async () => {
+    isAuthenticated = true;
+    addToCart.mockResolvedValue(true);
+    variationsResult = {
+      data: [
+        VARIATION,
+        { ...VARIATION, id: "var-pequeno", name: "Pequeno", priceModifier: 0 },
+      ],
+      isLoading: false,
+    };
+    const user = userEvent.setup();
+    renderModal();
+
+    await user.click(screen.getByText("Grande"));
+    await user.click(
+      screen.getByRole("button", { name: /Adicionar.*R\$\s40,00/ }),
+    );
+
+    expect(addToCart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        price: 40,
+        variations: [{ productVariationId: "var-grande" }],
+      }),
+    );
+  });
+
+  it("trava o Adicionar quando nenhum tamanho é vendável", async () => {
+    isAuthenticated = true;
+    variationsResult = {
+      data: [
+        { ...VARIATION, stockQuantity: 0 },
+        { ...VARIATION, id: "var-pequeno", name: "Pequeno", isAvailable: false },
+      ],
+      isLoading: false,
+    };
+    const user = userEvent.setup();
+    renderModal();
+
+    const button = screen.getByRole("button", {
+      name: "Sem tamanhos disponíveis",
+    });
+    expect(button).toBeDisabled();
+
+    await user.click(button);
+    expect(addToCart).not.toHaveBeenCalled();
+  });
+
+  it("não trava prato que não tem tamanhos cadastrados", () => {
+    variationsResult = { data: [], isLoading: false };
+    renderModal();
+
+    expect(
+      screen.queryByRole("button", { name: "Sem tamanhos disponíveis" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Adicionar/ })).toBeEnabled();
+  });
+
+  it("lista os tamanhos do mais barato pro mais caro", () => {
+    variationsResult = {
+      data: [
+        { ...VARIATION, id: "var-2l", name: "2L", priceModifier: 8 },
+        { ...VARIATION, id: "var-500", name: "500ml", priceModifier: 0 },
+        { ...VARIATION, id: "var-1l", name: "1L", priceModifier: 4 },
+      ],
+      isLoading: false,
+    };
+    renderModal();
+
+    const labels = ["500ml", "1L", "2L"].map((label) => screen.getByText(label));
+    // Cada rótulo vem depois do anterior no DOM.
+    expect(
+      labels[0].compareDocumentPosition(labels[1]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      labels[1].compareDocumentPosition(labels[2]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

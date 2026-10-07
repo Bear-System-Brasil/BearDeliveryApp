@@ -5,8 +5,14 @@ import { isSameCity, parseCoords } from "@/lib/geocode";
 
 const isActive = (company: Restaurant) => company.status === "active";
 
+/**
+ * Endereços que valem para a loja. DELETE de endereço é soft delete
+ * (isActive: false); isActive ausente conta como ativo.
+ */
 function getStoreAddresses(restaurant: Restaurant) {
-  return restaurant.Address ?? [];
+  return (restaurant.Address ?? []).filter(
+    (address) => address.isActive !== false,
+  );
 }
 
 /**
@@ -17,6 +23,20 @@ function hasMappedCoords(restaurant: Restaurant) {
   return getStoreAddresses(restaurant).some((address) =>
     parseCoords(address.latitude, address.longitude),
   );
+}
+
+/**
+ * O filtro por raio do backend usa o primeiro endereço com coordenada sem
+ * olhar isActive, entao uma loja cujo endereço foi apagado continua vindo
+ * como dentro do raio. Só da para corrigir quando a resposta traz o
+ * endereço apagado: sem essa informação, confiamos no backend.
+ */
+function hasOnlyDeletedCoords(restaurant: Restaurant) {
+  const hasDeletedAddress = (restaurant.Address ?? []).some(
+    (address) => address.isActive === false,
+  );
+
+  return hasDeletedAddress && !hasMappedCoords(restaurant);
 }
 
 function isInUserCity(restaurant: Restaurant, userCity?: string) {
@@ -51,7 +71,9 @@ export async function getActiveRestaurants(userLocation?: UserLocation) {
   const nearby = nearbyResponse.data.filter(isActive).map((restaurant) =>
     withDeliveryDefaults({
       ...restaurant,
-      isWithinRadius: restaurant.isWithinRadius ?? true,
+      isWithinRadius: hasOnlyDeletedCoords(restaurant)
+        ? false
+        : (restaurant.isWithinRadius ?? true),
     }),
   );
 
@@ -60,6 +82,8 @@ export async function getActiveRestaurants(userLocation?: UserLocation) {
   const nearbyIds = new Set(nearby.map((restaurant) => restaurant.id));
 
   // Loja sem geocodificação so entra se o endereço for da cidade do cliente.
+  // Sem coordenada não ha como saber a distancia, entao ela vai marcada como
+  // fora do raio: mesma cidade não quer dizer perto (LDMF-229).
   const unmappedInUserCity = catalogResponse.data
     .filter(
       (restaurant) =>
@@ -69,7 +93,7 @@ export async function getActiveRestaurants(userLocation?: UserLocation) {
         isInUserCity(restaurant, userLocation.city),
     )
     .map((restaurant) =>
-      withDeliveryDefaults({ ...restaurant, isWithinRadius: true }),
+      withDeliveryDefaults({ ...restaurant, isWithinRadius: false }),
     );
 
   return [...nearby, ...unmappedInUserCity];

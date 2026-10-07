@@ -53,6 +53,8 @@ export interface Address {
   longitude: string | null;
   neighborhood: string;
   isDefault?: boolean;
+  // Soft delete: endereço apagado vem com isActive: false. Ausente = ativo.
+  isActive?: boolean;
 }
 
 export interface Restaurant {

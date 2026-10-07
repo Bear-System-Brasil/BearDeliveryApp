@@ -20,6 +20,7 @@ import { getProfileRoute, isCompanyStaffRole } from "@/utils/role-helpers";
 import clsx from "clsx";
 import {
   ChevronDown,
+  FileText,
   LogOut,
   MapPin,
   Menu,
@@ -312,7 +313,7 @@ export function MainHeader({
               <Link
                 href={logoHref}
                 className="shrink-0"
-                aria-label="BearDelivery - início"
+                aria-label="Bear Delivery - início"
               >
                 <BearDeliveryLogo
                   small={logoSmall}
@@ -344,14 +345,14 @@ export function MainHeader({
                 </SheetTrigger>
                 <SheetContent
                   side="bottom"
-                  className="max-h-[92dvh] overflow-y-auto rounded-t-3xl bg-card px-4 pb-8 pt-4 sm:px-6"
+                  className="max-h-[92dvh] overflow-y-auto rounded-t-3xl bg-card px-4 pb-8 pt-4 sm:max-h-[85vh] sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-xl sm:w-[calc(100%-2rem)] sm:rounded-2xl sm:border sm:border-border sm:shadow-2xl sm:p-6 sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:zoom-out-95"
                 >
-                  <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted" />
+                  <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted sm:hidden" />
                   {isChangingLocation ? (
                     <DeliveryAddressForm onSave={saveLocation} />
                   ) : (
                     <div className="mx-auto w-full max-w-xl space-y-4">
-                      <SheetTitle className="text-lg font-bold">
+                      <SheetTitle className="pr-6 text-lg font-bold">
                         Endereço de entrega
                       </SheetTitle>
                       <div className="rounded-2xl border bg-brand-50/60 dark:bg-brand-950/30 p-4">
@@ -602,7 +603,9 @@ export function MainHeader({
                             variant="outline"
                             className="w-full justify-start rounded-xl"
                             onClick={() => {
-                              router.push("/restaurant-landing-page");
+                              // Logado: direto pro formulário, que cadastra
+                              // o restaurante na própria conta (LDMF-295).
+                              router.push("/restaurant-register");
                               setMobileMenuOpen(false);
                             }}
                           >
@@ -624,6 +627,17 @@ export function MainHeader({
                             {area.label}
                           </Button>
                         ))}
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start rounded-xl"
+                          onClick={() => {
+                            router.push("/legal");
+                            setMobileMenuOpen(false);
+                          }}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Termos e privacidade
+                        </Button>
                         <button
                           type="button"
                           onClick={() => {

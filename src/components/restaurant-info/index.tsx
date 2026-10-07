@@ -301,7 +301,7 @@ export default function RestaurantPage() {
             <>
               {/* === CABEÇALHO DO RESTAURANTE === */}
               <section className="overflow-hidden rounded-[14px] border border-border bg-card shadow-sm">
-                {/* Capa que se dissolve no card, com o logo por cima */}
+                {/* Capa do restaurante limpa, sem camada branca sobreposta (LDMF-270) */}
                 <div className="relative h-40 sm:h-48">
                   <Image
                     fill
@@ -315,7 +315,6 @@ export default function RestaurantPage() {
                     alt=""
                     className="object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-card" />
 
                   <button
                     type="button"
@@ -689,13 +688,13 @@ function RestaurantInfoSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-border bg-card px-4 pb-8 pt-4 sm:px-6"
+        className="max-h-[85dvh] overflow-y-auto rounded-t-3xl border-t border-border bg-card px-4 pb-8 pt-4 sm:max-h-[85vh] sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:-translate-y-1/2 sm:max-w-xl sm:w-[calc(100%-2rem)] sm:rounded-2xl sm:border sm:border-border sm:shadow-2xl sm:p-6 sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:zoom-out-95"
       >
-        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted" />
+        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-muted sm:hidden" />
 
         <div className="mx-auto w-full max-w-xl space-y-4">
           <div className="space-y-1">
-            <SheetTitle className="text-lg font-bold text-foreground">
+            <SheetTitle className="pr-6 text-lg font-bold text-foreground">
               {restaurant.tradeName}
             </SheetTitle>
             {isOpen !== null && (

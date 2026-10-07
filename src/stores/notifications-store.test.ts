@@ -1,6 +1,8 @@
 import { act } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useAuthStore, type User } from "./auth-store";
 import { useNotificationsStore } from "./notifications-store";
+import { STORAGE_KEYS } from "@/utils/storage-manager";
 
 const initialState = useNotificationsStore.getState();
 
@@ -129,5 +131,159 @@ describe("useNotificationsStore", () => {
     const items = useNotificationsStore.getState().items;
     expect(items).toHaveLength(1);
     expect(items[0].audience).toBe("management");
+  });
+});
+
+const initialAuthState = useAuthStore.getState();
+
+function makeUser(id: string): User {
+  return {
+    id,
+    name: `Conta ${id}`,
+    email: `${id}@example.com`,
+    cpf: "",
+    phone: "",
+    birthDate: "",
+    role: "client",
+  };
+}
+
+function notifyPedido(title: string) {
+  useNotificationsStore.getState().addNotification({
+    audience: "customer",
+    title,
+    body: "...",
+    href: "/orders/1",
+  });
+}
+
+const titles = () =>
+  useNotificationsStore.getState().items.map((item) => item.title);
+
+describe("notificações x sessão (LDMF-244)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useAuthStore.setState(initialAuthState, true);
+    useNotificationsStore.setState(initialState, true);
+  });
+
+  afterEach(() => {
+    useAuthStore.getState().logout();
+  });
+
+  it("conta B não vê o feed da A", () => {
+    useAuthStore.getState().login(makeUser("a"));
+    notifyPedido("Pedido da A saiu para entrega");
+    useAuthStore.getState().logout();
+
+    useAuthStore.getState().login(makeUser("b"));
+
+    expect(titles()).toEqual([]);
+  });
+
+  it("troca direta de conta, sem passar pelo logout, também separa", () => {
+    useAuthStore.getState().login(makeUser("a"));
+    notifyPedido("Pedido da A");
+
+    useAuthStore.getState().login(makeUser("b"));
+
+    expect(titles()).toEqual([]);
+  });
+
+  it("logout tira do sino o feed da conta que saiu", () => {
+    useAuthStore.getState().login(makeUser("a"));
+    notifyPedido("Pedido da A");
+
+    useAuthStore.getState().logout();
+
+    expect(titles()).toEqual([]);
+  });
+
+  it("conta A reencontra o próprio feed, com o que já tinha lido", () => {
+    useAuthStore.getState().login(makeUser("a"));
+    notifyPedido("Pedido da A");
+    useNotificationsStore.getState().markAllAsRead();
+    useAuthStore.getState().logout();
+    useAuthStore.getState().login(makeUser("b"));
+    notifyPedido("Pedido da B");
+    useAuthStore.getState().logout();
+
+    useAuthStore.getState().login(makeUser("a"));
+
+    const items = useNotificationsStore.getState().items;
+    expect(items.map((item) => item.title)).toEqual(["Pedido da A"]);
+    expect(items[0].read).toBe(true);
+  });
+
+  it("feed sem login não passa para a conta que entra", () => {
+    notifyPedido("Sem login");
+
+    useAuthStore.getState().login(makeUser("a"));
+
+    expect(titles()).toEqual([]);
+  });
+
+  it("persiste o feed no localStorage, separado por conta", () => {
+    useAuthStore.getState().login(makeUser("a"));
+    notifyPedido("Pedido da A");
+
+    const raw = JSON.parse(
+      localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS) as string,
+    );
+    expect(Object.keys(raw.state.byUser)).toEqual(["a"]);
+    expect(raw.state.items).toBeUndefined();
+  });
+});
+
+describe("migração do feed sem dono (v0)", () => {
+  // Recarrega os módulos pra hidratar a partir do localStorage, como no boot
+  async function boot(auth: User | null) {
+    localStorage.clear();
+    localStorage.setItem(
+      STORAGE_KEYS.NOTIFICATIONS,
+      JSON.stringify({
+        state: {
+          items: [
+            {
+              id: "n1",
+              audience: "customer",
+              title: "Antiga",
+              body: "...",
+              createdAt: "2026-01-01T00:00:00.000Z",
+              read: false,
+            },
+          ],
+        },
+        version: 0,
+      }),
+    );
+    if (auth) {
+      localStorage.setItem(
+        STORAGE_KEYS.AUTH,
+        JSON.stringify({
+          state: { user: auth, isAuthenticated: true },
+          version: 1,
+        }),
+      );
+    }
+    vi.resetModules();
+    const { useNotificationsStore: fresh } = await import(
+      "./notifications-store"
+    );
+    return fresh.getState();
+  }
+
+  it("fica com a conta logada no boot", async () => {
+    const state = await boot(makeUser("a"));
+
+    expect(state.items.map((item) => item.title)).toEqual(["Antiga"]);
+    expect(Object.keys(state.byUser)).toEqual(["a"]);
+  });
+
+  it("sem ninguém logado, é descartado", async () => {
+    const state = await boot(null);
+
+    expect(state.items).toEqual([]);
+    expect(state.byUser).toEqual({});
   });
 });

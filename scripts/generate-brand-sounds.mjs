@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ─────────────────────────────────────────────────────────────────────────────
-// Gerador da identidade sonora do BearDelivery
+// Gerador da identidade sonora do Bear Delivery
 //
 // Sintetiza todos os sons da marca do zero (sem samples, sem libs de DSP) e
 // grava em public/sounds. Rodar de novo com o mesmo código produz bytes

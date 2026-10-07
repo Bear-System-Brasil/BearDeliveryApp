@@ -22,8 +22,8 @@ const figtree = Figtree({
 
 export const metadata: Metadata = {
   title: {
-    default: "BearDelivery - O delivery mais fofo",
-    template: "%s | BearDelivery",
+    default: "Bear Delivery - O delivery mais fofo",
+    template: "%s | Bear Delivery",
   },
   description:
     "O delivery mais fofo e rápido da sua cidade. Peça em até 30 minutos.",
@@ -47,21 +47,21 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: "BearDelivery",
-    title: "BearDelivery - O delivery mais fofo",
+    siteName: "Bear Delivery",
+    title: "Bear Delivery - O delivery mais fofo",
     description: "O delivery mais fofo e rápido da sua cidade",
     images: [
       {
         url: "/icons/og-image.png",
         width: 1200,
         height: 630,
-        alt: "BearDelivery",
+        alt: "Bear Delivery",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "BearDelivery",
+    title: "Bear Delivery",
     description: "O delivery mais fofo e rápido",
     images: ["/icons/twitter-card.png"],
   },

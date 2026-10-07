@@ -2273,8 +2273,6 @@ export const apiService = {
       extras?: {
         addOns?: { productAddOnsId: string; quantity: number }[];
         variations?: { productVariationId: string }[];
-        /** Observação do prato (ex.: "sem cebola, bem passado"). */
-        observations?: string;
       },
       signal?: AbortSignal,
     ) =>
@@ -2288,9 +2286,6 @@ export const apiService = {
           ...(extras?.addOns?.length ? { addOns: extras.addOns } : {}),
           ...(extras?.variations?.length
             ? { variations: extras.variations }
-            : {}),
-          ...(extras?.observations?.trim()
-            ? { observations: extras.observations.trim() }
             : {}),
         },
         true,
@@ -2464,6 +2459,24 @@ export const apiService = {
           status,
           ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
         },
+        true,
+      ),
+
+    /**
+     * Entregador desiste de uma entrega aceita, antes da coleta: ela volta
+     * para PENDING, sem entregador, e fica disponível para outro (delivery.md,
+     * "Devolver entrega ao pool"). `returnReason` é obrigatório e fica para
+     * auditoria - não usar `cancelReason` aqui.
+     *
+     * É o que o entregador faz. Cancelar (abaixo) encerra a entrega de vez e
+     * não é ação dele - e a rota de cancelamento respondeu 404 no teste da
+     * LDMF-279.
+     */
+    returnToPool: (id: string, returnReason: string) =>
+      apiRequest<Delivery>(
+        "PATCH",
+        `/delivery/${id}/status`,
+        { status: "PENDING", returnReason },
         true,
       ),
 

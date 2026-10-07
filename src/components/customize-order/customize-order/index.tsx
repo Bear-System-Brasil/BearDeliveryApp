@@ -6,7 +6,6 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import {
   useAllCategories,
   useCartActions,
@@ -15,6 +14,7 @@ import {
   useRestaurant,
 } from "@/hooks";
 import { useAuth } from "@/contexts/auth-provider";
+import { isSellableVariation } from "@/lib/product-variation";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/utils";
 import { Minus, Plus, X } from "lucide-react";
@@ -52,14 +52,6 @@ export type ExtraGroup = {
   basePrice?: number;
 };
 
-type CustomOrderType = {
-  specialInstructions: string;
-};
-
-const initialCustomOrder = (): CustomOrderType => ({
-  specialInstructions: "",
-});
-
 /**
  * Teto por complemento, aplicado a cada um de forma independente: dá pra
  * levar 4 de cada tipo, e não há limite de quantos tipos o cliente escolhe.
@@ -73,9 +65,6 @@ export function CustomizeOrder({
 }: Props) {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [quantity, setQuantity] = useState(1);
-  // Observações já abertas ao abrir o prato: o cliente não precisa achar o
-  // "+" pra pedir sem cebola. O botão vira só um jeito de recolher.
-  const [notesOpen, setNotesOpen] = useState(true);
   // Tamanho é escolha única (ids); complemento agora carrega quantidade,
   // então mora em `addOnQuantities` (id -> quantidade, 0 = fora do pedido).
   const [selections, setSelections] = useState<Record<string, string[]>>({
@@ -121,10 +110,6 @@ export function CustomizeOrder({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageApi, productData.id]);
 
-  const [customOrder, setCustomOrder] = useState<CustomOrderType>(
-    initialCustomOrder(),
-  );
-
   const { data: restaurant, isLoading: restaurantLoading } = useRestaurant(
     productData.companyId,
   );
@@ -150,7 +135,9 @@ export function CustomizeOrder({
   const extraGroups: ExtraGroup[] = useMemo(() => {
     const groups: ExtraGroup[] = [];
 
-    const availableVariations = variations.filter((v) => v.isAvailable);
+    // Mesmo critério do "A partir de" do cardápio: tamanho sem estoque não
+    // é vendável, então não entra na lista nem ancora a pré-seleção.
+    const availableVariations = variations.filter(isSellableVariation);
     if (availableVariations.length > 0) {
       groups.push({
         id: "variation",
@@ -163,11 +150,15 @@ export function CustomizeOrder({
         // garante que o preço anunciado seja o que o cliente paga de fato.
         required: true,
         basePrice: Number(productData.salePrice || 0),
-        options: availableVariations.map((v) => ({
-          id: v.id,
-          label: v.name,
-          price: v.priceModifier,
-        })),
+        // Do mais barato pro mais caro - a ordem que a API devolve é a de
+        // cadastro. `sort` é estável: empate mantém a ordem de cadastro.
+        options: [...availableVariations]
+          .sort((a, b) => a.priceModifier - b.priceModifier)
+          .map((v) => ({
+            id: v.id,
+            label: v.name,
+            price: v.priceModifier,
+          })),
       });
     }
 
@@ -187,6 +178,29 @@ export function CustomizeOrder({
 
     return groups;
   }, [variations, addOns, productData.salePrice]);
+
+  // O tamanho mais barato entre os vendáveis já vem marcado - a escolha
+  // continua obrigatória, mas o cliente que quer o preço base não precisa
+  // procurar por ele.
+  const cheapestVariationId = useMemo(() => {
+    const options =
+      extraGroups.find((group) => group.id === "variation")?.options ?? [];
+    if (options.length === 0) return undefined;
+    return options.reduce((cheapest, option) =>
+      option.price < cheapest.price ? option : cheapest,
+    ).id;
+  }, [extraGroups]);
+
+  // Só preenche quando não há escolha - não sobrescreve a do cliente. O
+  // resetState ao fechar zera a seleção, então reabrir pré-seleciona de novo.
+  useEffect(() => {
+    if (!isModalOpen || !cheapestVariationId) return;
+    setSelections((prev) =>
+      prev.variation?.length
+        ? prev
+        : { ...prev, variation: [cheapestVariationId] },
+    );
+  }, [isModalOpen, cheapestVariationId]);
 
   const handleSelectionChange = (groupId: string, selectedIds: string[]) => {
     setSelections((prev) => ({ ...prev, [groupId]: selectedIds }));
@@ -244,9 +258,7 @@ export function CustomizeOrder({
   };
 
   const resetState = () => {
-    setCustomOrder(initialCustomOrder());
     setQuantity(1);
-    setNotesOpen(true);
     setSelections({ variation: [], addon: [] });
     setAddOnQuantities({});
     setAddAfterLogin(false);
@@ -254,7 +266,7 @@ export function CustomizeOrder({
 
   const handleConfirmAddToCart = async () => {
     if (!productData || !restaurant || isCustomizationLoading) return;
-    if (pendingRequiredGroup) return;
+    if (pendingRequiredGroup || hasNoSellableVariation) return;
 
     // Visitante: pede o login aqui, sem fechar o modal nem descartar o que
     // ele montou. Checar antes de `addToCart` evita o toast de "precisa
@@ -296,7 +308,6 @@ export function CustomizeOrder({
         image: productData.imageURL?.[0]?.url || "/placeholder.svg",
         restaurantId: restaurant.id,
         restaurantName: restaurant.tradeName,
-        specialInstructions: customOrder.specialInstructions,
         quantity,
         variations: selectedVariationId
           ? [{ productVariationId: selectedVariationId }]
@@ -347,6 +358,14 @@ export function CustomizeOrder({
   const unitPrice = productData.salePrice + extrasTotal;
 
   const totalPrice = unitPrice * quantity;
+
+  // Prato com tamanhos cadastrados, mas nenhum vendável: sem o grupo
+  // Tamanho o item iria pro carrinho sem variação, pelo preço base - e não
+  // está confirmado que o backend aceita isso. Trava o "Adicionar".
+  const hasNoSellableVariation =
+    !variationsLoading &&
+    variations.length > 0 &&
+    !variations.some(isSellableVariation);
 
   const pendingRequiredGroup = extraGroups.find(
     (group) => group.required && (selections[group.id]?.length ?? 0) === 0,
@@ -469,32 +488,6 @@ export function CustomizeOrder({
               ))
             )}
           </div>
-
-          <div className="mt-3">
-            <button
-              type="button"
-              aria-expanded={notesOpen}
-              onClick={() => setNotesOpen((prev) => !prev)}
-              className="text-[11.5px] font-bold text-brand-500"
-            >
-              {notesOpen ? "− Observações" : "+ Observações"}
-            </button>
-
-            {notesOpen && (
-              <Textarea
-                placeholder="Ex: sem cebola, bem passado…"
-                value={customOrder.specialInstructions}
-                onChange={(e) =>
-                  setCustomOrder((prev) => ({
-                    ...prev,
-                    specialInstructions: e.target.value,
-                  }))
-                }
-                rows={2}
-                className="mt-2 resize-none rounded-[9px] border border-border bg-muted text-[12.5px] shadow-none focus-visible:ring-brand-400"
-              />
-            )}
-          </div>
         </div>
 
         {/* Quantity and Add button */}
@@ -525,7 +518,10 @@ export function CustomizeOrder({
           <Button
             onClick={handleConfirmAddToCart}
             disabled={
-              isAddingToCart || isCustomizationLoading || !!pendingRequiredGroup
+              isAddingToCart ||
+              isCustomizationLoading ||
+              !!pendingRequiredGroup ||
+              hasNoSellableVariation
             }
             className="h-10 flex-1 rounded-[10px] bg-brand-500 text-[13.5px] font-extrabold text-white shadow-[0_4px_12px_var(--tw-shadow-color)] shadow-brand-500/30 hover:bg-brand-600 disabled:opacity-60"
           >
@@ -539,6 +535,8 @@ export function CustomizeOrder({
                 <span className="h-4 w-4 animate-spin rounded-full border-b-2 border-white" />
                 Adicionando...
               </span>
+            ) : hasNoSellableVariation ? (
+              <span>Sem tamanhos disponíveis</span>
             ) : pendingRequiredGroup ? (
               <span>Selecione {pendingRequiredGroup.title.toLowerCase()}</span>
             ) : (

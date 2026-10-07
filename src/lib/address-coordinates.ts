@@ -16,15 +16,23 @@ import { Coords } from "@/types/restaurant";
  *   enquanto o cliente não mexer no endereço; se o texto mudar, ela deixa de
  *   valer e quem limpa é o formulário (ver `hasAddressTextChanged`).
  * - `manual`: o cliente apontou - clique no mapa ou botão "Usar localização".
+ * - `neighborhood`: centro do bairro escolhido na lista (ou da cidade, quando
+ *   o bairro não tem coordenada).
  *
  * Ordem de prioridade (clique no mapa > geocodificação > CEP): uma fonte
  * nunca é sobrescrita por outra de prioridade menor.
  */
-export type CoordinateSource = "cep" | "geocode" | "stored" | "manual";
+export type CoordinateSource =
+  | "cep"
+  | "geocode"
+  | "neighborhood"
+  | "stored"
+  | "manual";
 
 const SOURCE_RANK: Record<CoordinateSource, number> = {
   cep: 1,
   geocode: 2,
+  neighborhood: 2,
   stored: 3,
   manual: 3,
 };

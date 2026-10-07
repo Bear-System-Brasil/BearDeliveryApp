@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { apiService } from "@/services/api";
 import { Upload, X } from "lucide-react";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface ImageUploadProps {
@@ -29,8 +29,17 @@ export function ImageUpload({
   const [preview, setPreview] = useState<string | null>(value || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    setPreview(value || null);
+  }, [value]);
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
+
+    // Limpa o valor do input imediatamente para permitir selecionar o mesmo arquivo em envios seguintes
+    input.value = "";
+
     if (!file) return;
 
     // Validate file type
@@ -66,7 +75,7 @@ export function ImageUpload({
         toast.error(response.message || "Erro ao fazer upload");
         setPreview(null);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Erro ao fazer upload da imagem");
       setPreview(null);
     } finally {
@@ -132,8 +141,11 @@ export function ImageUpload({
             type="file"
             accept="image/*"
             onChange={handleFileSelect}
+            onClick={(e) => {
+              e.stopPropagation();
+              (e.target as HTMLInputElement).value = "";
+            }}
             className="hidden"
-            disabled={uploading}
           />
 
           <Button
