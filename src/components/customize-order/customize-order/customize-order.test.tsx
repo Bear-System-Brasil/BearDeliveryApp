@@ -339,4 +339,20 @@ describe("CustomizeOrder - tamanhos vendáveis", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
+
+  it("respeita o maxQuantity customizado do adicional", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    const increaseBtn = screen.getByLabelText("Aumentar Queijo extra");
+    // Clica 5 vezes
+    await user.click(increaseBtn);
+    await user.click(increaseBtn);
+    await user.click(increaseBtn);
+    await user.click(increaseBtn);
+    await user.click(increaseBtn);
+
+    // O padrão ADD_ON_MAX_QUANTITY é 4
+    expect(increaseBtn).toBeDisabled();
+  });
 });
