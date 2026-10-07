@@ -20,6 +20,7 @@ import {
   canReturn,
   canSeeCustomerData,
   formatVisibleAddressLines,
+  getChangeablePayment,
   getCourierEarnings,
   getCustomerName,
   getCustomerPhone,
@@ -44,6 +45,12 @@ type Props = {
   onAccept?: (id: string) => void;
   onAdvance?: (delivery: Delivery) => void;
   onReturn?: (delivery: Delivery) => void;
+  /**
+   * Troca da forma de pagamento. Quem chama decide o texto conforme a role:
+   * a gerência altera direto, o entregador só avisa a gerência.
+   */
+  onChangePayment?: (delivery: Delivery) => void;
+  changePaymentLabel?: string;
   /** Esta entrega tem um request em andamento - só ela trava, não a tela. */
   busy?: boolean;
   /** Entregas fechadas: sem ações, só o registro do que aconteceu. */
@@ -175,6 +182,8 @@ export function DeliveryCard({
   onAccept,
   onAdvance,
   onReturn,
+  onChangePayment,
+  changePaymentLabel,
   busy = false,
   compact = false,
 }: Props) {
@@ -196,6 +205,8 @@ export function DeliveryCard({
     !payment.isPaid &&
     isSameMoney(orderTotal, payment.amountDue);
   const observations = delivery.observations?.trim();
+  const canChangePayment =
+    !!onChangePayment && !!changePaymentLabel && getChangeablePayment(delivery) !== null;
 
   if (compact) {
     return (
@@ -299,6 +310,17 @@ export function DeliveryCard({
         )}
 
         <PaymentRow payment={payment} />
+
+        {canChangePayment && (
+          <button
+            type="button"
+            onClick={() => onChangePayment?.(delivery)}
+            disabled={busy}
+            className="-mt-1 w-full rounded-xl py-2 text-[13px] font-bold text-brand-600 transition hover:bg-brand-50 disabled:opacity-50 dark:text-brand-400 dark:hover:bg-brand-950/40"
+          >
+            {changePaymentLabel}
+          </button>
+        )}
 
         <dl className="space-y-1.5">
           {orderTotal !== null && !totalRepeatsAmountDue && (

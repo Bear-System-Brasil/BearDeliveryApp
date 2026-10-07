@@ -1,11 +1,15 @@
 "use client";
 
 import { AdminPageLayout } from "@/components/admin-page-layout";
+import { ChangePaymentMethodDialog } from "@/components/change-payment-method-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePayment } from "@/hooks";
+import { buildPaymentMethodUpdate } from "@/lib/payment-update";
 import { cn } from "@/lib/utils";
 import { Payment, PaymentMethod, PaymentStatus } from "@/services/api";
+import { useAuthStore } from "@/stores";
 import { formatCurrency, getCustomerDisplayName } from "@/utils";
+import { isManagementRole } from "@/utils/role-helpers";
 import { DollarSign, Search } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
@@ -138,6 +142,18 @@ function RowActionButton({
   );
 }
 
+function ChangeMethodLink({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="shrink-0 cursor-pointer text-[10.5px] font-bold text-brand-600 underline-offset-2 hover:underline dark:text-brand-400"
+    >
+      Alterar
+    </button>
+  );
+}
+
 export default function FinancePage() {
   const {
     payments,
@@ -149,12 +165,20 @@ export default function FinancePage() {
     approvePayment,
     rejectPayment,
     refundPayment,
+    updatePayment,
     getPaymentMethodLabel,
     getPaymentStatusLabel,
     isPending,
     isCompleted,
     isFailed,
   } = usePayment();
+
+  // Só a gerência altera forma de pagamento; `financial` vê Finanças, mas não
+  // o botão. A restrição de verdade é do backend.
+  const role = useAuthStore((state) => state.user?.role);
+  const canManagePayments = isManagementRole(role);
+  const [paymentToChange, setPaymentToChange] = useState<Payment | null>(null);
+  const [isChangingMethod, setIsChangingMethod] = useState(false);
 
   const [filterMethod, setFilterMethod] = useState<PaymentMethod | "ALL">(
     "ALL",
@@ -248,6 +272,28 @@ export default function FinancePage() {
   const handleRefund = async (payment: Payment) => {
     await refundPayment(payment.id);
     handleSearch();
+  };
+
+  // Forma só muda em pagamento pendente. Ao aprovar, o backend lança a venda
+  // no caixa com a forma daquele momento (financial.md); trocar depois deixa
+  // o caixa com a forma antiga e os totais por forma errados.
+  const canChangeMethod = (payment: Payment) =>
+    canManagePayments && isPending(payment);
+
+  const handleChangeMethod = async (method: PaymentMethod) => {
+    if (!paymentToChange) return false;
+    setIsChangingMethod(true);
+    try {
+      const updated = await updatePayment(
+        paymentToChange.id,
+        buildPaymentMethodUpdate(paymentToChange, method),
+      );
+      if (!updated) return false;
+      handleSearch();
+      return true;
+    } finally {
+      setIsChangingMethod(false);
+    }
   };
 
   const filteredPayments =
@@ -427,8 +473,13 @@ export default function FinancePage() {
                     </div>
 
                     <div className="mt-2 flex items-center justify-between gap-2 text-[11.5px] font-semibold text-muted-foreground">
-                      <span className="truncate">
-                        {getPaymentMethodLabel(payment.paymentMethod)}
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate">
+                          {getPaymentMethodLabel(payment.paymentMethod)}
+                        </span>
+                        {canChangeMethod(payment) && (
+                          <ChangeMethodLink onClick={() => setPaymentToChange(payment)} />
+                        )}
                       </span>
                       <span className="shrink-0 text-muted-foreground">
                         {formatDateShort(payment.date || payment.created_at)}
@@ -531,9 +582,14 @@ export default function FinancePage() {
                       {getCustomerDisplayName(payment.customer)}
                     </span>
 
-                    <span className="truncate text-[11.5px] font-semibold text-foreground">
-                      {getPaymentMethodLabel(payment.paymentMethod)}
-                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate text-[11.5px] font-semibold text-foreground">
+                        {getPaymentMethodLabel(payment.paymentMethod)}
+                      </div>
+                      {canChangeMethod(payment) && (
+                        <ChangeMethodLink onClick={() => setPaymentToChange(payment)} />
+                      )}
+                    </div>
 
                     <span className="text-[11px] font-semibold text-muted-foreground">
                       {formatDateShort(payment.date || payment.created_at)}
@@ -624,6 +680,21 @@ export default function FinancePage() {
           )}
         </div>
       </div>
+
+      <ChangePaymentMethodDialog
+        open={paymentToChange !== null}
+        onClose={() => setPaymentToChange(null)}
+        currentMethod={paymentToChange?.paymentMethod}
+        onConfirm={handleChangeMethod}
+        title="Alterar forma de pagamento"
+        description={
+          paymentToChange
+            ? `Pedido #${paymentToChange.orderId.slice(0, 8)} · ${formatCurrency(paymentToChange.amount)}`
+            : ""
+        }
+        confirmLabel="Salvar forma"
+        isLoading={isChangingMethod}
+      />
     </AdminPageLayout>
   );
 }

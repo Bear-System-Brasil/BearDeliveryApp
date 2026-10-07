@@ -38,9 +38,15 @@ const paymentOptions: PaymentOption[] = [
     icon: Banknote,
   },
   {
-    value: "card_machine",
-    label: "Cartão na maquininha",
-    description: "Crédito ou débito",
+    value: "credit_card_machine",
+    label: "Crédito na maquininha",
+    description: "Cartão de crédito",
+    icon: CreditCard,
+  },
+  {
+    value: "debit_card_machine",
+    label: "Débito na maquininha",
+    description: "Cartão de débito",
     icon: CreditCard,
   },
   {

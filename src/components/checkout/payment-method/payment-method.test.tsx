@@ -39,9 +39,10 @@ describe("PaymentMethod", () => {
     render(<Checkout />);
 
     expect(screen.getByRole("button", { name: /Dinheiro/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Cartão na maquininha/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Crédito na maquininha/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Débito na maquininha/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pix na entrega/ })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Dinheiro|Cartão|Pix/ })).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: /Dinheiro|maquininha|Pix/ })).toHaveLength(4);
   });
 
   it("em dinheiro, pergunta do troco e só mostra o campo depois do 'Sim'", async () => {
@@ -114,9 +115,9 @@ describe("PaymentMethod", () => {
     render(<Checkout />);
     await askForChange(user, "50");
 
-    await user.click(screen.getByRole("button", { name: /Cartão na maquininha/ }));
+    await user.click(screen.getByRole("button", { name: /Débito na maquininha/ }));
 
-    expect(latest).toEqual({ paymentMethod: "card_machine", needsChange: false, changeAmount: "" });
+    expect(latest).toEqual({ paymentMethod: "debit_card_machine", needsChange: false, changeAmount: "" });
     expect(screen.queryByText("Precisa de troco?")).not.toBeInTheDocument();
     expect(screen.getByText("Pagamento no recebimento")).toBeInTheDocument();
   });

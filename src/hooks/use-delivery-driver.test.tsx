@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { io } from "socket.io-client";
-import { apiService, type Delivery } from "@/services/api";
+import { apiService, PaymentMethod, PaymentStatus, type Delivery } from "@/services/api";
 import { socketAuthProvider } from "@/lib/socket-auth";
 import { useAuthStore } from "@/stores";
 import { useCourierPositionStore } from "@/stores/courier-position-store";
@@ -59,11 +59,15 @@ vi.mock("@/services/api", async (importOriginal) => {
         cancel: vi.fn(),
         returnToPool: vi.fn(),
       },
+      payments: {
+        update: vi.fn(),
+      },
     },
   };
 });
 
 const deliveries = vi.mocked(apiService.deliveries);
+const payments = vi.mocked(apiService.payments);
 
 const MINUTE = 60_000;
 
@@ -487,6 +491,63 @@ describe("useDeliveryDriver", () => {
       act(() => result.current.returnDelivery({ id: "a1", reason: "pneu furado" }));
 
       await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Erro ao devolver entrega"));
+    });
+
+    it("gerência manda o corpo recebido para o PATCH do pagamento", async () => {
+      payments.update.mockResolvedValue({ success: true });
+      const { result } = await renderDriver();
+      const update = {
+        orderId: "order-a1",
+        customerId: "cus-1",
+        amount: 35.9,
+        paymentMethod: PaymentMethod.CREDIT_CARD,
+        status: PaymentStatus.PENDING,
+      };
+
+      await act(async () => {
+        await result.current.changePaymentMethod({
+          deliveryId: "a1",
+          paymentId: "pay-1",
+          update,
+        });
+      });
+
+      expect(payments.update).toHaveBeenCalledWith("pay-1", update);
+      expect(toast.success).toHaveBeenCalledWith("Forma de pagamento alterada");
+    });
+
+    it("alteração recusada pelo backend mostra o motivo", async () => {
+      payments.update.mockResolvedValue({ success: false, message: "Sem permissão" });
+      const { result } = await renderDriver();
+
+      await act(async () => {
+        await result.current.changePaymentMethod({
+          deliveryId: "a1",
+          paymentId: "pay-1",
+          update: { paymentMethod: PaymentMethod.PIX },
+        });
+      });
+
+      expect(toast.error).toHaveBeenCalledWith("Sem permissão");
+    });
+
+    // A rota do aviso ainda não existe (LDMF-284): nada pode sair para a API.
+    it("o aviso ao gerente não chama rota nenhuma enquanto o backend não existe", async () => {
+      const { result } = await renderDriver();
+
+      let response: { success: boolean } | undefined;
+      await act(async () => {
+        response = await result.current.requestPaymentChange({
+          deliveryId: "a1",
+          orderId: "order-a1",
+          paymentId: "pay-1",
+          paymentMethod: PaymentMethod.PIX,
+        });
+      });
+
+      expect(response?.success).toBe(false);
+      expect(payments.update).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalled();
     });
 
     it("toda ação, mesmo recusada, atualiza a lista", async () => {

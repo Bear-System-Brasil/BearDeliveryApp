@@ -1,5 +1,10 @@
 import { getPaymentMethodLabel } from "@/constants/order-management";
-import { PaymentStatus, type Address, type Delivery } from "@/services/api";
+import {
+  PaymentStatus,
+  type Address,
+  type Delivery,
+  type Payment,
+} from "@/services/api";
 import { onlyNumbers } from "@/utils";
 
 export type DeliveryStatus = Delivery["status"];
@@ -355,6 +360,29 @@ export function getPaymentSummary(delivery: Delivery): PaymentSummary | null {
     paysWith: changeDue === null ? null : paysWith,
     changeDue,
   };
+}
+
+/**
+ * Pagamento cuja forma pode ser trocada pela tela do entregador: a corrida
+ * está em andamento (aceita ou coletada) e há exatamente um pagamento ainda
+ * a receber. Pedido dividido fica de fora - a tela não saberia qual dos
+ * pagamentos mudou; esse caso se resolve em Finanças.
+ */
+export function getChangeablePayment(delivery: Delivery): Payment | null {
+  if (delivery.status !== "ACCEPTED" && delivery.status !== "PICKED_UP") {
+    return null;
+  }
+
+  const payments = delivery.order?.payments;
+  if (!Array.isArray(payments)) return null;
+
+  const toReceive = payments.filter(
+    (payment) =>
+      payment &&
+      !DEAD_PAYMENT_STATUSES.has(payment.status) &&
+      payment.status !== PaymentStatus.COMPLETED,
+  );
+  return toReceive.length === 1 ? toReceive[0] : null;
 }
 
 /**
