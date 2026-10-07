@@ -136,6 +136,7 @@ describe("useRestaurantRegistration", () => {
         tradeName: "Bear Burger",
         legalName: "Bear Burger Ltda",
         description: "Bear Burger",
+        actionRadius: "10",
         cnpj: "12345678000190",
         email: "loja@bear.com",
         phone: "41999990000",

@@ -288,6 +288,31 @@ describe("useAuthModal", () => {
       });
     });
 
+    it("permite cadastro sem CPF e não envia a chave cpf para api.createUser", async () => {
+      api.createUser.mockResolvedValue({ success: true });
+      const { result } = renderModal("register");
+      const withoutCpf = { ...validRegister, cpf: "" };
+      type(result, withoutCpf);
+      act(() => result.current.setAcceptedTerms(true));
+
+      expect(result.current.isFormValid()).toBe(true);
+
+      await act(async () => {
+        await result.current.handleSubmit();
+      });
+
+      expect(api.createUser).toHaveBeenCalledWith({
+        name: "Ana",
+        email: "ana@example.com",
+        phone: "41999990000",
+        password: "Senha@1",
+        birthDate: "01/01/1990",
+        role: "client",
+      });
+      expect(api.createUser.mock.calls[0][0]).not.toHaveProperty("cpf");
+      expect(result.current.step).toBe("otp");
+    });
+
     it("cadastro recusado fica no formulário com a mensagem", async () => {
       api.createUser.mockResolvedValue({ success: false, message: "CPF já cadastrado" });
       const { result } = renderModal("register");
