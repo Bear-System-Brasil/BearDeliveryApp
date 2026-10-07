@@ -155,6 +155,7 @@ export const useRestaurantRegistration = () => {
     tradeName: registerData.tradeName,
     legalName: registerData.legalName,
     description: registerData.description || registerData.tradeName,
+    actionRadius: "10",
     cnpj: onlyNumbers(registerData.cnpj),
     email: registerData.email,
     phone: onlyNumbers(registerData.phone),

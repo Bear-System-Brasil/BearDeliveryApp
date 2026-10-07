@@ -35,6 +35,7 @@ export type ExtraOption = {
   id: string;
   label: string;
   price: number;
+  maxQuantity?: number;
 };
 
 export type ExtraGroup = {
@@ -172,6 +173,7 @@ export function CustomizeOrder({
           id: a.id,
           label: a.name,
           price: a.priceModifier,
+          maxQuantity: a.maxQuantity,
         })),
       });
     }
@@ -212,7 +214,9 @@ export function CustomizeOrder({
     optionId: string,
     nextQuantity: number,
   ) => {
-    const clamped = Math.min(Math.max(nextQuantity, 0), ADD_ON_MAX_QUANTITY);
+    const addOn = addOns.find((a) => a.id === optionId);
+    const maxLimit = addOn?.maxQuantity ?? ADD_ON_MAX_QUANTITY;
+    const clamped = Math.min(Math.max(nextQuantity, 0), maxLimit);
     setAddOnQuantities((prev) => ({ ...prev, [optionId]: clamped }));
   };
 
