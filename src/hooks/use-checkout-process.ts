@@ -30,6 +30,18 @@ import { useRestaurant } from "./use-restaurants";
 import { useUserAddresses } from "./use-addresses";
 
 /**
+ * Opção escolhida no checkout -> forma gravada no pagamento. Crédito e débito
+ * são opções separadas: antes era um "Cartão na maquininha" só, gravado
+ * sempre como débito, e nenhuma tela sabia a forma de verdade.
+ */
+export const CHECKOUT_PAYMENT_METHODS: Record<string, PaymentMethod> = {
+  cash: PaymentMethod.CASH,
+  credit_card_machine: PaymentMethod.CREDIT_CARD,
+  debit_card_machine: PaymentMethod.DEBIT_CARD,
+  pix_on_delivery: PaymentMethod.PIX,
+};
+
+/**
  * Latitude/longitude não moram aqui: elas vivem em `addressCoords` junto com
  * a fonte que as produziu, porque quem decide se uma coordenada nova entra é
  * a prioridade da fonte (clique no mapa > geocodificação > CEP), não a ordem
@@ -345,10 +357,7 @@ export const useCheckoutProcess = () => {
     const requiredFields = isDeliveryValid();
 
     // Só pagamento na entrega é aceito
-    const paymentValid =
-      paymentMethod === "cash" ||
-      paymentMethod === "card_machine" ||
-      paymentMethod === "pix_on_delivery";
+    const paymentValid = Object.hasOwn(CHECKOUT_PAYMENT_METHODS, paymentMethod);
 
     // Se é dinheiro e precisa de troco, validar valor. `>=` e não `>`:
     // pagar exatamente o total é válido (troco zero), e a mensagem da tela
@@ -589,11 +598,7 @@ export const useCheckoutProcess = () => {
             orderId: finalOrderId,
             // customerId: user.id,
             paymentMethod:
-              paymentMethod === "card_machine"
-                ? PaymentMethod.DEBIT_CARD
-                : paymentMethod === "pix_on_delivery"
-                  ? PaymentMethod.PIX
-                  : PaymentMethod.CASH,
+              CHECKOUT_PAYMENT_METHODS[paymentMethod] ?? PaymentMethod.CASH,
             amount: total,
             // status: PaymentStatus.PENDING,
           };

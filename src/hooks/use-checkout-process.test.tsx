@@ -300,7 +300,7 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
   it("omite changeFor quando o pagamento não é em dinheiro", async () => {
     await submitWith((h) => {
       h.setOrderType("delivery");
-      h.setPaymentMethod("card_machine");
+      h.setPaymentMethod("credit_card_machine");
       // Resíduo de quem trocou de método depois de digitar: não pode vazar.
       h.setNeedsChange(true);
       h.setChangeAmount("50");
@@ -332,6 +332,56 @@ describe("useCheckoutProcess - corpo do finishOrder", () => {
       fulfillmentType: "DELIVERY",
       changeFor: 35.9,
     });
+  });
+});
+
+describe("useCheckoutProcess - forma de pagamento gravada", () => {
+  beforeEach(() => {
+    finishOrder.mockReset();
+    finishOrder.mockResolvedValue({ success: true, data: { id: "order-1" } });
+    openCart.mockReset();
+    paymentsCreate.mockReset();
+    paymentsCreate.mockResolvedValue({ success: true, data: {} });
+    deleteUserAddress.mockReset();
+    resetAddressMocks();
+    addressesQuery = ADDRESSES_WITH_DEFAULT;
+    seedAddressBook(ADDRESSES_WITH_DEFAULT);
+  });
+
+  // O campo tem que sair na requisição: tela que promete e não envia já
+  // aconteceu quatro vezes neste projeto.
+  it.each([
+    ["credit_card_machine", "CREDIT_CARD"],
+    ["debit_card_machine", "DEBIT_CARD"],
+    ["pix_on_delivery", "PIX"],
+    ["cash", "CASH"],
+  ])("%s grava %s no pagamento", async (choice, expected) => {
+    await submitWith((h) => {
+      h.setOrderType("delivery");
+      h.setPaymentMethod(choice);
+    });
+
+    await waitFor(() => expect(paymentsCreate).toHaveBeenCalledTimes(1));
+    expect(paymentsCreate.mock.calls[0][0]).toMatchObject({
+      orderId: "order-1",
+      paymentMethod: expected,
+    });
+  });
+
+  // A validação é do formulário (o delivery-wrapper checa antes de enviar).
+  it("só aceita cartão com crédito ou débito escolhido", async () => {
+    const { result } = renderCheckout();
+    await waitFor(() => expect(result.current.selectedAddressId).toBe("addr-1"));
+    act(() => result.current.setOrderType("delivery"));
+
+    act(() => result.current.setPaymentMethod("credit_card_machine"));
+    expect(result.current.isFormValid()).toBe(true);
+
+    act(() => result.current.setPaymentMethod("card_machine"));
+    expect(result.current.isFormValid()).toBe(false);
+
+    act(() => result.current.setPaymentMethod("constructor"));
+    expect(result.current.isFormValid()).toBe(false);
   });
 });
 

@@ -80,11 +80,13 @@ const encodeOrderId = (orderId: string): string => {
 export interface CreateUserRequest {
   name: string;
   email: string;
-  cpf: string;
+  cpf?: string;
   phone: string;
   password: string;
   birthDate: string;
   role?: string; // Optional - backend will assign 'client' by default if not provided
+  termsVersion?: string;
+  privacyVersion?: string;
 }
 
 export interface RegisterRequest
@@ -96,7 +98,7 @@ export interface RegisterRequest
 export interface UpdateUserRequest {
   name: string;
   email: string;
-  cpf: string;
+  cpf?: string;
   phone: string;
   password?: string; // Optional - only send if changing password
   birthDate: string;
@@ -706,6 +708,7 @@ export interface ProductAddOn {
   id: string;
   name: string;
   priceModifier: number;
+  maxQuantity?: number;
   isAvailable: boolean;
   productId: string;
   created_at: string;
@@ -715,6 +718,7 @@ export interface ProductAddOn {
 export interface SaveProductAddOnRequest {
   name: string;
   priceModifier: number;
+  maxQuantity?: number;
   isAvailable?: boolean;
 }
 
@@ -769,6 +773,7 @@ export interface CreateCompanyRequest {
   tradeName: string;
   legalName: string;
   description: string;
+  actionRadius?: string;
   cnpj: string;
   email: string;
   phone: string;
@@ -1323,11 +1328,27 @@ export interface CreateDeliveryRequest {
 
 export const apiService = {
   // User endpoints
-  createUser: (userData: CreateUserRequest) =>
-    apiRequest<User>("POST", "/user", userData),
+  createUser: (userData: CreateUserRequest) => {
+    const { cpf, ...rest } = userData;
+    const cleanCpf = cpf ? cpf.replace(/\D/g, "") : undefined;
+    const payload = {
+      ...rest,
+      ...(cleanCpf ? { cpf: cleanCpf } : {}),
+      termsVersion: userData.termsVersion || "2026-10-04",
+      privacyVersion: userData.privacyVersion || "2026-10-05",
+    };
+    return apiRequest<User>("POST", "/user", payload);
+  },
 
-  updateUser: (userData: UpdateUserRequest) =>
-    apiRequest<User>("PUT", `/user`, userData, true),
+  updateUser: (userData: UpdateUserRequest) => {
+    const { cpf, ...rest } = userData;
+    const cleanCpf = cpf ? cpf.replace(/\D/g, "") : undefined;
+    const payload = {
+      ...rest,
+      ...(cleanCpf ? { cpf: cleanCpf } : {}),
+    };
+    return apiRequest<User>("PUT", `/user`, payload, true);
+  },
 
   verifyOtp: (otpData: VerifyOtpRequest) =>
     apiRequest<string>("POST", "/user/complet", otpData),
@@ -1740,9 +1761,13 @@ export const apiService = {
     ): Promise<ApiResponse<Company>> => {
       try {
         const formData = new FormData();
+        const payloadWithRadius: CreateCompanyRequest = {
+          ...companyData,
+          actionRadius: companyData.actionRadius || "10",
+        };
 
-        Object.entries(companyData).forEach(([key, value]) => {
-          if (value !== undefined && value !== null) {
+        Object.entries(payloadWithRadius).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== "") {
             formData.append(key, String(value));
           }
         });

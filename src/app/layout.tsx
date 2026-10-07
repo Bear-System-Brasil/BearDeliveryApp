@@ -27,7 +27,6 @@ export const metadata: Metadata = {
   },
   description:
     "O delivery mais fofo e rápido da sua cidade. Peça em até 30 minutos.",
-  themeColor: "#FF7A00",
   icons: {
     icon: [
       { url: "/icons/favicon.ico" },
@@ -67,6 +66,7 @@ export const metadata: Metadata = {
   },
 };
 export const viewport: Viewport = {
+  themeColor: "#FF7A00",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

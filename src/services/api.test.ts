@@ -254,4 +254,77 @@ describe("apiService (via apiRequest)", () => {
       ).toHaveProperty("variations", [{ productVariationId: "v1" }]);
     });
   });
+
+  describe("createUser e updateUser - sanitização de CPF e defaults", () => {
+    it("createUser omite cpf quando vazio e injeta versões padrão de termos e privacidade", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "u1" }));
+      await apiService.createUser({
+        name: "Test",
+        email: "test@example.com",
+        phone: "11999999999",
+        password: "Pass",
+        birthDate: "01/01/2000",
+        cpf: "",
+      });
+
+      const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
+      const body = JSON.parse(config!.body as string);
+      expect(body).not.toHaveProperty("cpf");
+      expect(body.termsVersion).toBe("2026-10-04");
+      expect(body.privacyVersion).toBe("2026-10-05");
+    });
+
+    it("createUser envia cpf formatado só com dígitos quando preenchido", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "u1" }));
+      await apiService.createUser({
+        name: "Test",
+        email: "test@example.com",
+        phone: "11999999999",
+        password: "Pass",
+        birthDate: "01/01/2000",
+        cpf: "123.456.789-00",
+      });
+
+      const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
+      const body = JSON.parse(config!.body as string);
+      expect(body.cpf).toBe("12345678900");
+    });
+
+    it("updateUser omite cpf quando vazio ou indefinido", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "u1" }));
+      await apiService.updateUser({
+        name: "Test",
+        email: "test@example.com",
+        phone: "11999999999",
+        birthDate: "01/01/2000",
+        role: "client",
+        status: "active",
+        cpf: "",
+      });
+
+      const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
+      const body = JSON.parse(config!.body as string);
+      expect(body).not.toHaveProperty("cpf");
+    });
+  });
+
+  describe("companies.create", () => {
+    it("inclui actionRadius padrão de '10' e não envia campos vazios no FormData", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "c1" }));
+      await apiService.companies.create({
+        tradeName: "Empresa",
+        legalName: "Empresa LTDA",
+        description: "",
+        cnpj: "12345678000190",
+        email: "empresa@teste.com",
+        phone: "11999999999",
+      });
+
+      const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
+      const formData = config!.body as FormData;
+      expect(formData.get("actionRadius")).toBe("10");
+      expect(formData.get("tradeName")).toBe("Empresa");
+      expect(formData.get("description")).toBeNull();
+    });
+  });
 });

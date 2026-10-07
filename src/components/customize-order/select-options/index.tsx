@@ -121,7 +121,8 @@ export function SelectOptions({
           // decide se a opção entra no pedido, sem checkbox à parte.
           const optionQuantity = quantities[option.id] ?? 0;
           const isSelected = optionQuantity > 0;
-          const isAtMax = optionQuantity >= maxQuantity;
+          const optionLimit = option.maxQuantity ?? maxQuantity;
+          const isAtMax = optionQuantity >= optionLimit;
 
           return (
             <div

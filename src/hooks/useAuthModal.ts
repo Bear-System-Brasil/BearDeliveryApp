@@ -113,14 +113,25 @@ export function useAuthModal({
     });
   };
 
+  const isCpfValid = (cpf: string) => {
+    const numbers = cpf.replace(/\D/g, "");
+    return numbers.length === 0 || numbers.length === 11;
+  };
+
   const isFormValid = () => {
     if (activeTab === "login") {
       return loginData.email && loginData.password;
     } else {
-      return (
-        registerData.name && registerData.email && registerData.cpf &&
-        registerData.phone && registerData.password && registerData.confirmPassword &&
-        registerData.birthDate && passwordErrors.length === 0 && passwordMatch &&
+      return Boolean(
+        registerData.name &&
+        registerData.email &&
+        isCpfValid(registerData.cpf) &&
+        registerData.phone &&
+        registerData.password &&
+        registerData.confirmPassword &&
+        registerData.birthDate &&
+        passwordErrors.length === 0 &&
+        passwordMatch &&
         acceptedTerms
       );
     }
@@ -173,10 +184,11 @@ export function useAuthModal({
           setSubmitMessage({ type: "error", text: loginResponse.message || "Email ou senha incorretos. Tente novamente." });
         }
       } else {
+        const cpfDigits = registerData.cpf.replace(/\D/g, "");
         const apiData = {
           name: registerData.name,
           email: registerData.email,
-          cpf: registerData.cpf.replace(/\D/g, ""),
+          ...(cpfDigits ? { cpf: cpfDigits } : {}),
           phone: registerData.phone.replace(/\D/g, ""),
           password: registerData.password,
           birthDate: registerData.birthDate,
