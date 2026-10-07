@@ -5,6 +5,15 @@ All notable changes to the Bear Delivery App will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-10-07
+
+### Fixed
+- **Cadastro de Restaurante**: Corrigido direcionamento da rota de criação de usuário no BFF (`/api/auth/register`) para `POST /user` com login automático subsequente (`POST /auth/login`) para criação correta da sessão e posterior cadastro da empresa via `POST /company`.
+- **Validação de CPF**: O CPF agora é tratado como opcional no cadastro. Corrigido envio de string vazia (`cpf: ""`) no payload para o backend; valores ausentes/vazios são completamente omitidos do payload.
+- **Payload de Criação de Empresa**: Adicionado campo `actionRadius: "10"` no payload de criação de empresa (`POST /company`) e garantido que campos vazios não sejam anexados no `FormData`.
+- **Limites de Adicionais (`maxQuantity`)**: Adicionado suporte ao campo opcional `maxQuantity` em adicionais/complementos (`ProductAddOn`), respeitando limites configurados no modal de customização do pedido.
+- **Configuração de Viewport/Tema**: Movido `themeColor` de `metadata` para `viewport` no `src/app/layout.tsx`, resolvendo aviso de depreciação do Next.js.
+
 ## [0.1.0] - 2026-02-25 - MVP Release
 
 ### Initial MVP Release
