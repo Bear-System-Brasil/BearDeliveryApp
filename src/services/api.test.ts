@@ -306,6 +306,19 @@ describe("apiService (via apiRequest)", () => {
       const body = JSON.parse(config!.body as string);
       expect(body).not.toHaveProperty("cpf");
     });
+
+    it("updateUser omite id do payload mesmo que seja passado", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "u1" }));
+      await apiService.updateUser({
+        id: "user-1",
+        name: "Test",
+        email: "test@example.com",
+      } as never);
+
+      const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
+      const body = JSON.parse(config!.body as string);
+      expect(body).not.toHaveProperty("id");
+    });
   });
 
   describe("companies.create", () => {

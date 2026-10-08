@@ -1340,8 +1340,8 @@ export const apiService = {
     return apiRequest<User>("POST", "/user", payload);
   },
 
-  updateUser: (userData: UpdateUserRequest) => {
-    const { cpf, ...rest } = userData;
+  updateUser: (userData: Partial<UpdateUserRequest> & { id?: string }) => {
+    const { cpf, id: _id, ...rest } = userData;
     const cleanCpf = cpf ? cpf.replace(/\D/g, "") : undefined;
     const payload = {
       ...rest,

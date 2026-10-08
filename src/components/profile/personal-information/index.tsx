@@ -71,7 +71,7 @@ type Props = {
   updateProfile: UseMutationResult<
     ApiResponse<UserType>,
     Error,
-    Partial<UpdateUserRequest> & { id: string },
+    Partial<UpdateUserRequest>,
     unknown
   >;
   profileForm: ProfileForm;
