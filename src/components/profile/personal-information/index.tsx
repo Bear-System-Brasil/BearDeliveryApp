@@ -165,12 +165,14 @@ export function PersonalInformation({
         >
           {editingState.isOpen ? (
             <Input
+              id="birthDate"
               type="date"
               {...profileForm.register("birthDate")}
               className="pl-10 rounded-xl border-2 border-border focus:border-brand-400"
             />
           ) : (
             <Input
+              id="birthDate"
               value={formatDate(user.birthDate)}
               disabled
               className="pl-10 rounded-xl border-2 border-border bg-muted"
