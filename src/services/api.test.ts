@@ -307,7 +307,7 @@ describe("apiService (via apiRequest)", () => {
       expect(body).not.toHaveProperty("cpf");
     });
 
-    it("updateUser omite id do payload mesmo que seja passado", async () => {
+    it("updateUser omite id e email do payload mesmo que sejam passados", async () => {
       vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "u1" }));
       await apiService.updateUser({
         id: "user-1",
@@ -318,6 +318,19 @@ describe("apiService (via apiRequest)", () => {
       const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
       const body = JSON.parse(config!.body as string);
       expect(body).not.toHaveProperty("id");
+      expect(body).not.toHaveProperty("email");
+    });
+
+    it("updateUser sanitiza phone removendo caracteres não numéricos", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "u1" }));
+      await apiService.updateUser({
+        name: "Test",
+        phone: "(11) 98765-4321",
+      });
+
+      const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
+      const body = JSON.parse(config!.body as string);
+      expect(body.phone).toBe("11987654321");
     });
 
     it("updateUser normaliza birthDate de YYYY-MM-DD para DD/MM/YYYY", async () => {
