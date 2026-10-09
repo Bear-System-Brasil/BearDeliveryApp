@@ -29,6 +29,7 @@
 import { Coords, ProductCategory, Restaurant } from "@/types/restaurant";
 import { STORAGE_KEYS, storageManager } from "@/utils/storage-manager";
 import { getErrorMessage, toDateBackendFormat } from "@/utils";
+import { reportApiFailure } from "@/lib/monitoring";
 import type { User as AuthUser } from "@/stores/auth-store";
 
 /**
@@ -500,6 +501,7 @@ async function apiRequest<T>(
       try {
         result = await response.json();
       } catch (parseError) {
+        reportApiFailure({ method, endpoint, status: response.status });
         return {
           success: false,
           message: `Erro ao processar resposta do servidor (Status ${response.status})`,
@@ -518,6 +520,8 @@ async function apiRequest<T>(
             method,
           });
         }
+
+        reportApiFailure({ method, endpoint, status: response.status });
 
         return {
           success: false,
@@ -589,6 +593,13 @@ async function apiRequest<T>(
         });
       }
 
+      reportApiFailure({
+        method,
+        endpoint,
+        status: response.status,
+        message: errorMessage,
+      });
+
       return { success: false, message: errorMessage, status: response.status };
     }
 
@@ -602,6 +613,8 @@ async function apiRequest<T>(
     if (error instanceof DOMException && error.name === "AbortError") {
       throw error;
     }
+
+    reportApiFailure({ method, endpoint });
 
     return {
       success: false,
