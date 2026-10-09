@@ -12,10 +12,9 @@ const PROTECTED: { prefix: string; roles?: string[]; guestAllowed?: boolean }[] 
   // histórico de pedidos é que é uma tela de cliente de verdade.
   { prefix: "/orders", roles: [...CLIENT_ROLES] },
   { prefix: "/profile" },
-  // Carrinho e checkout aceitam clientes e gestores do restaurante (para testes).
-  // `guestAllowed` mantém o visitante sem login passando (ele monta carrinho antes de logar).
-  { prefix: "/cart", roles: [...CLIENT_ROLES, ...MANAGEMENT_ROLES], guestAllowed: true },
-  { prefix: "/checkout", roles: [...CLIENT_ROLES, ...MANAGEMENT_ROLES], guestAllowed: true },
+  // Carrinho e checkout são exclusivos de quem pode comprar (clientes e visitantes sem login).
+  { prefix: "/cart", roles: [...CLIENT_ROLES], guestAllowed: true },
+  { prefix: "/checkout", roles: [...CLIENT_ROLES], guestAllowed: true },
   { prefix: "/menu-management", roles: ["owner", "admin", "manager"] },
   { prefix: "/category-management", roles: ["owner", "admin", "manager"] },
   {
