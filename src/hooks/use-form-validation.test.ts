@@ -9,7 +9,7 @@ import {
 } from "./use-form-validation";
 
 describe("profileSchema", () => {
-  it("aceita um perfil válido", () => {
+  it("aceita um perfil válido com CPF", () => {
     const result = profileSchema.safeParse({
       name: "Maria",
       email: "maria@example.com",
@@ -17,6 +17,45 @@ describe("profileSchema", () => {
       phone: "11987654321",
     });
     expect(result.success).toBe(true);
+  });
+
+  it("aceita um perfil sem CPF ou com CPF vazio", () => {
+    expect(
+      profileSchema.safeParse({
+        name: "Maria",
+        email: "maria@example.com",
+        phone: "11987654321",
+      }).success,
+    ).toBe(true);
+
+    expect(
+      profileSchema.safeParse({
+        name: "Maria",
+        email: "maria@example.com",
+        cpf: "",
+        phone: "11987654321",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("aceita CPF formatado com pontuação", () => {
+    const result = profileSchema.safeParse({
+      name: "Maria",
+      email: "maria@example.com",
+      cpf: "123.456.789-00",
+      phone: "11987654321",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita CPF com menos de 11 dígitos quando preenchido", () => {
+    const result = profileSchema.safeParse({
+      name: "Maria",
+      email: "maria@example.com",
+      cpf: "123456",
+      phone: "11987654321",
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejeita nome muito curto e e-mail inválido", () => {

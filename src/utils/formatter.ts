@@ -1,13 +1,48 @@
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import utc from "dayjs/plugin/utc";
 import { formatCurrency as formatCurrencySafe } from "./format-currency";
 
 dayjs.extend(utc);
+dayjs.extend(customParseFormat);
 
-export const toDateInputFormat = (dateStr: string) => {
-  if (!dateStr) return "";
-  const date = dayjs.utc(dateStr);
-  return date.isValid() ? date.format("YYYY-MM-DD") : "";
+/**
+ * Converte qualquer formato comum de data (DD/MM/YYYY, YYYY-MM-DD ou ISO)
+ * para um objeto Dayjs UTC válido, ou null se inválido/vazio.
+ */
+export const parseDateValue = (dateStr?: string | null) => {
+  if (!dateStr || typeof dateStr !== "string") return null;
+  const trimmed = dateStr.trim();
+  if (!trimmed) return null;
+
+  let d = null;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+    d = dayjs.utc(trimmed, "DD/MM/YYYY", true);
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    d = dayjs.utc(trimmed, "YYYY-MM-DD", true);
+  } else {
+    d = dayjs.utc(trimmed);
+  }
+  return d && d.isValid() ? d : null;
+};
+
+/**
+ * Formata para o valor aceito por `<input type="date">` (YYYY-MM-DD).
+ */
+export const toDateInputFormat = (dateStr?: string | null) => {
+  const d = parseDateValue(dateStr);
+  return d ? d.format("YYYY-MM-DD") : "";
+};
+
+/**
+ * Formata data de nascimento para envio ao backend (sempre DD/MM/YYYY).
+ * Retorna undefined se vazio ou inválido, para que seja omitido do payload.
+ */
+export const toDateBackendFormat = (
+  dateStr?: string | null,
+): string | undefined => {
+  const d = parseDateValue(dateStr);
+  return d ? d.format("DD/MM/YYYY") : undefined;
 };
 
 /**
@@ -104,7 +139,12 @@ export const formatDate = (
   format: string = "DD/MM/YYYY",
 ): string => {
   if (!date) return "";
-  return dayjs(date).format(format);
+  if (typeof date === "string") {
+    const parsed = parseDateValue(date);
+    return parsed ? parsed.format(format) : "";
+  }
+  const d = dayjs(date);
+  return d.isValid() ? d.format(format) : "";
 };
 
 /**

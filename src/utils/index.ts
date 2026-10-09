@@ -7,10 +7,12 @@ export * from './role-helpers'
 // Date utilities
 import dayjs from 'dayjs'
 import 'dayjs/locale/pt-br'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import utc from 'dayjs/plugin/utc'
 
 dayjs.extend(utc)
+dayjs.extend(customParseFormat)
 dayjs.extend(relativeTime)
 dayjs.locale('pt-br')
 
