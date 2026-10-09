@@ -11,11 +11,16 @@ describe("hasRoutePermission", () => {
   it("permite quando o role está na lista da rota", () => {
     expect(hasRoutePermission("/menu-management", "owner")).toBe(true);
     expect(hasRoutePermission("/cart", "client")).toBe(true);
+    expect(hasRoutePermission("/orders", "client")).toBe(true);
+    expect(hasRoutePermission("/orders", "customer")).toBe(true);
+    expect(hasRoutePermission("/order-status", "owner")).toBe(true);
   });
 
   it("nega quando o role não está na lista da rota", () => {
     expect(hasRoutePermission("/menu-management", "client")).toBe(false);
     expect(hasRoutePermission("/cart", "cook")).toBe(false);
+    expect(hasRoutePermission("/cart", "owner")).toBe(false);
+    expect(hasRoutePermission("/orders", "owner")).toBe(false);
   });
 
   it("bloqueia por padrão uma rota não mapeada (segurança)", () => {

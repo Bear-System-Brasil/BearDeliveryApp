@@ -188,6 +188,30 @@ describe("corpo do PATCH", () => {
       }),
     ).rejects.toThrow("Não foi possível desmarcar seu endereço padrão anterior: algum motivo");
   });
+
+  it("busca o endereço na API e repete com os campos quando o alvo não está na lista inicial e o PATCH mínimo falha", async () => {
+    backend = [address("addr-novo", false)];
+    const seen: UpdateAddressRequest[] = [];
+    patchRule = (_id, body) => {
+      seen.push(body);
+      return { success: seen.length > 1 };
+    };
+
+    await takeOverDefaultAddress({
+      addresses: [], // hook state ainda não continha o endereço recém-criado
+      addressId: "addr-novo",
+      userId: "user-1",
+    });
+
+    expect(getUserAddresses).toHaveBeenCalled();
+    expect(seen[0]).toEqual({ isDefault: true });
+    expect(seen[1]).toMatchObject({
+      isDefault: true,
+      street: "Praça da Sé",
+      zipCode: "01001000",
+      number: "1",
+    });
+  });
 });
 
 describe("takeOverDefaultAddress", () => {
