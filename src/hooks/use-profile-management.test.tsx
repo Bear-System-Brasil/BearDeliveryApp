@@ -231,7 +231,7 @@ describe("useProfileManagement", () => {
   });
 
   describe("perfil", () => {
-    it("salvar manda os dados com o id, atualiza o store e fecha a edição", async () => {
+    it("salvar manda os dados sem o id, atualiza o store e fecha a edição", async () => {
       api.updateUser.mockResolvedValue({ success: true, data: user as never });
       const { result } = await renderProfile();
       act(() => result.current.editingState.open());
@@ -241,7 +241,7 @@ describe("useProfileManagement", () => {
         await result.current.handleSaveProfile(data);
       });
 
-      expect(api.updateUser).toHaveBeenCalledWith({ id: "user-1", ...data });
+      expect(api.updateUser).toHaveBeenCalledWith(data);
       expect(useAuthStore.getState().user).toMatchObject({ name: "Ana Paula", phone: "41988887777" });
       expect(result.current.editingState.isOpen).toBe(false);
       expect(toast.success).toHaveBeenCalledWith("Perfil atualizado com sucesso!");
