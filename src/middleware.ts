@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decodeJwt, isExpired } from "@/lib/jwt";
+import { CLIENT_ROLES, MANAGEMENT_ROLES } from "@/utils/role-helpers";
 
 const SESSION_COOKIE = "like_session";
 
@@ -9,14 +10,12 @@ const PROTECTED: { prefix: string; roles?: string[]; guestAllowed?: boolean }[] 
   // client no backend, então abrir esta rota pra outras roles não resolveria
   // nada — elas continuam usando o carrinho/checkout normalmente, só o
   // histórico de pedidos é que é uma tela de cliente de verdade.
-  { prefix: "/orders", roles: ["client"] },
+  { prefix: "/orders", roles: [...CLIENT_ROLES] },
   { prefix: "/profile" },
-  // Carrinho/checkout são de cliente - staff de restaurante (owner, cook,
-  // delivery etc.) não compra pelo próprio app. `guestAllowed` mantém o
-  // visitante sem login passando (ele monta carrinho antes de logar), só
-  // barra quem já está logado com role de staff.
-  { prefix: "/cart", roles: ["client"], guestAllowed: true },
-  { prefix: "/checkout", roles: ["client"], guestAllowed: true },
+  // Carrinho e checkout aceitam clientes e gestores do restaurante (para testes).
+  // `guestAllowed` mantém o visitante sem login passando (ele monta carrinho antes de logar).
+  { prefix: "/cart", roles: [...CLIENT_ROLES, ...MANAGEMENT_ROLES], guestAllowed: true },
+  { prefix: "/checkout", roles: [...CLIENT_ROLES, ...MANAGEMENT_ROLES], guestAllowed: true },
   { prefix: "/menu-management", roles: ["owner", "admin", "manager"] },
   { prefix: "/category-management", roles: ["owner", "admin", "manager"] },
   {

@@ -133,11 +133,22 @@ async function setIsDefault(
 
   const minimal = await patchIsDefault(addressId, { isDefault }, update);
 
-  if (minimal.ok || !full) return minimal;
+  if (minimal.ok) return minimal;
+
+  // Se o PATCH mínimo falhar (ex.: backend exige todos os campos no DTO de atualização)
+  // e não tivermos o objeto completo em memória, busca os endereços do usuário para
+  // tentar novamente enviando todos os campos do endereço.
+  let targetAddress = full;
+  if (!targetAddress) {
+    const latest = await readUserAddresses();
+    targetAddress = latest?.find((a) => a.id === addressId) ?? null;
+  }
+
+  if (!targetAddress) return minimal;
 
   const withFields = await patchIsDefault(
     addressId,
-    { isDefault, ...addressFields(full) },
+    { isDefault, ...addressFields(targetAddress) },
     update,
   );
 
@@ -160,8 +171,8 @@ async function setIsDefault(
  * ou complemento curto vindo do banco fazia o PATCH recusar a mudança.
  */
 export function unsetDefaultAddress(
-  address: Address,
-  update: AddressUpdater,
+  address: Address | string,
+  update?: AddressUpdater,
 ): Promise<DefaultChange> {
   return setIsDefault(address, false, update);
 }
@@ -225,7 +236,11 @@ export async function setDefaultAddress(
   addresses: Address[],
   addressId: string,
 ): Promise<{ promoted: boolean; demotedAll: boolean; message?: string }> {
-  const target = addresses.find((address) => address.id === addressId) ?? null;
+  let target = addresses.find((address) => address.id === addressId) ?? null;
+  if (!target) {
+    const latest = await readUserAddresses();
+    target = latest?.find((address) => address.id === addressId) ?? null;
+  }
   const promotion = await setIsDefault(target ?? addressId, true);
 
   if (!promotion.ok) {
@@ -299,7 +314,11 @@ export async function takeOverDefaultAddress({
   userId: string;
 }): Promise<PendingDefaultSwap | null> {
   const previousDefault = findDefaultAddress(addresses);
-  const target = addresses.find((address) => address.id === addressId) ?? null;
+  let target = addresses.find((address) => address.id === addressId) ?? null;
+  if (!target) {
+    const latest = await readUserAddresses();
+    target = latest?.find((address) => address.id === addressId) ?? null;
+  }
 
   if (previousDefault?.id === addressId) return null;
 

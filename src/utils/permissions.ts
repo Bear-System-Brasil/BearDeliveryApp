@@ -3,15 +3,24 @@
  * Defines which roles have access to each page
  */
 
+import { CLIENT_ROLES, MANAGEMENT_ROLES } from "./role-helpers";
+
 export const ROUTE_PERMISSIONS: { [key: string]: string[] } = {
   // Public pages (everyone can access)
   "/": ["owner", "admin", "manager", "cook", "delivery", "financial", "client"],
   "/restaurant/[id]": ["owner", "admin", "manager", "cook", "delivery", "financial", "client"],
 
-  // Client pages
-  "/cart": ["client"],
-  "/checkout": ["client"],
-  "/order-status": ["client", "delivery"],
+  // Client & checkout pages
+  "/cart": [...CLIENT_ROLES],
+  "/checkout": [...CLIENT_ROLES],
+  "/orders": [...CLIENT_ROLES],
+  "/order-status": [
+    ...CLIENT_ROLES,
+    "delivery",
+    ...MANAGEMENT_ROLES,
+    "cook",
+    "financial",
+  ],
 
   // Menu management (restaurant)
   "/menu-management": ["owner", "admin", "manager"],
