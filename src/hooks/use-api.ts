@@ -61,8 +61,8 @@ export function useProfile() {
     // `apiRequest` devolve `{ success: false }` em vez de lançar: sem virar
     // exceção aqui, uma recusa do backend passava como salva e a tela
     // gravava no store os dados que o servidor tinha rejeitado.
-    async (data: Partial<UpdateUserRequest> & { id: string }) => {
-      const response = await apiService.updateUser(data as UpdateUserRequest);
+    async (data: Partial<UpdateUserRequest>) => {
+      const response = await apiService.updateUser(data);
       if (!response.success) {
         throw new Error(response.message || "Erro ao atualizar perfil");
       }

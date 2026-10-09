@@ -409,7 +409,7 @@ export const useProfileManagement = () => {
     if (!user?.id) return;
 
     try {
-      await updateProfile.mutateAsync({ id: user.id, ...data });
+      await updateProfile.mutateAsync(data);
       updateUser({ ...user, ...data });
       editingState.close();
       toast.success("Perfil atualizado com sucesso!");
