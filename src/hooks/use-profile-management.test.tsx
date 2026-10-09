@@ -231,7 +231,7 @@ describe("useProfileManagement", () => {
   });
 
   describe("perfil", () => {
-    it("salvar manda os dados sem o id, atualiza o store e fecha a edição", async () => {
+    it("salvar manda apenas campos modificados sem email/id, atualiza o store e fecha a edição", async () => {
       api.updateUser.mockResolvedValue({ success: true, data: user as never });
       const { result } = await renderProfile();
       act(() => result.current.editingState.open());
@@ -241,10 +241,31 @@ describe("useProfileManagement", () => {
         await result.current.handleSaveProfile(data);
       });
 
-      expect(api.updateUser).toHaveBeenCalledWith(data);
+      expect(api.updateUser).toHaveBeenCalledWith({
+        name: "Ana Paula",
+        phone: "41988887777",
+        birthDate: user.birthDate,
+      });
       expect(useAuthStore.getState().user).toMatchObject({ name: "Ana Paula", phone: "41988887777" });
       expect(result.current.editingState.isOpen).toBe(false);
       expect(toast.success).toHaveBeenCalledWith("Perfil atualizado com sucesso!");
+    });
+
+    it("salvar perfil com dados inalterados não envia email, cpf nem phone", async () => {
+      api.updateUser.mockResolvedValue({ success: true, data: user as never });
+      const { result } = await renderProfile();
+      act(() => result.current.editingState.open());
+
+      const data = { name: "Ana Paula", email: user.email, cpf: user.cpf, phone: user.phone, birthDate: user.birthDate };
+      await act(async () => {
+        await result.current.handleSaveProfile(data);
+      });
+
+      expect(api.updateUser).toHaveBeenCalledWith({
+        name: "Ana Paula",
+        birthDate: user.birthDate,
+      });
+      expect(result.current.editingState.isOpen).toBe(false);
     });
 
     it("recusa do backend não salva no store e mostra a razão", async () => {
@@ -253,12 +274,12 @@ describe("useProfileManagement", () => {
       act(() => result.current.editingState.open());
 
       await act(async () => {
-        await result.current.handleSaveProfile({ ...user, email: "outro@example.com" });
+        await result.current.handleSaveProfile({ ...user, name: "Outro Nome" });
       });
 
       expect(toast.success).not.toHaveBeenCalled();
       expect(toast.error).toHaveBeenCalledWith("E-mail já cadastrado");
-      expect(useAuthStore.getState().user?.email).toBe("ana@example.com");
+      expect(useAuthStore.getState().user?.name).toBe("Ana");
       expect(result.current.editingState.isOpen).toBe(true);
       await waitFor(() => expect(result.current.updateProfile.isError).toBe(true));
     });
