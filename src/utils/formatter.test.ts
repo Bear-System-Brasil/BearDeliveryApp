@@ -3,6 +3,7 @@ import {
   formatCep,
   formatCnpj,
   formatCPF,
+  formatDate,
   formatPhone,
   formatPhoneDisplay,
   formatPhoneRegex,
@@ -12,6 +13,7 @@ import {
   isValidCpf,
   isValidPhone,
   onlyNumbers,
+  toDateBackendFormat,
   toDateInputFormat,
 } from "./formatter";
 
@@ -106,8 +108,56 @@ describe("toDateInputFormat", () => {
     expect(toDateInputFormat("2024-03-15T10:00:00.000Z")).toBe("2024-03-15");
   });
 
+  it("converte data DD/MM/YYYY para YYYY-MM-DD", () => {
+    expect(toDateInputFormat("15/05/1990")).toBe("1990-05-15");
+  });
+
+  it("converte data YYYY-MM-DD para YYYY-MM-DD", () => {
+    expect(toDateInputFormat("1990-05-15")).toBe("1990-05-15");
+  });
+
   it("retorna string vazia para entrada vazia ou inválida", () => {
     expect(toDateInputFormat("")).toBe("");
     expect(toDateInputFormat("não-é-uma-data")).toBe("");
+  });
+});
+
+describe("toDateBackendFormat", () => {
+  it("converte YYYY-MM-DD para DD/MM/YYYY para envio ao backend", () => {
+    expect(toDateBackendFormat("1990-05-15")).toBe("15/05/1990");
+  });
+
+  it("mantém DD/MM/YYYY já formatado", () => {
+    expect(toDateBackendFormat("15/05/1990")).toBe("15/05/1990");
+  });
+
+  it("converte ISO para DD/MM/YYYY", () => {
+    expect(toDateBackendFormat("1990-05-15T00:00:00.000Z")).toBe("15/05/1990");
+  });
+
+  it("retorna undefined para entrada vazia ou inválida", () => {
+    expect(toDateBackendFormat("")).toBeUndefined();
+    expect(toDateBackendFormat(null)).toBeUndefined();
+    expect(toDateBackendFormat(undefined)).toBeUndefined();
+    expect(toDateBackendFormat("invalido")).toBeUndefined();
+  });
+});
+
+describe("formatDate", () => {
+  it("formata ISO para DD/MM/YYYY", () => {
+    expect(formatDate("1990-05-15T00:00:00.000Z")).toBe("15/05/1990");
+  });
+
+  it("formata DD/MM/YYYY mantendo o formato correto", () => {
+    expect(formatDate("15/05/1990")).toBe("15/05/1990");
+  });
+
+  it("formata YYYY-MM-DD para DD/MM/YYYY", () => {
+    expect(formatDate("1990-05-15")).toBe("15/05/1990");
+  });
+
+  it("retorna string vazia para entrada vazia ou inválida em vez de 'Invalid Date'", () => {
+    expect(formatDate("")).toBe("");
+    expect(formatDate("invalido")).toBe("");
   });
 });

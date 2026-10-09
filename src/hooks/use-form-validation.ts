@@ -8,7 +8,13 @@ import * as z from "zod";
 export const profileSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().email("Email inválido"),
-  cpf: z.string().min(11, "CPF deve ter 11 dígitos"),
+  cpf: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || val.replace(/\D/g, "").length === 11,
+      "CPF deve ter 11 dígitos",
+    ),
   phone: z.string().min(10, "Telefone deve ter pelo menos 10 dígitos"),
   birthDate: z.string().optional(),
 });

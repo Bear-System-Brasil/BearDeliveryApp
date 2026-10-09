@@ -319,6 +319,30 @@ describe("apiService (via apiRequest)", () => {
       const body = JSON.parse(config!.body as string);
       expect(body).not.toHaveProperty("id");
     });
+
+    it("updateUser normaliza birthDate de YYYY-MM-DD para DD/MM/YYYY", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "u1" }));
+      await apiService.updateUser({
+        name: "Test",
+        birthDate: "1990-05-15",
+      });
+
+      const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
+      const body = JSON.parse(config!.body as string);
+      expect(body.birthDate).toBe("15/05/1990");
+    });
+
+    it("updateUser omite birthDate quando vazio ou indefinido", async () => {
+      vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: "u1" }));
+      await apiService.updateUser({
+        name: "Test",
+        birthDate: "",
+      });
+
+      const [, config] = vi.mocked(fetch).mock.calls.at(-1)!;
+      const body = JSON.parse(config!.body as string);
+      expect(body).not.toHaveProperty("birthDate");
+    });
   });
 
   describe("companies.create", () => {

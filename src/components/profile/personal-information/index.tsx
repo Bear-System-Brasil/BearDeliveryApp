@@ -1,8 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction } from "react";
-
-import dayjs from "dayjs";
+import { formatDate } from "@/utils";
 
 import {
   User,
@@ -28,33 +27,12 @@ import { ApiResponse } from "@/services";
 import { User as UserType } from "@/services";
 import type { UpdateUserRequest } from "@/services/api";
 import { UseFormReturn } from "react-hook-form";
+import type { ProfileFormData } from "@/hooks";
 import { User as PqTemDoisUserType } from "@/stores/auth-store";
 
-type SaveProfile = (data: {
-  name: string;
-  email: string;
-  cpf: string;
-  phone: string;
-  birthDate?: string | undefined;
-}) => Promise<void>;
+type SaveProfile = (data: ProfileFormData) => Promise<void>;
 
-type ProfileForm = UseFormReturn<
-  {
-    name: string;
-    email: string;
-    cpf: string;
-    phone: string;
-    birthDate?: string | undefined;
-  },
-  any,
-  {
-    name: string;
-    email: string;
-    cpf: string;
-    phone: string;
-    birthDate?: string | undefined;
-  }
->;
+type ProfileForm = UseFormReturn<ProfileFormData>;
 
 type EditingState = {
   isOpen: boolean;
@@ -193,11 +171,7 @@ export function PersonalInformation({
             />
           ) : (
             <Input
-              value={
-                user.birthDate
-                  ? dayjs.utc(user.birthDate).format("DD/MM/YYYY")
-                  : ""
-              }
+              value={formatDate(user.birthDate)}
               disabled
               className="pl-10 rounded-xl border-2 border-border bg-muted"
             />
