@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import * as Sentry from '@sentry/nextjs'
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { Component, ErrorInfo, ReactNode } from 'react'
 
@@ -29,8 +30,9 @@ export class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Error Boundary caught an error:', error, errorInfo)
 
-    // Here you can integrate with monitoring services like Sentry
-    // Sentry.captureException(error, { contexts: { errorInfo } })
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: errorInfo.componentStack } },
+    })
   }
 
   private handleReset = () => {
