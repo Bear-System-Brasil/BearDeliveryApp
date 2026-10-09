@@ -1,3 +1,5 @@
+import { withSentryConfig } from '@sentry/nextjs/config';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -68,4 +70,22 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Segredo: so existe no build da Vercel. Sem ele o build passa, so nao
+  // sobe source map (a stack no painel fica minificada).
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  // Sobe mais arquivos do bundle do cliente: stack legivel tambem em chunk
+  // de dependencia.
+  widenClientFileUpload: true,
+  // Source map vai pro Sentry e sai do deploy: o codigo-fonte nao fica
+  // publico no site.
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+  // Eventos passam por /monitoring no proprio dominio, senao bloqueador de
+  // anuncio derruba a requisicao pro sentry.io e o erro some.
+  tunnelRoute: '/monitoring',
+});
