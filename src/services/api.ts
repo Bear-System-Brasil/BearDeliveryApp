@@ -1341,10 +1341,14 @@ export const apiService = {
   },
 
   updateUser: (userData: Partial<UpdateUserRequest> & { id?: string }) => {
-    const { cpf, id: _id, birthDate, ...rest } = userData;
+    const { cpf, id: _id, email: _email, phone, birthDate, ...rest } = userData;
     const cleanCpf =
       cpf && cpf.replace(/\D/g, "").length > 0
         ? cpf.replace(/\D/g, "")
+        : undefined;
+    const cleanPhone =
+      phone && phone.replace(/\D/g, "").length > 0
+        ? phone.replace(/\D/g, "")
         : undefined;
     const cleanBirthDate = birthDate
       ? toDateBackendFormat(birthDate)
@@ -1352,6 +1356,7 @@ export const apiService = {
     const payload = {
       ...rest,
       ...(cleanCpf ? { cpf: cleanCpf } : {}),
+      ...(cleanPhone ? { phone: cleanPhone } : {}),
       ...(cleanBirthDate ? { birthDate: cleanBirthDate } : {}),
     };
     return apiRequest<User>("PUT", `/user`, payload, true);

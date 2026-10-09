@@ -6,7 +6,7 @@ import {
 } from "@/lib/address-coordinates";
 import { parseCoords } from "@/lib/geocode";
 import { findNeighborhood, neighborhoodLabel } from "@/services/neighborhoods";
-import { apiService } from "@/services/api";
+import { apiService, type UpdateUserRequest } from "@/services/api";
 import {
   restorePendingDefaultAddress,
   setDefaultAddress,
@@ -409,7 +409,22 @@ export const useProfileManagement = () => {
     if (!user?.id) return;
 
     try {
-      await updateProfile.mutateAsync(data);
+      const currentPhone = onlyNumbers(user.phone || "");
+      const newPhone = onlyNumbers(data.phone || "");
+      const phoneChanged = Boolean(newPhone && newPhone !== currentPhone);
+
+      const currentCpf = onlyNumbers(user.cpf || "");
+      const newCpf = onlyNumbers(data.cpf || "");
+      const cpfChanged = Boolean(newCpf && newCpf !== currentCpf);
+
+      const payload: Partial<UpdateUserRequest> = {
+        name: data.name,
+        ...(phoneChanged ? { phone: newPhone } : {}),
+        ...(cpfChanged ? { cpf: newCpf } : {}),
+        ...(data.birthDate ? { birthDate: data.birthDate } : {}),
+      };
+
+      await updateProfile.mutateAsync(payload);
       updateUser({ ...user, ...data });
       editingState.close();
       toast.success("Perfil atualizado com sucesso!");
