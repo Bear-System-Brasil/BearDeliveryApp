@@ -28,7 +28,7 @@
 
 import { Coords, ProductCategory, Restaurant } from "@/types/restaurant";
 import { STORAGE_KEYS, storageManager } from "@/utils/storage-manager";
-import { getErrorMessage } from "@/utils";
+import { getErrorMessage, toDateBackendFormat } from "@/utils";
 import type { User as AuthUser } from "@/stores/auth-store";
 
 /**
@@ -1341,11 +1341,18 @@ export const apiService = {
   },
 
   updateUser: (userData: Partial<UpdateUserRequest> & { id?: string }) => {
-    const { cpf, id: _id, ...rest } = userData;
-    const cleanCpf = cpf ? cpf.replace(/\D/g, "") : undefined;
+    const { cpf, id: _id, birthDate, ...rest } = userData;
+    const cleanCpf =
+      cpf && cpf.replace(/\D/g, "").length > 0
+        ? cpf.replace(/\D/g, "")
+        : undefined;
+    const cleanBirthDate = birthDate
+      ? toDateBackendFormat(birthDate)
+      : undefined;
     const payload = {
       ...rest,
       ...(cleanCpf ? { cpf: cleanCpf } : {}),
+      ...(cleanBirthDate ? { birthDate: cleanBirthDate } : {}),
     };
     return apiRequest<User>("PUT", `/user`, payload, true);
   },
