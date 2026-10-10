@@ -20,6 +20,17 @@ import type { Coords } from "@/types/restaurant";
  */
 const GPS_TIMEOUT_MS = 8_000;
 
+/**
+ * Teto do próprio app, acima do `timeout` do navegador.
+ *
+ * O `timeout` da Geolocation API só começa a contar depois que a permissão
+ * é concedida: com o pedido de permissão aberto e sem resposta, nenhum
+ * callback chega e o aceite ficava em "Aceitando..." indefinidamente
+ * (medido no LDMF-314). Folgado de propósito, pra dar tempo de o entregador
+ * ler e responder o pedido; passando disso, abre o campo de digitar.
+ */
+const GPS_HARD_TIMEOUT_MS = 20_000;
+
 const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
 
 /**
@@ -66,11 +77,24 @@ type GpsReading =
   | { ok: false; reason: PositionFailure };
 
 function readGps(): Promise<GpsReading> {
-  return new Promise((resolve) => {
+  return new Promise((done) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      resolve({ ok: false, reason: "unsupported" });
+      done({ ok: false, reason: "unsupported" });
       return;
     }
+
+    // Quem chegar primeiro decide: resposta do navegador ou o teto.
+    let settled = false;
+    const resolve = (reading: GpsReading) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      done(reading);
+    };
+    const timer = setTimeout(
+      () => resolve({ ok: false, reason: "timeout" }),
+      GPS_HARD_TIMEOUT_MS,
+    );
 
     navigator.geolocation.getCurrentPosition(
       (position) =>

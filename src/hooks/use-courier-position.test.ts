@@ -71,3 +71,66 @@ describe("useCourierPosition - texto digitado (LDMF-314)", () => {
     expect(position()).toBeNull();
   });
 });
+
+describe("useCourierPosition - GPS sem resposta (LDMF-314)", () => {
+  const getCurrentPosition = vi.fn();
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    useCourierPositionStore.setState({ position: null });
+    getCurrentPosition.mockReset();
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    Object.defineProperty(navigator, "geolocation", { configurable: true, value: undefined });
+  });
+
+  it("pedido de permissão sem resposta vira timeout em vez de travar", async () => {
+    // Navegador que nunca chama nenhum callback.
+    getCurrentPosition.mockImplementation(() => {});
+    const { result } = renderHook(() => useCourierPosition());
+
+    let outcome: Awaited<ReturnType<typeof result.current.resolvePosition>> | undefined;
+    let pending: Promise<unknown>;
+    act(() => {
+      pending = result.current.resolvePosition().then((value) => {
+        outcome = value;
+      });
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(19_999);
+    });
+    expect(outcome).toBeUndefined();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+      await pending;
+    });
+    expect(outcome).toEqual({ ok: false, reason: "timeout" });
+    expect(result.current.isLocating).toBe(false);
+  });
+
+  it("resposta do navegador antes do teto vale, e o teto não sobrescreve", async () => {
+    getCurrentPosition.mockImplementation((ok: PositionCallback) => {
+      ok({ coords: { latitude: -20.6, longitude: -41.2 } } as GeolocationPosition);
+    });
+    const { result } = renderHook(() => useCourierPosition());
+
+    let outcome: Awaited<ReturnType<typeof result.current.resolvePosition>> | undefined;
+    await act(async () => {
+      outcome = await result.current.resolvePosition();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+
+    expect(outcome).toMatchObject({ ok: true, position: { source: "gps" } });
+    expect(position()?.coords).toEqual({ lat: -20.6, lng: -41.2 });
+  });
+});
