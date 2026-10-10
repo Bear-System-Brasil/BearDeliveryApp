@@ -17,6 +17,7 @@ import {
 
 import { MainHeader } from "@/components/main-header";
 import ProtectedRoute from "@/components/protected-route";
+import { CLIENT_ROLES } from "@/utils/role-helpers";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AnimatedBackground } from "@/components/ui/animated-background";
@@ -153,7 +154,7 @@ function getOrderDate(order: CustomerOrder) {
 
 export default function OrderHistoryPage() {
   return (
-    <ProtectedRoute allowedRoles={["client"]}>
+    <ProtectedRoute allowedRoles={[...CLIENT_ROLES]}>
       <OrderHistoryContent />
     </ProtectedRoute>
   );

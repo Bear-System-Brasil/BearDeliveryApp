@@ -153,7 +153,7 @@ function createWrapper() {
   return Wrapper;
 }
 
-function loginUser() {
+function loginUser(role = "client") {
   act(() => {
     useAuthStore.getState().login({
       id: "user-buyer-1",
@@ -162,7 +162,7 @@ function loginUser() {
       cpf: "12345678901",
       phone: "41999998888",
       birthDate: "15/05/1990",
-      role: "client",
+      role: role as any,
     });
   });
 }
@@ -573,6 +573,35 @@ describe("Cenários de Compra (Jornada Completa do Cliente)", () => {
       expect(toastError).toHaveBeenCalledWith("Restaurante fechado no momento");
       expect(useCartStore.getState().items).toHaveLength(1);
       expect(useCartStore.getState().items[0].name).toBe("Item Salvo");
+    });
+
+    it("Cenário F: Compra finalizada por conta de restaurante (owner) redireciona para order-status para evitar Acesso Negado", async () => {
+      loginUser("owner");
+      act(() => {
+        useCartStore.getState().setRestaurant(RESTAURANT_1);
+        useCartStore.getState().setItems([{
+          id: "item-1",
+          productId: "p1",
+          name: "Lanche",
+          price: 25.0,
+          quantity: 1,
+          restaurantId: "rest-1",
+          restaurantName: "Pizzaria do Urso",
+        }]);
+      });
+
+      const { result } = renderHook(() => useCheckoutProcess(), { wrapper: createWrapper() });
+
+      act(() => {
+        result.current.setOrderType("pickup");
+        result.current.setPaymentMethod("pix_on_delivery");
+      });
+
+      await act(async () => {
+        await result.current.handleSubmitOrder();
+      });
+
+      expect(pushMock).toHaveBeenCalledWith("/order-status?orderId=order-123");
     });
   });
 });

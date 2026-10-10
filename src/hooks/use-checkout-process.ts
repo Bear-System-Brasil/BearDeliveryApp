@@ -18,8 +18,10 @@ import {
   restorePendingDefaultAddress,
   takeOverDefaultAddress,
   restoreDefaultAddress,
+  unsetDefaultAddress,
   type PendingDefaultSwap,
 } from "@/lib/default-address";
+import { isClientRole } from "@/utils/role-helpers";
 import { parseCoords } from "@/lib/geocode";
 import { Coords } from "@/types/restaurant";
 import { useQueryClient } from "@tanstack/react-query";
@@ -293,7 +295,7 @@ export const useCheckoutProcess = () => {
   ): Promise<string | null> => {
     try {
       const addressData = {
-        zipCode: deliveryInfo.zipCode,
+        zipCode: onlyNumbers(deliveryInfo.zipCode),
         state: deliveryInfo.state,
         city: deliveryInfo.city,
         neighborhood: deliveryInfo.neighborhood,
@@ -309,10 +311,19 @@ export const useCheckoutProcess = () => {
       const response = await apiService.address.createUserAddress(addressData);
 
       if (response.success && response.data) {
-        const id = response.data.id;
+        const created = response.data;
+        const id = created.id;
         setSelectedAddressId(id);
+        queryClient.setQueryData(
+          ["addresses", "user", user?.id],
+          (old: Address[] | undefined) => [...(old || []), created],
+        );
         toast.success("Endereço salvo com sucesso!");
         return id;
+      }
+
+      if (!response.success && response.message) {
+        toast.error(response.message);
       }
 
       return null;
@@ -441,7 +452,7 @@ export const useCheckoutProcess = () => {
         // Fallback: if we still don't have an address, create one
         if (!deliveryAddressId) {
           const newAddressData = {
-            zipCode: deliveryInfo.zipCode,
+            zipCode: onlyNumbers(deliveryInfo.zipCode),
             street: deliveryInfo.street,
             number: deliveryInfo.number,
             neighborhood: deliveryInfo.neighborhood,
@@ -457,8 +468,17 @@ export const useCheckoutProcess = () => {
 
           if (addressResponse.success && addressResponse.data?.id) {
             deliveryAddressId = addressResponse.data.id;
+            queryClient.setQueryData(
+              ["addresses", "user", user?.id],
+              (old: Address[] | undefined) => [
+                ...(old || []),
+                addressResponse.data,
+              ],
+            );
           } else {
-            throw new Error("Erro ao criar endereço de entrega");
+            throw new Error(
+              addressResponse.message || "Erro ao criar endereço de entrega",
+            );
           }
         }
 
@@ -483,8 +503,15 @@ export const useCheckoutProcess = () => {
         // Remover quando POST /order/:id aceitar `deliveryAddressId`: aí o
         // endereço do pedido passa a ser o escolhido, e não o padrão.
         if (deliveryAddressId) {
+          const currentAddresses =
+            queryClient.getQueryData<Address[]>([
+              "addresses",
+              "user",
+              user?.id,
+            ]) ?? userAddresses;
+
           defaultAddressSwap = await takeOverDefaultAddress({
-            addresses: userAddresses,
+            addresses: currentAddresses,
             addressId: deliveryAddressId,
             userId: user.id,
           });
@@ -642,9 +669,7 @@ export const useCheckoutProcess = () => {
           // apontando para um registro inativo - e o próximo pedido de
           // entrega sairia dali. Quando a promoção já foi desfeita, este
           // PATCH não muda nada.
-          await apiService.address.updateUserAddress(deliveryAddressId, {
-            isDefault: false,
-          });
+          await unsetDefaultAddress(deliveryAddressId);
           await apiService.address.deleteUserAddress(deliveryAddressId);
         } catch (error) {
           console.error("Erro ao descartar endereço temporário:", error);
@@ -657,7 +682,14 @@ export const useCheckoutProcess = () => {
       toast.success("Pedido realizado com sucesso!");
 
       setIsNavigating(true);
-      router.push("/orders");
+
+      if (isClientRole(user?.role)) {
+        router.push("/orders");
+      } else if (finalOrderId) {
+        router.push(`/order-status?orderId=${finalOrderId}`);
+      } else {
+        router.push("/orders");
+      }
 
       setTimeout(() => {
         clearCart();
