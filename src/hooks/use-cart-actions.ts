@@ -81,21 +81,23 @@ const SYNC_MAX_ATTEMPTS = 3;
  * opcionais e checados em cascata.
  */
 interface BackendCartAddOn {
-  productAddOnsId: string;
+  id?: string;
+  productAddOnsId?: string;
   quantity?: number;
   priceSnapshot?: number;
-  productAddOn?: { name?: string; description?: string };
-  productAddOns?: { name?: string; description?: string };
-  addOn?: { name?: string; description?: string };
+  productAddOn?: { id?: string; name?: string; description?: string };
+  productAddOns?: { id?: string; name?: string; description?: string };
+  addOn?: { id?: string; name?: string; description?: string };
   name?: string;
   description?: string;
 }
 
 interface BackendCartVariation {
-  productVariationId: string;
+  id?: string;
+  productVariationId?: string;
   priceSnapshot?: number;
-  variation?: { name?: string; description?: string };
-  productVariation?: { name?: string; description?: string };
+  variation?: { id?: string; name?: string; description?: string };
+  productVariation?: { id?: string; name?: string; description?: string };
   name?: string;
   description?: string;
 }
@@ -128,7 +130,8 @@ const buildCartItemKey = (
   addOns?: { productAddOnsId: string; quantity: number }[],
 ) => {
   const variationPart = (variations || [])
-    .map((v) => v.productVariationId)
+    .map((v) => v.productVariationId?.trim())
+    .filter((id): id is string => Boolean(id))
     .sort()
     .join(",");
   // A quantidade entra na chave: com o stepper de complementos, "2x queijo"
@@ -137,7 +140,8 @@ const buildCartItemKey = (
   // da primeira - o mesmo problema que o comentário acima descreve pros
   // tamanhos.
   const addOnPart = (addOns || [])
-    .map((a) => `${a.productAddOnsId}x${a.quantity}`)
+    .filter((a) => Boolean(a.productAddOnsId?.trim()) && (a.quantity || 0) > 0)
+    .map((a) => `${a.productAddOnsId.trim()}x${a.quantity || 1}`)
     .sort()
     .join(",");
   return `${productId}::${variationPart}::${addOnPart}`;
@@ -289,7 +293,20 @@ export const useCartActions = () => {
           // O catálogo também é uma espera: confere de novo antes de escrever
           if (isStale()) return false;
 
-          const cartItems = orderedItems.map((item) => {
+          interface GroupedCartEntry {
+            item: BackendCartItem;
+            totalQuantity: number;
+            addOnsTotal: number;
+            variationsTotal: number;
+            variations: { productVariationId: string }[];
+            addOns: { productAddOnsId: string; quantity: number }[];
+            variationLabel: string;
+            addOnLabels: string[];
+          }
+
+          const groupedMap = new Map<string, GroupedCartEntry>();
+
+          for (const item of orderedItems) {
             // item.unitPrice é só o preço base do produto - os extras de
             // tamanho/complemento vêm à parte, em addOns[]/variations[]
             // (cada um com seu priceSnapshot). Sem somar isso aqui, o
@@ -307,68 +324,146 @@ export const useCartActions = () => {
               0,
             );
 
-            const variations = (item.variations || []).map((v) => ({
-              productVariationId: v.productVariationId,
-            }));
-            const addOns = (item.addOns || []).map((a) => ({
-              productAddOnsId: a.productAddOnsId,
-              quantity: a.quantity || 1,
-            }));
+            const variations = (item.variations || [])
+              .map((v) => {
+                const varId =
+                  v.productVariationId ||
+                  v.productVariation?.id ||
+                  v.variation?.id ||
+                  v.id;
+                return varId ? { productVariationId: varId } : null;
+              })
+              .filter((v): v is { productVariationId: string } => Boolean(v));
+
+            const addOns = (item.addOns || [])
+              .map((a) => {
+                const addOnId =
+                  a.productAddOnsId ||
+                  a.productAddOn?.id ||
+                  a.productAddOns?.id ||
+                  a.addOn?.id ||
+                  a.id;
+                return addOnId
+                  ? { productAddOnsId: addOnId, quantity: a.quantity || 1 }
+                  : null;
+              })
+              .filter(
+                (a): a is { productAddOnsId: string; quantity: number } =>
+                  Boolean(a),
+              );
 
             // Nome pode vir aninhado de formas diferentes dependendo do
             // include do backend - tenta os formatos conhecidos e ignora
             // o que não bater, em vez de quebrar a linha do carrinho.
-            // GET /order/company (order.md) aninha em `productAddOns`
-            // (plural) com `.description`, não `.name` - sem esse fallback
-            // o label sumia assim que o sync rodava (item somava certo na
-            // hora de adicionar, via extraGroups do modal, e perdia o rótulo
-            // no primeiro resync com o backend).
             const variationLabel = (item.variations || [])
-              .map(
-                (v) =>
+              .map((v) => {
+                const varId =
+                  v.productVariationId ||
+                  v.productVariation?.id ||
+                  v.variation?.id ||
+                  v.id;
+                return (
                   v.variation?.name ||
                   v.productVariation?.name ||
                   v.productVariation?.description ||
                   v.name ||
                   v.description ||
-                  variationNameById.get(v.productVariationId),
-              )
+                  (varId ? variationNameById.get(varId) : undefined)
+                );
+              })
               .filter(Boolean)
               .join(", ");
+
             const addOnLabels = (item.addOns || [])
-              .map(
-                (a) =>
+              .map((a) => {
+                const addOnId =
+                  a.productAddOnsId ||
+                  a.productAddOn?.id ||
+                  a.productAddOns?.id ||
+                  a.addOn?.id ||
+                  a.id;
+                return (
                   a.productAddOn?.name ||
                   a.productAddOns?.name ||
                   a.productAddOns?.description ||
                   a.addOn?.name ||
                   a.name ||
                   a.description ||
-                  addOnNameById.get(a.productAddOnsId),
-              )
+                  (addOnId ? addOnNameById.get(addOnId) : undefined)
+                );
+              })
               .filter((label): label is string => Boolean(label));
 
+            // Agrupa itens do backend com a mesma chave (mesmo produto +
+            // mesma variação + mesmos adicionais). No Redis o backend
+            // adiciona novos itens no array em vez de somar a quantidade;
+            // sem agrupar aqui, o usuário via o mesmo produto duplicado
+            // em linhas separadas em vez de uma linha com quantidade somada.
             const id = buildCartItemKey(item.productId, variations, addOns);
-            const existing = currentItemsById.get(id);
+            const qty = item.quantity || 1;
 
-            return {
-              id,
-              productId: item.productId,
-              name: item.product?.name || "Produto",
-              price: item.unitPrice + addOnsTotal + variationsTotal,
-              quantity: item.quantity,
-              imageUrl: item.product?.imageURL?.[0]?.url,
-              restaurantId: companyId,
-              restaurantName: restaurant?.name || "Restaurante",
-              customizations: item.addIngredient || undefined,
-              variationLabel: variationLabel || existing?.variationLabel,
-              addOnLabels: addOnLabels.length
-                ? addOnLabels
-                : existing?.addOnLabels,
-              variations: variations.length ? variations : undefined,
-              addOns: addOns.length ? addOns : undefined,
-            };
-          });
+            const existingGroup = groupedMap.get(id);
+            if (existingGroup) {
+              existingGroup.totalQuantity += qty;
+              if (!existingGroup.variationLabel && variationLabel) {
+                existingGroup.variationLabel = variationLabel;
+              }
+              if (
+                existingGroup.addOnLabels.length === 0 &&
+                addOnLabels.length > 0
+              ) {
+                existingGroup.addOnLabels = addOnLabels;
+              }
+            } else {
+              groupedMap.set(id, {
+                item,
+                totalQuantity: qty,
+                addOnsTotal,
+                variationsTotal,
+                variations,
+                addOns,
+                variationLabel,
+                addOnLabels,
+              });
+            }
+          }
+
+          const cartItems = Array.from(groupedMap.entries()).map(
+            ([id, group]) => {
+              const {
+                item,
+                totalQuantity,
+                addOnsTotal,
+                variationsTotal,
+                variations,
+                addOns,
+                variationLabel,
+                addOnLabels,
+              } = group;
+              const existing = currentItemsById.get(id);
+
+              return {
+                id,
+                productId: item.productId,
+                name: item.product?.name || existing?.name || "Produto",
+                price: item.unitPrice + addOnsTotal + variationsTotal,
+                quantity: totalQuantity,
+                imageUrl:
+                  item.product?.imageURL?.[0]?.url || existing?.imageUrl,
+                restaurantId: companyId,
+                restaurantName:
+                  restaurant?.name || existing?.restaurantName || "Restaurante",
+                customizations:
+                  item.addIngredient || existing?.customizations || undefined,
+                variationLabel: variationLabel || existing?.variationLabel,
+                addOnLabels: addOnLabels.length
+                  ? addOnLabels
+                  : existing?.addOnLabels,
+                variations: variations.length ? variations : undefined,
+                addOns: addOns.length ? addOns : undefined,
+              };
+            },
+          );
           setItems(cartItems);
         } else {
           setRestaurant(null);
