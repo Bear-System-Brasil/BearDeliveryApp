@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { parseCoords } from "@/lib/geocode";
 import {
@@ -96,6 +96,53 @@ function readGps(): Promise<GpsReading> {
       { enableHighAccuracy: true, timeout: GPS_TIMEOUT_MS, maximumAge: 0 },
     );
   });
+}
+
+export type GeolocationPermission = PermissionState | "unknown";
+
+/**
+ * Estado da permissão de localização, acompanhando mudanças.
+ *
+ * Com a permissão negada o navegador nem pergunta de novo: tocar em "tentar
+ * pelo GPS" falha na hora, e o entregador fica sem saber o que fazer
+ * (LDMF-314). Saber o estado deixa a tela explicar como liberar e reabilitar
+ * o GPS sozinha quando ele liberar nas configurações.
+ *
+ * `unknown` quando o navegador não tem a Permissions API (Safari antigo) -
+ * aí a tela segue como antes, sem travar o botão.
+ */
+export function useGeolocationPermission(enabled = true): GeolocationPermission {
+  const [state, setState] = useState<GeolocationPermission>("unknown");
+
+  useEffect(() => {
+    if (!enabled) return;
+    if (typeof navigator === "undefined" || !navigator.permissions?.query) return;
+
+    let status: PermissionStatus | null = null;
+    let cancelled = false;
+    const onChange = () => {
+      if (status) setState(status.state);
+    };
+
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((result) => {
+        if (cancelled) return;
+        status = result;
+        setState(result.state);
+        result.addEventListener("change", onChange);
+      })
+      .catch(() => {
+        // Alguns navegadores recusam o nome "geolocation": fica `unknown`.
+      });
+
+    return () => {
+      cancelled = true;
+      status?.removeEventListener("change", onChange);
+    };
+  }, [enabled]);
+
+  return state;
 }
 
 /**

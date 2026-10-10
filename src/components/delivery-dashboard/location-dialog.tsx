@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   useCourierPosition,
+  useGeolocationPermission,
   type PositionFailure,
 } from "@/hooks/use-courier-position";
 
@@ -49,6 +50,18 @@ export function LocationDialog({
 }: Props) {
   const { position, isLocating, isGeocoding, refreshFromGps, setFromText } =
     useCourierPosition();
+
+  const permission = useGeolocationPermission(open);
+  // Bloqueada de verdade: o navegador nem pergunta, tentar de novo é inútil.
+  const gpsBlocked = permission === "denied";
+  // Sem a Permissions API, a falha do próprio GPS é a única pista.
+  const showUnblockHelp =
+    gpsBlocked || (failure === "denied" && permission !== "granted");
+  const failureMessage = gpsBlocked
+    ? FAILURE_MESSAGE.denied
+    : failure
+      ? FAILURE_MESSAGE[failure]
+      : null;
 
   const [text, setText] = useState("");
 
@@ -101,10 +114,19 @@ export function LocationDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          {failure && (
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-              {FAILURE_MESSAGE[failure]}
-            </p>
+          {failureMessage && (
+            <div className="rounded-xl bg-amber-50 px-3 py-2 text-[13px] font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              <p>{failureMessage}</p>
+              {showUnblockHelp && (
+                <p className="mt-1.5 font-medium">
+                  Para liberar: toque no ícone ao lado do endereço do site,
+                  abra as permissões e permita a localização. Se continuar
+                  bloqueado, libere a localização do navegador nas
+                  configurações do celular. Depois volte aqui e toque em
+                  &quot;Tentar pelo GPS&quot;.
+                </p>
+              )}
+            </div>
           )}
 
           {position && (
@@ -126,11 +148,15 @@ export function LocationDialog({
             type="button"
             variant="outline"
             onClick={handleGps}
-            disabled={busy}
+            disabled={busy || gpsBlocked}
             className="h-12 w-full rounded-xl text-[14px] font-bold"
           >
             <Crosshair className="mr-2 h-4 w-4" />
-            {isLocating ? "Procurando GPS..." : "Tentar pelo GPS"}
+            {isLocating
+              ? "Procurando GPS..."
+              : gpsBlocked
+                ? "GPS bloqueado neste aparelho"
+                : "Tentar pelo GPS"}
           </Button>
 
           <div className="space-y-1.5">
