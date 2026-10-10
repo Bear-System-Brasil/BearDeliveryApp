@@ -226,6 +226,19 @@ describe("takeOverDefaultAddress", () => {
     expect(updateUserAddress).not.toHaveBeenCalled();
   });
 
+  it("não executa PATCH quando o endereço é encontrado via API e já é default", async () => {
+    backend = [address("addr-novo", true)];
+
+    const swap = await takeOverDefaultAddress({
+      addresses: [],
+      addressId: "addr-novo",
+      userId: "user-1",
+    });
+
+    expect(swap).toBeNull();
+    expect(updateUserAddress).not.toHaveBeenCalled();
+  });
+
   it("promove e não agenda volta quando o cliente não tinha padrão nenhum", async () => {
     backend = [address("addr-trabalho", false)];
 

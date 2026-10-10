@@ -294,6 +294,10 @@ export const useCheckoutProcess = () => {
     coords: Coords | null,
   ): Promise<string | null> => {
     try {
+      const hasDefault = Boolean(userAddresses?.some((a) => a.isDefault));
+      const shouldBeDefault =
+        saveAddress && (!hasDefault || userAddresses.length === 0);
+
       const addressData = {
         zipCode: onlyNumbers(deliveryInfo.zipCode),
         state: deliveryInfo.state,
@@ -305,7 +309,7 @@ export const useCheckoutProcess = () => {
         number: deliveryInfo.number,
         complement: deliveryInfo.complement || undefined,
         reference: deliveryInfo.reference || undefined,
-        isDefault: false,
+        isDefault: shouldBeDefault,
       };
 
       const response = await apiService.address.createUserAddress(addressData);
@@ -451,6 +455,10 @@ export const useCheckoutProcess = () => {
 
         // Fallback: if we still don't have an address, create one
         if (!deliveryAddressId) {
+          const hasDefault = Boolean(userAddresses?.some((a) => a.isDefault));
+          const shouldBeDefault =
+            saveAddress && (!hasDefault || userAddresses.length === 0);
+
           const newAddressData = {
             zipCode: onlyNumbers(deliveryInfo.zipCode),
             street: deliveryInfo.street,
@@ -460,7 +468,7 @@ export const useCheckoutProcess = () => {
             state: deliveryInfo.state,
             latitude: coords?.lat,
             longitude: coords?.lng,
-            isDefault: false,
+            isDefault: shouldBeDefault,
           };
 
           const addressResponse =
