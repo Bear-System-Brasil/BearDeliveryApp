@@ -80,11 +80,16 @@ type AddressUpdater = (
  * "CEP inválido" - um erro sobre um campo que não estamos tentando mudar.
  */
 function addressFields(address: Address) {
-  const zipCode = onlyNumbers(address.zipCode ?? "");
-  const text = (value?: string | null) =>
-    value && value.trim().length > 0 ? value.trim() : undefined;
-  const coord = (value?: number | null) =>
-    typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  const zipCode = onlyNumbers(String(address.zipCode ?? ""));
+  const text = (value?: unknown) => {
+    if (value === null || value === undefined) return undefined;
+    const str = String(value).trim();
+    return str.length > 0 ? str : undefined;
+  };
+  const coord = (value?: unknown) => {
+    const num = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(num) ? num : undefined;
+  };
 
   return {
     ...(zipCode.length === 8 ? { zipCode } : {}),
@@ -241,7 +246,9 @@ export async function setDefaultAddress(
     const latest = await readUserAddresses();
     target = latest?.find((address) => address.id === addressId) ?? null;
   }
-  const promotion = await setIsDefault(target ?? addressId, true);
+  const promotion = target?.isDefault
+    ? { ok: true }
+    : await setIsDefault(target ?? addressId, true);
 
   if (!promotion.ok) {
     // O PATCH pode ter respondido erro e mesmo assim ter gravado, ou o
@@ -323,6 +330,8 @@ export async function takeOverDefaultAddress({
   if (previousDefault?.id === addressId) return null;
 
   if (!previousDefault) {
+    if (target?.isDefault) return null;
+
     const promotion = await setIsDefault(target ?? addressId, true);
 
     if (!promotion.ok && (await isOnlyDefault(addressId)) !== true) {

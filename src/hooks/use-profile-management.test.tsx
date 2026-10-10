@@ -524,6 +524,34 @@ describe("useProfileManagement", () => {
       expect(toast.error).toHaveBeenCalledWith("Erro ao adicionar endereço");
       expect(result.current.isSavingAddress).toBe(false);
     });
+
+    it("marca isDefault como true automaticamente ao abrir o formulário se o usuário não tem endereço padrão", async () => {
+      savedAddresses = [];
+      const { result } = await renderProfile();
+
+      expect(result.current.addressForm.getValues("isDefault")).toBeFalsy();
+
+      act(() => {
+        result.current.addingAddressState.open();
+      });
+
+      expect(result.current.addressForm.getValues("isDefault")).toBe(true);
+    });
+
+    it("define isDefault como true no payload se o usuário não tem endereço padrão e não especificou isDefault", async () => {
+      savedAddresses = [];
+      api.address.createUserAddress.mockResolvedValue({ success: true, data: stored("novo") });
+      const { result } = await renderProfile();
+      placePin(result);
+
+      await act(async () => {
+        const data = formData();
+        delete (data as { isDefault?: boolean }).isDefault;
+        await result.current.handleAddAddress(data);
+      });
+
+      expect(api.address.createUserAddress.mock.calls[0][0].isDefault).toBe(true);
+    });
   });
 
   describe("editar endereço", () => {

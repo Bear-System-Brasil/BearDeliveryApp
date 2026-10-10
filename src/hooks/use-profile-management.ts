@@ -194,6 +194,26 @@ export const useProfileManagement = () => {
     addressForm,
   ]);
 
+  // Se o cliente não tem nenhum endereço padrão cadastrado, o próximo endereço criado
+  // deve vir com a opção de padrão marcada por conveniência e conformidade com entrega.
+  useEffect(() => {
+    if (addingAddressState.isOpen && !editingAddressId) {
+      const hasDefault = Boolean(
+        (rawAddresses && rawAddresses.some((a) => a.isDefault)) ||
+        (addresses && addresses.some((a) => a.isDefault)),
+      );
+      if (!hasDefault || (addresses?.length ?? 0) === 0) {
+        addressForm.setValue("isDefault", true);
+      }
+    }
+  }, [
+    addingAddressState.isOpen,
+    editingAddressId,
+    rawAddresses,
+    addresses,
+    addressForm,
+  ]);
+
 
   /**
    * Prevent SSR issues
@@ -541,6 +561,16 @@ export const useProfileManagement = () => {
 
     setIsSavingAddress(true);
     try {
+      const hasDefault = Boolean(
+        (rawAddresses && rawAddresses.some((addr) => addr.isDefault)) ||
+        (addresses && addresses.some((addr) => addr.isDefault)),
+      );
+      const shouldBeDefault = editingAddressId
+        ? (data.isDefault ?? false)
+        : data.isDefault !== undefined
+          ? Boolean(data.isDefault)
+          : !hasDefault || (addresses?.length ?? 0) === 0;
+
       const payload = {
         street: data.street,
         number: data.number,
@@ -551,7 +581,7 @@ export const useProfileManagement = () => {
         longitude: pinCoords.lng,
         latitude: pinCoords.lat,
         zipCode: onlyNumbers(data.zipCode),
-        isDefault: data.isDefault ?? false,
+        isDefault: shouldBeDefault,
       };
 
       let response;
