@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCourierPositionStore } from "@/stores/courier-position-store";
 import { LocationDialog } from "./location-dialog";
@@ -92,5 +92,74 @@ describe("LocationDialog - localização bloqueada (LDMF-314)", () => {
     expect(screen.getByText("O GPS demorou demais pra responder.")).toBeInTheDocument();
     expect(unblockHelp()).not.toBeInTheDocument();
     expect(gpsButton()).toBeEnabled();
+  });
+});
+
+describe("LocationDialog - endereço digitado (LDMF-314)", () => {
+  const fetchMock = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useCourierPositionStore.setState({ position: null });
+    Object.defineProperty(navigator, "permissions", { configurable: true, value: undefined });
+    vi.stubGlobal("fetch", fetchMock);
+    // "ai delícia" não existe, mas o Nominatim devolve o mais parecido
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => [
+        { lat: "-23.5", lon: "-46.6", display_name: "Rua Delícia, Vila Nova, São Paulo, Brasil" },
+      ],
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function search(text: string) {
+    renderDialog(null);
+    fireEvent.change(screen.getByLabelText("Ou digite onde você está"), {
+      target: { value: text },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Buscar endereço" }));
+    });
+  }
+
+  it("mostra o que achou e só segue depois de confirmar", async () => {
+    await search("ai delícia");
+
+    expect(screen.getByText("Rua Delícia, Vila Nova, São Paulo")).toBeInTheDocument();
+    expect(onConfirmed).not.toHaveBeenCalled();
+    expect(useCourierPositionStore.getState().position).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sim, estou aqui" }));
+
+    expect(onConfirmed).toHaveBeenCalled();
+    expect(useCourierPositionStore.getState().position).toMatchObject({
+      coords: { lat: -23.5, lng: -46.6 },
+      source: "manual",
+    });
+  });
+
+  it("não reconhecer o endereço não grava nada e deixa corrigir", async () => {
+    await search("ai delícia");
+
+    fireEvent.click(screen.getByRole("button", { name: "Não, corrigir" }));
+
+    expect(screen.queryByText("Rua Delícia, Vila Nova, São Paulo")).not.toBeInTheDocument();
+    expect(onConfirmed).not.toHaveBeenCalled();
+    expect(useCourierPositionStore.getState().position).toBeNull();
+    expect(screen.getByRole("button", { name: "Buscar endereço" })).toBeEnabled();
+  });
+
+  it("mudar o texto descarta o endereço achado", async () => {
+    await search("ai delícia");
+
+    fireEvent.change(screen.getByLabelText("Ou digite onde você está"), {
+      target: { value: "Rua Sete 50, Castelo" },
+    });
+
+    expect(screen.queryByText("É aqui que você está?")).not.toBeInTheDocument();
   });
 });

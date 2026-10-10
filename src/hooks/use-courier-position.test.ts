@@ -28,46 +28,81 @@ describe("useCourierPosition - texto digitado (LDMF-314)", () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => [] });
     const { result } = renderHook(() => useCourierPosition());
 
-    let ok: boolean | undefined;
+    let match: unknown;
     await act(async () => {
-      ok = await result.current.setFromText("Rua Inexistente 123");
+      match = await result.current.findFromText("Rua Inexistente 123");
     });
 
-    expect(ok).toBe(false);
+    expect(match).toBeNull();
     expect(queries()).toEqual(["Rua Inexistente 123, Brasil"]);
+    // Endereço em português, qualquer que seja o idioma do aparelho
+    expect(
+      new URL(String(fetchMock.mock.calls[0][0])).searchParams.get("accept-language"),
+    ).toBe("pt-BR");
     expect(position()).toBeNull();
   });
 
-  it("endereço encontrado vira a posição manual com o texto digitado", async () => {
+  // O Nominatim devolve o lugar mais parecido mesmo pra texto que não
+  // existe ("ai delícia" virou um endereço real e a entrega foi aceita).
+  it("endereço achado não vira posição até ser confirmado", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          lat: "-20.6",
+          lon: "-41.2",
+          display_name:
+            "50, Rua Sete, Centro, Castelo, Região Geográfica Imediata de Cachoeiro de Itapemirim, Espírito Santo, Região Sudeste, 29360-000, Brasil",
+        },
+      ],
+    });
+    const { result } = renderHook(() => useCourierPosition());
+
+    let match: Awaited<ReturnType<typeof result.current.findFromText>> = null;
+    await act(async () => {
+      match = await result.current.findFromText("  Rua Sete 50, Castelo  ");
+    });
+
+    expect(match).toEqual({
+      coords: { lat: -20.6, lng: -41.2 },
+      found: "50, Rua Sete, Centro, Castelo, Espírito Santo",
+    });
+    expect(position()).toBeNull();
+
+    act(() => result.current.confirmTextMatch(match!));
+
+    expect(position()).toMatchObject({
+      coords: { lat: -20.6, lng: -41.2 },
+      source: "manual",
+      label: "50, Rua Sete, Centro, Castelo, Espírito Santo",
+    });
+  });
+
+  it("sem display_name, mostra o texto digitado", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => [{ lat: "-20.6", lon: "-41.2" }],
     });
     const { result } = renderHook(() => useCourierPosition());
 
-    let ok: boolean | undefined;
+    let match: unknown;
     await act(async () => {
-      ok = await result.current.setFromText("  Rua Sete 50, Castelo  ");
+      match = await result.current.findFromText("Rua Sete 50");
     });
 
-    expect(ok).toBe(true);
-    expect(position()).toMatchObject({
-      coords: { lat: -20.6, lng: -41.2 },
-      source: "manual",
-      label: "Rua Sete 50, Castelo",
-    });
+    expect(match).toMatchObject({ found: "Rua Sete 50" });
   });
 
-  it("falha de rede não registra posição", async () => {
+  it("falha de rede não acha nada", async () => {
     fetchMock.mockRejectedValue(new Error("offline"));
     const { result } = renderHook(() => useCourierPosition());
 
-    let ok: boolean | undefined;
+    let match: unknown;
     await act(async () => {
-      ok = await result.current.setFromText("Rua Sete 50");
+      match = await result.current.findFromText("Rua Sete 50");
     });
 
-    expect(ok).toBe(false);
+    expect(match).toBeNull();
     expect(position()).toBeNull();
   });
 });

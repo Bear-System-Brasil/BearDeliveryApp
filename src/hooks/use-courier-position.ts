@@ -34,6 +34,40 @@ const GPS_HARD_TIMEOUT_MS = 20_000;
 const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
 
 /**
+ * O que o Nominatim achou pro texto digitado. Ainda não é a posição: o
+ * entregador confirma antes (ver `findFromText`).
+ */
+export type TextMatch = {
+  coords: Coords;
+  /** Endereço que o Nominatim devolveu, encurtado pra caber na tela. */
+  found: string;
+};
+
+/**
+ * O endereço vem em português (`accept-language=pt-BR` na busca, senão o
+ * Nominatim segue o idioma do navegador e devolve "Northeast Region").
+ *
+ * "1000, Avenida Paulista, Bela Vista, São Paulo, Região Imediata de São
+ * Paulo, ..., 01310-100, Brasil" vira "1000, Avenida Paulista, Bela Vista,
+ * São Paulo": regiões, CEP e país não ajudam o entregador a reconhecer o
+ * lugar.
+ */
+function shortAddress(displayName: unknown): string | null {
+  if (typeof displayName !== "string") return null;
+  const parts = displayName
+    .split(",")
+    .map((part) => part.trim())
+    .filter(
+      (part) =>
+        part &&
+        !/^Região/i.test(part) &&
+        !/^Brasil$/i.test(part) &&
+        !/^\d{5}-?\d{3}$/.test(part),
+    );
+  return parts.length ? parts.slice(0, 5).join(", ") : null;
+}
+
+/**
  * Busca a linha livre que o entregador digitou, sem plano B.
  *
  * Não usa `geocodeAddress`: com só a rua preenchida, a busca de reserva
@@ -42,12 +76,12 @@ const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
  * "Localização registrada". Aqui, não achou = não achou: o entregador
  * corrige o texto.
  */
-async function searchFreeText(query: string): Promise<Coords | null> {
+async function searchFreeText(query: string): Promise<TextMatch | null> {
   try {
     const response = await fetch(
       `${NOMINATIM_SEARCH_URL}?q=${encodeURIComponent(
         `${query}, Brasil`,
-      )}&format=jsonv2&limit=1`,
+      )}&format=jsonv2&limit=1&accept-language=pt-BR`,
     );
     if (!response.ok) return null;
 
@@ -55,7 +89,10 @@ async function searchFreeText(query: string): Promise<Coords | null> {
     const result = Array.isArray(results) ? results[0] : null;
     if (!result) return null;
 
-    return parseCoords(result.lat, result.lon);
+    const coords = parseCoords(result.lat, result.lon);
+    if (!coords) return null;
+
+    return { coords, found: shortAddress(result.display_name) ?? query };
   } catch {
     return null;
   }
@@ -225,22 +262,34 @@ export function useCourierPosition() {
     }
   }, [setStorePosition]);
 
-  /** Converte o texto digitado em coordenada pelo Nominatim. */
-  const setFromText = useCallback(
-    async (text: string): Promise<boolean> => {
+  /**
+   * Procura o texto digitado no Nominatim, sem gravar nada.
+   *
+   * O Nominatim não diz "não existe": devolve o lugar mais parecido que
+   * conhece, às vezes em outra cidade ("ai delícia" virou um endereço real
+   * e a entrega foi aceita com ele - LDMF-314). Quem chama mostra o que foi
+   * achado e só grava com `confirmTextMatch`, depois que o entregador
+   * reconhece o lugar.
+   */
+  const findFromText = useCallback(
+    async (text: string): Promise<TextMatch | null> => {
       const query = text.trim();
-      if (!query) return false;
+      if (!query) return null;
 
       setIsGeocoding(true);
       try {
-        const coords = await searchFreeText(query);
-        if (!coords) return false;
-
-        setStorePosition(coords, "manual", query);
-        return true;
+        return await searchFreeText(query);
       } finally {
         setIsGeocoding(false);
       }
+    },
+    [],
+  );
+
+  /** O entregador reconheceu o endereço achado: vira a posição manual. */
+  const confirmTextMatch = useCallback(
+    (match: TextMatch) => {
+      setStorePosition(match.coords, "manual", match.found);
     },
     [setStorePosition],
   );
@@ -252,6 +301,7 @@ export function useCourierPosition() {
     isGeocoding,
     resolvePosition,
     refreshFromGps,
-    setFromText,
+    findFromText,
+    confirmTextMatch,
   };
 }

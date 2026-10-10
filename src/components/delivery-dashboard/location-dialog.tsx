@@ -18,6 +18,7 @@ import {
   useCourierPosition,
   useGeolocationPermission,
   type PositionFailure,
+  type TextMatch,
 } from "@/hooks/use-courier-position";
 
 const FAILURE_MESSAGE: Record<PositionFailure, string> = {
@@ -48,8 +49,14 @@ export function LocationDialog({
   onClose,
   onConfirmed,
 }: Props) {
-  const { position, isLocating, isGeocoding, refreshFromGps, setFromText } =
-    useCourierPosition();
+  const {
+    position,
+    isLocating,
+    isGeocoding,
+    refreshFromGps,
+    findFromText,
+    confirmTextMatch,
+  } = useCourierPosition();
 
   const permission = useGeolocationPermission(open);
   // Bloqueada de verdade: o navegador nem pergunta, tentar de novo é inútil.
@@ -64,11 +71,16 @@ export function LocationDialog({
       : null;
 
   const [text, setText] = useState("");
+  /** Endereço achado pro texto, esperando o entregador reconhecer. */
+  const [match, setMatch] = useState<TextMatch | null>(null);
 
   // Reabrir o diálogo não traz o texto da vez passada - o entregador se moveu,
   // e reaproveitar o endereço antigo é justamente o erro que queremos evitar.
   useEffect(() => {
-    if (open) setText("");
+    if (open) {
+      setText("");
+      setMatch(null);
+    }
   }, [open]);
 
   const handleGps = async () => {
@@ -84,15 +96,21 @@ export function LocationDialog({
   };
 
   const handleText = async () => {
-    const ok = await setFromText(text);
+    const found = await findFromText(text);
 
-    if (!ok) {
+    if (!found) {
       toast.error(
         "Não encontramos esse endereço. Tente com rua, número e cidade.",
       );
       return;
     }
 
+    setMatch(found);
+  };
+
+  const handleConfirmMatch = () => {
+    if (!match) return;
+    confirmTextMatch(match);
     toast.success("Localização registrada.");
     onConfirmed();
   };
@@ -169,7 +187,11 @@ export function LocationDialog({
             <Input
               id="courier-location"
               value={text}
-              onChange={(event) => setText(event.target.value)}
+              onChange={(event) => {
+                setText(event.target.value);
+                // Texto mudou: o endereço achado era pro texto anterior.
+                setMatch(null);
+              }}
               placeholder="Rua, número e cidade"
               autoComplete="off"
               className="h-12 rounded-xl"
@@ -178,6 +200,39 @@ export function LocationDialog({
               Quanto mais completo, melhor o frete sai certo.
             </p>
           </div>
+
+          {/* O Nominatim devolve o lugar mais parecido mesmo quando o texto
+              não existe - o entregador confere antes de virar a posição. */}
+          {match && (
+            <div className="rounded-xl border border-border px-3 py-2.5">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+                Encontramos
+              </p>
+              <p className="mt-0.5 text-[13.5px] font-semibold text-foreground">
+                {match.found}
+              </p>
+              <p className="mt-1.5 text-[13px] font-medium text-foreground">
+                É aqui que você está?
+              </p>
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMatch(null)}
+                  className="h-11 rounded-xl"
+                >
+                  Não, corrigir
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmMatch}
+                  className="h-11 rounded-xl bg-brand-500 font-bold text-white hover:bg-brand-600"
+                >
+                  Sim, estou aqui
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -194,10 +249,10 @@ export function LocationDialog({
           <Button
             type="button"
             onClick={handleText}
-            disabled={busy || !text.trim()}
+            disabled={busy || !text.trim() || match !== null}
             className="h-12 rounded-xl bg-brand-500 text-[15px] font-bold text-white hover:bg-brand-600"
           >
-            {isGeocoding ? "Buscando..." : "Usar este endereço"}
+            {isGeocoding ? "Buscando..." : "Buscar endereço"}
           </Button>
         </DialogFooter>
       </DialogContent>
