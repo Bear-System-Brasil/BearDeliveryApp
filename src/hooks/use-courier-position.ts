@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 
-import { geocodeAddress } from "@/lib/geocode";
+import { parseCoords } from "@/lib/geocode";
 import {
   isPositionFresh,
   useCourierPositionStore,
@@ -19,6 +19,36 @@ import type { Coords } from "@/types/restaurant";
  * campo de digitar do que deixá-lo esperando sem saber por quê.
  */
 const GPS_TIMEOUT_MS = 8_000;
+
+const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
+
+/**
+ * Busca a linha livre que o entregador digitou, sem plano B.
+ *
+ * Não usa `geocodeAddress`: com só a rua preenchida, a busca de reserva
+ * dele (bairro/cidade/estado) vira só "Brasil" e devolve o centro do país.
+ * Medido no LDMF-314 - o aceite saía com -10.33, -53.2 e a tela dizia
+ * "Localização registrada". Aqui, não achou = não achou: o entregador
+ * corrige o texto.
+ */
+async function searchFreeText(query: string): Promise<Coords | null> {
+  try {
+    const response = await fetch(
+      `${NOMINATIM_SEARCH_URL}?q=${encodeURIComponent(
+        `${query}, Brasil`,
+      )}&format=jsonv2&limit=1`,
+    );
+    if (!response.ok) return null;
+
+    const results = await response.json();
+    const result = Array.isArray(results) ? results[0] : null;
+    if (!result) return null;
+
+    return parseCoords(result.lat, result.lon);
+  } catch {
+    return null;
+  }
+}
 
 /** Por que o GPS não respondeu - decide a mensagem, não o caminho. */
 export type PositionFailure =
@@ -124,10 +154,7 @@ export function useCourierPosition() {
     }
   }, [setStorePosition]);
 
-  /**
-   * Converte o texto digitado em coordenada pelo Nominatim - o mesmo
-   * `geocodeAddress` que o cadastro de loja e o de endereço usam.
-   */
+  /** Converte o texto digitado em coordenada pelo Nominatim. */
   const setFromText = useCallback(
     async (text: string): Promise<boolean> => {
       const query = text.trim();
@@ -135,10 +162,7 @@ export function useCourierPosition() {
 
       setIsGeocoding(true);
       try {
-        // `geocodeAddress` monta a busca a partir dos campos do endereço;
-        // aqui só há uma linha livre, então ela entra como `street` e o
-        // helper completa com ", Brasil".
-        const coords = await geocodeAddress({ street: query });
+        const coords = await searchFreeText(query);
         if (!coords) return false;
 
         setStorePosition(coords, "manual", query);
