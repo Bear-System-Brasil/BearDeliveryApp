@@ -221,8 +221,17 @@ export default function DeliveryDashboardPage() {
     setLocatingForId(null);
   };
 
+  /**
+   * Um aceite por vez. Dois pedidos de GPS presos no mesmo aviso de
+   * permissão viravam dois aceites quando a localização era liberada
+   * (LDMF-314).
+   */
+  const acceptInProgress = locatingForId !== null || acceptingId !== null;
+
   // Com a confirmação desligada, o toque em Aceitar vai direto pro request.
   const handleAcceptRequest = (deliveryId: string) => {
+    if (acceptInProgress) return;
+
     const delivery = availableDeliveries.find(({ id }) => id === deliveryId);
     if (!delivery) return;
 
@@ -464,6 +473,7 @@ export default function DeliveryDashboardPage() {
                           acceptingId === delivery.id ||
                           locatingForId === delivery.id
                         }
+                        acceptLocked={acceptInProgress}
                       />
                     ))}
                   </div>

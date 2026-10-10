@@ -170,4 +170,23 @@ describe("DeliveryDashboardPage - aceite", () => {
 
     expect(acceptDelivery).toHaveBeenCalledTimes(1);
   });
+
+  it("com um aceite procurando a localização, os outros Aceitar travam", async () => {
+    confirmation.shouldConfirm = false;
+    const answerGps = holdGps();
+    render(<DeliveryDashboardPage />);
+
+    fireEvent.click(screen.getByText("aceitar n1"));
+    expect(screen.getByText("aceitar n2")).toBeDisabled();
+
+    await answerGps(RECIFE);
+    expect(screen.getByText("aceitar n2")).toBeEnabled();
+  });
+
+  it("com um aceite no backend, os outros Aceitar travam", () => {
+    driver.current = { ...driver.current, acceptingId: "n1" };
+    render(<DeliveryDashboardPage />);
+
+    expect(screen.getByText("aceitar n2")).toBeDisabled();
+  });
 });
