@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Bell, BellOff, Crosshair, Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -172,6 +172,14 @@ export default function DeliveryDashboardPage() {
   const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null);
   /** Buscando GPS: o card trava antes mesmo de o request sair. */
   const [locatingForId, setLocatingForId] = useState<string | null>(null);
+  /**
+   * Número da tentativa de aceite em curso. Desistir avança o número, e a
+   * resposta do GPS que chegar depois é descartada: com o aviso de permissão
+   * aberto ela pode demorar indefinidamente, e liberar a localização mais
+   * tarde aceitava a entrega da qual o entregador já tinha desistido
+   * (medido no LDMF-314).
+   */
+  const acceptAttemptRef = useRef(0);
 
   /**
    * Aceitar exige a posição do entregador - o backend recusa sem ela.
@@ -179,9 +187,13 @@ export default function DeliveryDashboardPage() {
    * incomoda o entregador (campo de texto) quando os dois falham.
    */
   const runAccept = async (deliveryId: string, onDone?: () => void) => {
+    const attempt = ++acceptAttemptRef.current;
     setLocatingForId(deliveryId);
     try {
       const outcome = await resolvePosition();
+
+      // Desistiu enquanto procurava, ou já há outra tentativa no lugar.
+      if (attempt !== acceptAttemptRef.current) return;
 
       if (!outcome.ok) {
         // Sai do caminho do aceite pra não empilhar dois diálogos.
@@ -198,8 +210,15 @@ export default function DeliveryDashboardPage() {
         { onSuccess: onDone },
       );
     } finally {
-      setLocatingForId(null);
+      // Uma tentativa cancelada não apaga o estado da que veio depois.
+      if (attempt === acceptAttemptRef.current) setLocatingForId(null);
     }
+  };
+
+  /** Desiste do aceite que ainda está procurando a localização. */
+  const cancelLocating = () => {
+    acceptAttemptRef.current += 1;
+    setLocatingForId(null);
   };
 
   // Com a confirmação desligada, o toque em Aceitar vai direto pro request.
@@ -213,6 +232,13 @@ export default function DeliveryDashboardPage() {
     }
 
     setAcceptTarget(delivery);
+  };
+
+  const handleCloseAccept = () => {
+    // Antes de o request sair, fechar é desistir. Depois, o request já está
+    // no backend e só o diálogo fecha - o toast diz como terminou.
+    if (acceptTarget && locatingForId === acceptTarget.id) cancelLocating();
+    setAcceptTarget(null);
   };
 
   const handleConfirmAccept = (skipNext: boolean) => {
@@ -458,11 +484,9 @@ export default function DeliveryDashboardPage() {
 
       <AcceptConfirmDialog
         delivery={acceptTarget}
-        isAccepting={
-          (acceptingId !== null && acceptingId === acceptTarget?.id) ||
-          (locatingForId !== null && locatingForId === acceptTarget?.id)
-        }
-        onClose={() => setAcceptTarget(null)}
+        isAccepting={acceptingId !== null && acceptingId === acceptTarget?.id}
+        isLocating={locatingForId !== null && locatingForId === acceptTarget?.id}
+        onClose={handleCloseAccept}
         onConfirm={handleConfirmAccept}
       />
 
