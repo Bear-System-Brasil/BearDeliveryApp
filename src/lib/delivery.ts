@@ -37,6 +37,24 @@ export const isAvailable = (delivery: Delivery) =>
   delivery.status === "PENDING";
 
 /**
+ * A entrega é do restaurante do entregador? (LDMF-322)
+ *
+ * O backend devolve pendentes de todos os restaurantes. Entregador vinculado
+ * a um restaurante só vê as dele; sem vínculo (o futuro entregador livre)
+ * vê tudo, até o backend definir quais restaurantes aceitam entregador
+ * livre (LDMF-323). Entrega sem restaurante identificado fica de fora pra
+ * quem tem vínculo: na dúvida, não mostra pedido de outro restaurante.
+ */
+export function isFromCourierCompany(
+  delivery: Delivery,
+  courierCompanyId: string | null | undefined,
+): boolean {
+  if (!courierCompanyId) return true;
+  const companyId = delivery.order?.company?.id ?? delivery.order?.companyId;
+  return companyId === courierCompanyId;
+}
+
+/**
  * Cancelar vale só antes da coleta. O limite documentado é PICKED_UP e é
  * exclusivo: depois de pegar a comida no restaurante não dá mais pra
  * cancelar - a partir daí o caminho é entregar.

@@ -2,6 +2,7 @@ import { useSound } from "@/hooks/use-sound";
 import {
   isActiveForDriver,
   isAvailable,
+  isFromCourierCompany,
   isCanceled,
   isFinished,
   isRecentlyFinished,
@@ -99,6 +100,7 @@ export const useDeliveryDriver = () => {
   const socketRef = useRef<Socket | null>(null);
 
   const { data, isLoading, isError, refetch } = useMyDeliveriesQuery();
+  const courierCompanyId = useAuthStore((state) => state.user?.companyId);
 
   const deliveries = useMemo(() => data?.items ?? [], [data]);
 
@@ -120,10 +122,20 @@ export const useDeliveryDriver = () => {
       recentlyDelivered: sortNewestFinishedFirst(
         deliveries.filter((delivery) => isRecentlyFinished(delivery, now)),
       ),
-      /** Sempre visíveis, mesmo com corrida em andamento. */
-      availableDeliveries: sortOldestFirst(deliveries.filter(isAvailable)),
+      /**
+       * Sempre visíveis, mesmo com corrida em andamento - mas só as do
+       * restaurante do entregador. As que ele já aceitou ficam acima, de
+       * qualquer restaurante: precisam ser terminadas.
+       */
+      availableDeliveries: sortOldestFirst(
+        deliveries.filter(
+          (delivery) =>
+            isAvailable(delivery) &&
+            isFromCourierCompany(delivery, courierCompanyId),
+        ),
+      ),
     };
-  }, [deliveries, now]);
+  }, [deliveries, now, courierCompanyId]);
 
   const { myDeliveries, recentlyDelivered, availableDeliveries } = groups;
 

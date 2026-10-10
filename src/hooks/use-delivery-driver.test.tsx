@@ -136,6 +136,65 @@ describe("useDeliveryDriver", () => {
     queryClient.clear();
   });
 
+  // LDMF-322: o backend devolve pendentes de todos os restaurantes, mas o
+  // entregador vinculado a um restaurante só pode pegar as dele.
+  describe("restaurante do entregador", () => {
+    const from = (
+      id: string,
+      status: Delivery["status"],
+      order: Record<string, unknown> | undefined,
+    ) => delivery(id, status, { order } as unknown as Partial<Delivery>);
+
+    const loginAs = (companyId?: string) =>
+      useAuthStore.setState(
+        {
+          ...initialAuthState,
+          isAuthenticated: true,
+          user: { id: "u1", role: "delivery", companyId } as never,
+        },
+        true,
+      );
+
+    it("vinculado a um restaurante, só vê disponíveis dele", async () => {
+      loginAs("pastelaria");
+      server = [
+        from("minha", "PENDING", { company: { id: "pastelaria" } }),
+        from("outra", "PENDING", { company: { id: "xurupita" } }),
+        from("so-id", "PENDING", { companyId: "pastelaria" }),
+        from("sem-restaurante", "PENDING", undefined),
+      ];
+
+      const { result } = await renderDriver();
+
+      expect(result.current.availableDeliveries.map((d) => d.id).sort()).toEqual([
+        "minha",
+        "so-id",
+      ]);
+      expect(result.current.counts.available).toBe(2);
+    });
+
+    it("o que ele já aceitou de outro restaurante continua com ele", async () => {
+      loginAs("pastelaria");
+      server = [from("aceita-antes", "ACCEPTED", { company: { id: "decasa" } })];
+
+      const { result } = await renderDriver();
+
+      expect(result.current.myDeliveries.map((d) => d.id)).toEqual(["aceita-antes"]);
+    });
+
+    it("sem restaurante (entregador livre), vê tudo como antes", async () => {
+      loginAs(undefined);
+      server = [
+        from("a", "PENDING", { company: { id: "pastelaria" } }),
+        from("b", "PENDING", { company: { id: "xurupita" } }),
+      ];
+
+      const { result } = await renderDriver();
+
+      expect(result.current.availableDeliveries).toHaveLength(2);
+    });
+  });
+
   describe("carga e agrupamento", () => {
     it("pede uma página só, no tamanho máximo que o backend aceita", async () => {
       await renderDriver();
