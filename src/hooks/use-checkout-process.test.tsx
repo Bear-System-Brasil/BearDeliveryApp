@@ -15,6 +15,7 @@ const finishOrder = vi.fn();
 const openCart = vi.fn();
 const paymentsCreate = vi.fn();
 const deleteUserAddress = vi.fn();
+const createUserAddress = vi.fn();
 const toastError = vi.fn();
 
 /**
@@ -105,6 +106,11 @@ const ADDRESSES_TWO = {
   isLoading: false,
 };
 
+const ADDRESSES_EMPTY = {
+  data: [] as (typeof ADDRESS_BASE & { isDefault: boolean })[],
+  isLoading: false,
+};
+
 let addressesQuery: typeof ADDRESSES_WITH_DEFAULT = ADDRESSES_WITH_DEFAULT;
 const ROUTER = { push: vi.fn(), back: vi.fn() };
 
@@ -167,7 +173,7 @@ vi.mock("@/services/api", () => ({
       deleteUserAddress,
       updateUserAddress,
       getUserAddresses,
-      createUserAddress: vi.fn(),
+      createUserAddress,
     },
   },
   PaymentMethod: {
@@ -449,6 +455,11 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
     resetAddressMocks();
     deleteUserAddress.mockReset();
     deleteUserAddress.mockResolvedValue({ success: true, data: {} });
+    createUserAddress.mockReset();
+    createUserAddress.mockResolvedValue({
+      success: true,
+      data: { id: "addr-new", isDefault: true },
+    });
     toastError.mockReset();
     addressesQuery = ADDRESSES_WITH_DEFAULT;
     seedAddressBook(ADDRESSES_WITH_DEFAULT);
@@ -618,4 +629,106 @@ describe("useCheckoutProcess - endereço padrão da entrega", () => {
     );
     expect(localStorage.getItem(SWAP_KEY)).toBeNull();
   });
+
+  it("cadastra novo endereço como padrão quando o cliente não tem endereços e salva para o futuro", async () => {
+    addressesQuery = ADDRESSES_EMPTY;
+    seedAddressBook(ADDRESSES_EMPTY);
+    createUserAddress.mockResolvedValue({
+      success: true,
+      data: {
+        id: "addr-novo",
+        isDefault: true,
+        street: "Praça da Sé",
+        number: "1",
+        neighborhood: "Sé",
+        city: "São Paulo",
+        state: "SP",
+        zipCode: "01001000",
+      },
+    });
+
+    const { result } = renderCheckout();
+
+    act(() => {
+      result.current.setOrderType("delivery");
+      result.current.setPaymentMethod("pix_on_delivery");
+      result.current.setSaveAddress(true);
+      result.current.setAddressMode("new");
+      Object.entries({
+        name: "Cliente",
+        phone: "11999999999",
+        zipCode: "01001-000",
+        street: "Praça da Sé",
+        number: "1",
+        neighborhood: "Sé",
+        city: "São Paulo",
+        state: "SP",
+      }).forEach(([field, value]) =>
+        result.current.handleInputChange(field, value),
+      );
+    });
+
+    await act(async () => {
+      await result.current.handleSubmitOrder();
+    });
+
+    expect(createUserAddress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isDefault: true,
+        zipCode: "01001000",
+      }),
+    );
+    expect(finishOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it("cadastra novo endereço sem padrão quando o cliente desmarca salvar para o futuro", async () => {
+    addressesQuery = ADDRESSES_EMPTY;
+    seedAddressBook(ADDRESSES_EMPTY);
+    createUserAddress.mockResolvedValue({
+      success: true,
+      data: {
+        id: "addr-novo",
+        isDefault: false,
+        street: "Praça da Sé",
+        number: "1",
+        neighborhood: "Sé",
+        city: "São Paulo",
+        state: "SP",
+        zipCode: "01001000",
+      },
+    });
+
+    const { result } = renderCheckout();
+
+    act(() => {
+      result.current.setOrderType("delivery");
+      result.current.setPaymentMethod("pix_on_delivery");
+      result.current.setSaveAddress(false);
+      result.current.setAddressMode("new");
+      Object.entries({
+        name: "Cliente",
+        phone: "11999999999",
+        zipCode: "01001-000",
+        street: "Praça da Sé",
+        number: "1",
+        neighborhood: "Sé",
+        city: "São Paulo",
+        state: "SP",
+      }).forEach(([field, value]) =>
+        result.current.handleInputChange(field, value),
+      );
+    });
+
+    await act(async () => {
+      await result.current.handleSubmitOrder();
+    });
+
+    expect(createUserAddress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isDefault: false,
+        zipCode: "01001000",
+      }),
+    );
+  });
 });
+
