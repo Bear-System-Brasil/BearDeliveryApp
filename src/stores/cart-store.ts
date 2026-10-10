@@ -160,7 +160,21 @@ export const useCartStore = create<CartState>()(
           return subtotal + deliveryFee;
         },
 
-        setItems: (items) => set({ items }, false, "cart/setItems"),
+        setItems: (items) => {
+          const merged = items.reduce<CartItem[]>((acc, item) => {
+            const existingIndex = acc.findIndex((i) => i.id === item.id);
+            if (existingIndex >= 0) {
+              acc[existingIndex] = {
+                ...acc[existingIndex],
+                quantity: acc[existingIndex].quantity + item.quantity,
+              };
+            } else {
+              acc.push(item);
+            }
+            return acc;
+          }, []);
+          set({ items: merged }, false, "cart/setItems");
+        },
 
         setRestaurant: (restaurant) =>
           set({ restaurant }, false, "cart/setRestaurant"),

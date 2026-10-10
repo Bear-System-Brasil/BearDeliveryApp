@@ -1006,4 +1006,239 @@ describe("useCartActions", () => {
       expect(pushMock).toHaveBeenCalledWith("/cart");
     });
   });
+
+  describe("consolidação e agrupamento de itens repetidos no carrinho", () => {
+    it("agrupa múltiplas entradas do mesmo produto sem variação somando as quantidades em 1 linha", async () => {
+      login();
+      useCartStore.getState().setOrderId("order-1");
+
+      vi.mocked(apiService.orders.viewOrder).mockResolvedValue({
+        success: true,
+        data: {
+          id: "order-1",
+          companyId: "r1",
+          orderedItems: [
+            { productId: "prod-1", quantity: 1, unitPrice: 20, product: { name: "Burger" } },
+            { productId: "prod-1", quantity: 1, unitPrice: 20, product: { name: "Burger" } },
+          ],
+        } as unknown as Order,
+      });
+
+      const { result } = renderCartActions();
+      await act(async () => {
+        await result.current.syncCartFromBackend();
+      });
+
+      const items = useCartStore.getState().items;
+      expect(items).toHaveLength(1);
+      expect(items[0].productId).toBe("prod-1");
+      expect(items[0].quantity).toBe(2);
+      expect(items[0].price).toBe(20);
+    });
+
+    it("agrupa múltiplas entradas do mesmo produto com a MESMA variação somando as quantidades em 1 linha", async () => {
+      login();
+      useCartStore.getState().setOrderId("order-1");
+
+      vi.mocked(apiService.orders.viewOrder).mockResolvedValue({
+        success: true,
+        data: {
+          id: "order-1",
+          companyId: "r1",
+          orderedItems: [
+            {
+              productId: "prod-1",
+              quantity: 1,
+              unitPrice: 10,
+              product: { name: "Suco" },
+              variations: [{ productVariationId: "var-300ml", priceSnapshot: 2, name: "300ml" }],
+            },
+            {
+              productId: "prod-1",
+              quantity: 1,
+              unitPrice: 10,
+              product: { name: "Suco" },
+              variations: [{ productVariationId: "var-300ml", priceSnapshot: 2, name: "300ml" }],
+            },
+          ],
+        } as unknown as Order,
+      });
+
+      const { result } = renderCartActions();
+      await act(async () => {
+        await result.current.syncCartFromBackend();
+      });
+
+      const items = useCartStore.getState().items;
+      expect(items).toHaveLength(1);
+      expect(items[0].productId).toBe("prod-1");
+      expect(items[0].quantity).toBe(2);
+      expect(items[0].price).toBe(12);
+      expect(items[0].variationLabel).toBe("300ml");
+    });
+
+    it("mantém em linhas separadas o mesmo produto com variações DIFERENTES", async () => {
+      login();
+      useCartStore.getState().setOrderId("order-1");
+
+      vi.mocked(apiService.orders.viewOrder).mockResolvedValue({
+        success: true,
+        data: {
+          id: "order-1",
+          companyId: "r1",
+          orderedItems: [
+            {
+              productId: "prod-1",
+              quantity: 1,
+              unitPrice: 10,
+              product: { name: "Suco" },
+              variations: [{ productVariationId: "var-300ml", priceSnapshot: 2, name: "300ml" }],
+            },
+            {
+              productId: "prod-1",
+              quantity: 2,
+              unitPrice: 10,
+              product: { name: "Suco" },
+              variations: [{ productVariationId: "var-500ml", priceSnapshot: 5, name: "500ml" }],
+            },
+          ],
+        } as unknown as Order,
+      });
+
+      const { result } = renderCartActions();
+      await act(async () => {
+        await result.current.syncCartFromBackend();
+      });
+
+      const items = useCartStore.getState().items;
+      expect(items).toHaveLength(2);
+      expect(items.find((i) => i.variationLabel === "300ml")?.quantity).toBe(1);
+      expect(items.find((i) => i.variationLabel === "500ml")?.quantity).toBe(2);
+    });
+
+    it("agrupa adicionais idênticos e mantém adicionais diferentes separados", async () => {
+      login();
+      useCartStore.getState().setOrderId("order-1");
+
+      vi.mocked(apiService.orders.viewOrder).mockResolvedValue({
+        success: true,
+        data: {
+          id: "order-1",
+          companyId: "r1",
+          orderedItems: [
+            {
+              productId: "prod-1",
+              quantity: 1,
+              unitPrice: 25,
+              product: { name: "Pastel" },
+              addOns: [{ productAddOnsId: "add-queijo", quantity: 1, priceSnapshot: 3, name: "Queijo" }],
+            },
+            {
+              productId: "prod-1",
+              quantity: 1,
+              unitPrice: 25,
+              product: { name: "Pastel" },
+              addOns: [{ productAddOnsId: "add-queijo", quantity: 1, priceSnapshot: 3, name: "Queijo" }],
+            },
+            {
+              productId: "prod-1",
+              quantity: 1,
+              unitPrice: 25,
+              product: { name: "Pastel" },
+              addOns: [{ productAddOnsId: "add-catupiry", quantity: 1, priceSnapshot: 4, name: "Catupiry" }],
+            },
+          ],
+        } as unknown as Order,
+      });
+
+      const { result } = renderCartActions();
+      await act(async () => {
+        await result.current.syncCartFromBackend();
+      });
+
+      const items = useCartStore.getState().items;
+      expect(items).toHaveLength(2);
+      const queijoItem = items.find((i) => i.addOnLabels?.includes("Queijo"));
+      const catupiryItem = items.find((i) => i.addOnLabels?.includes("Catupiry"));
+
+      expect(queijoItem?.quantity).toBe(2);
+      expect(queijoItem?.price).toBe(28);
+      expect(catupiryItem?.quantity).toBe(1);
+      expect(catupiryItem?.price).toBe(29);
+    });
+
+    it("adicionar duas vezes via handleAddToCart consolida no estado e resiste a sync com backend fragmentado", async () => {
+      login();
+      vi.mocked(apiService.orders.openCart).mockResolvedValue({
+        success: true,
+        data: { id: "order-1" } as Order,
+      });
+      vi.mocked(apiService.orderItems.addProductToCart).mockResolvedValue({
+        success: true,
+      } as unknown as Order);
+
+      const { result } = renderCartActions();
+
+      const itemPayload = {
+        id: "prod-caldo",
+        name: "Caldo de Cana",
+        price: 6,
+        quantity: 1,
+        restaurantId: "r1",
+        restaurantName: "Pastelaria",
+        variations: [{ productVariationId: "var-300" }],
+        variationLabel: "300 ml",
+      };
+
+      // Adiciona 1a vez
+      await act(async () => {
+        await result.current.handleAddToCart(itemPayload);
+      });
+      expect(useCartStore.getState().items).toHaveLength(1);
+      expect(useCartStore.getState().items[0].quantity).toBe(1);
+
+      // Adiciona 2a vez
+      await act(async () => {
+        await result.current.handleAddToCart(itemPayload);
+      });
+      expect(useCartStore.getState().items).toHaveLength(1);
+      expect(useCartStore.getState().items[0].quantity).toBe(2);
+
+      // Backend (Redis real) responde com 2 entradas separadas para o sync
+      vi.mocked(apiService.orders.viewOrder).mockResolvedValue({
+        success: true,
+        data: {
+          id: "order-1",
+          companyId: "r1",
+          orderedItems: [
+            {
+              productId: "prod-caldo",
+              quantity: 1,
+              unitPrice: 6,
+              product: { name: "Caldo de Cana" },
+              variations: [{ productVariationId: "var-300", name: "300 ml" }],
+            },
+            {
+              productId: "prod-caldo",
+              quantity: 1,
+              unitPrice: 6,
+              product: { name: "Caldo de Cana" },
+              variations: [{ productVariationId: "var-300", name: "300 ml" }],
+            },
+          ],
+        } as unknown as Order,
+      });
+
+      await act(async () => {
+        await result.current.syncCartFromBackend();
+      });
+
+      // Permanece consolidado como 1 única linha com quantidade 2!
+      const finalItems = useCartStore.getState().items;
+      expect(finalItems).toHaveLength(1);
+      expect(finalItems[0].quantity).toBe(2);
+      expect(finalItems[0].name).toBe("Caldo de Cana");
+      expect(finalItems[0].variationLabel).toBe("300 ml");
+    });
+  });
 });
