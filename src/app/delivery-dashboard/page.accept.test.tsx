@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Delivery } from "@/services/api";
 import DeliveryDashboardPage from "./page";
 
+// Cliente perto do entregador: sem coordenada, o aceite é barrado antes
+// do request pela conferência de distância (LDMF-321).
 const pending = (id: string) =>
   ({
     id,
@@ -10,7 +12,8 @@ const pending = (id: string) =>
     status: "PENDING",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }) as Delivery;
+    deliveryAddress: { latitude: "-8.05389", longitude: "-34.88111" },
+  }) as unknown as Delivery;
 
 const RECIFE = { lat: -8.06, lng: -34.89 };
 
