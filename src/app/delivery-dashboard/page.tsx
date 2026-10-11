@@ -5,6 +5,10 @@ import { Bell, BellOff, Crosshair, Package, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { ChangePaymentMethodDialog } from "@/components/change-payment-method-dialog";
+import {
+  AcceptBlockedDialog,
+  type AcceptBlock,
+} from "@/components/delivery-dashboard/accept-blocked-dialog";
 import { AcceptConfirmDialog } from "@/components/delivery-dashboard/accept-confirm-dialog";
 import { DeliveryCard } from "@/components/delivery-dashboard/delivery-card";
 import { LocationDialog } from "@/components/delivery-dashboard/location-dialog";
@@ -25,6 +29,7 @@ import {
   getNextStatus,
   pluralizeAvailable,
 } from "@/lib/delivery";
+import { checkAcceptDistance } from "@/lib/accept-distance";
 import { buildPaymentMethodUpdate } from "@/lib/payment-update";
 import { cn } from "@/lib/utils";
 import type { Delivery, PaymentMethod } from "@/services/api";
@@ -172,6 +177,11 @@ export default function DeliveryDashboardPage() {
   const [pendingAcceptId, setPendingAcceptId] = useState<string | null>(null);
   /** Buscando GPS: o card trava antes mesmo de o request sair. */
   const [locatingForId, setLocatingForId] = useState<string | null>(null);
+  /** Aceite barrado pela distância até o cliente, antes do request. */
+  const [blocked, setBlocked] = useState<{
+    delivery: Delivery;
+    block: AcceptBlock;
+  } | null>(null);
 
   /**
    * Aceitar exige a posição do entregador - o backend recusa sem ela.
@@ -190,6 +200,19 @@ export default function DeliveryDashboardPage() {
         setLocationFailure(outcome.reason);
         setLocationPurpose("accept");
         setLocationOpen(true);
+        return;
+      }
+
+      // Longe demais do cliente (ou sem como conferir): o backend aceitaria
+      // e calcularia o frete com essa distância (LDMF-321). Se a entrega
+      // sumiu da lista no meio do caminho, segue - o backend responde.
+      const delivery = availableDeliveries.find(({ id }) => id === deliveryId);
+      const check = delivery
+        ? checkAcceptDistance(delivery, outcome.position.coords)
+        : null;
+      if (delivery && check && !check.ok) {
+        setAcceptTarget(null);
+        setBlocked({ delivery, block: check });
         return;
       }
 
@@ -245,6 +268,17 @@ export default function DeliveryDashboardPage() {
       setPendingAcceptId(null);
       toast.info("Entrega não aceita - sem localização não dá pra calcular o frete.");
     }
+  };
+
+  // A posição pode ser a errada: corrigir retoma o aceite, que passa pela
+  // conferência de novo com a posição nova.
+  const handleFixLocation = () => {
+    if (!blocked) return;
+    setPendingAcceptId(blocked.delivery.id);
+    setBlocked(null);
+    setLocationFailure(null);
+    setLocationPurpose("accept");
+    setLocationOpen(true);
   };
 
   const handleAdvance = (delivery: Delivery) => {
@@ -464,6 +498,13 @@ export default function DeliveryDashboardPage() {
         }
         onClose={() => setAcceptTarget(null)}
         onConfirm={handleConfirmAccept}
+      />
+
+      <AcceptBlockedDialog
+        delivery={blocked?.delivery ?? null}
+        block={blocked?.block ?? null}
+        onClose={() => setBlocked(null)}
+        onFixLocation={handleFixLocation}
       />
 
       <LocationDialog
