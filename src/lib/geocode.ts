@@ -1,4 +1,5 @@
 import { Coords } from "@/types/restaurant";
+import { isInCity, type CityRef, type NominatimAddress } from "@/lib/nominatim";
 
 const NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search";
 
@@ -54,7 +55,16 @@ export function isSameCity(cityA?: string | null, cityB?: string | null) {
   return shorter.length >= 4 && longer.includes(shorter);
 }
 
-async function searchNominatim(query: string): Promise<Coords | null> {
+type NominatimResult = {
+  lat: string;
+  lon: string;
+  address?: NominatimAddress;
+};
+
+async function searchNominatim(
+  query: string,
+  cityRef?: CityRef | null,
+): Promise<Coords | null> {
   if (!query.trim()) return null;
 
   try {
@@ -67,9 +77,14 @@ async function searchNominatim(query: string): Promise<Coords | null> {
     if (!response.ok) return null;
 
     const results = await response.json();
-    const result = Array.isArray(results) ? results[0] : null;
+    const result: NominatimResult | null =
+      Array.isArray(results) && results[0] ? results[0] : null;
 
     if (!result) return null;
+
+    if (cityRef && !isInCity(result.address, cityRef)) {
+      return null;
+    }
 
     return parseCoords(result.lat, result.lon);
   } catch {
@@ -78,12 +93,22 @@ async function searchNominatim(query: string): Promise<Coords | null> {
 }
 
 /**
- * Geocodifica um endereço. Tenta o endereço completo e, se não encontrar,
- * cai para bairro/cidade/estado - o suficiente para o filtro por raio.
+ * Geocodifica um endereço usando o Nominatim.
+ *
+ * O resultado só é aceito se o ponto cair dentro da cidade do endereço
+ * (verificação via `isInCity`). Se o ponto retornado for de outra cidade
+ * ou se o endereço não for localizado, devolve `null` para que o chamador
+ * (como `resolveAddressCoordinates` no checkout) use a coordenada do CEP
+ * (centro da cidade).
  */
 export async function geocodeAddress(
   address: GeocodableAddress,
 ): Promise<Coords | null> {
+  const city = address.city?.trim();
+  const state = address.state?.trim();
+  const cityRef: CityRef | null =
+    city && state ? { city, state } : null;
+
   const fullQuery = [
     address.street,
     address.number,
@@ -96,18 +121,5 @@ export async function geocodeAddress(
     .filter(Boolean)
     .join(", ");
 
-  const cityQuery = [
-    address.neighborhood,
-    address.city,
-    address.state,
-    "Brasil",
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  const fullQueryResult = await searchNominatim(fullQuery);
-
-  if (fullQueryResult || cityQuery === fullQuery) return fullQueryResult;
-
-  return searchNominatim(cityQuery);
+  return searchNominatim(fullQuery, cityRef);
 }

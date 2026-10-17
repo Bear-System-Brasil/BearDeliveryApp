@@ -39,10 +39,17 @@ type NominatimResult = {
   address?: NominatimAddress;
 };
 
-// O formulário guarda a UF; a busca estruturada do Nominatim entende melhor o
-// nome do estado.
 function stateName(uf: string) {
   return BRAZIL_STATES[uf.trim().toUpperCase()] ?? uf;
+}
+
+function stateUf(stateOrUf: string): string {
+  const trimmed = stateOrUf.trim().toUpperCase();
+  if (BRAZIL_STATES[trimmed]) return trimmed;
+  const entry = Object.entries(BRAZIL_STATES).find(
+    ([, name]) => normalizeText(name) === normalizeText(stateOrUf),
+  );
+  return entry ? entry[0] : trimmed;
 }
 
 /**
@@ -67,7 +74,7 @@ export function isInCity(
   if (!cityKey || !names.includes(cityKey)) return false;
 
   const iso = address["ISO3166-2-lvl4"];
-  if (iso) return iso.toUpperCase() === `BR-${state.trim().toUpperCase()}`;
+  if (iso) return iso.toUpperCase() === `BR-${stateUf(state)}`;
 
   return normalizeText(address.state) === normalizeText(stateName(state));
 }

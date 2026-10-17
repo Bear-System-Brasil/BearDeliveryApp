@@ -19,6 +19,7 @@ const deleteUserAddress = vi.fn();
 const createUserAddress = vi.fn();
 const toastError = vi.fn();
 const updateCpf = vi.fn();
+const resolveAddressCoordinatesMock = vi.fn();
 
 /**
  * Estado do "banco" de endereços. O hook lê a lista pelo mock de
@@ -195,8 +196,12 @@ vi.mock("./use-addresses", () => ({
 }));
 
 vi.mock("@/lib/address-coordinates", () => ({
-  resolveAddressCoordinates: vi.fn(),
-  withCoords: vi.fn(),
+  resolveAddressCoordinates: (...args: unknown[]) => resolveAddressCoordinatesMock(...args),
+  withCoords: (
+    current: { coords: { lat: number; lng: number }; source: string } | null,
+    coords: { lat: number; lng: number } | null,
+    source: string,
+  ) => (coords ? { coords, source } : current),
 }));
 
 vi.mock("@/lib/geocode", () => ({ parseCoords: vi.fn() }));
@@ -293,6 +298,7 @@ beforeEach(() => {
     data: { cpf: "12345678900" },
   });
   authStoreUpdateUser.mockClear();
+  resolveAddressCoordinatesMock.mockReset();
 });
 
 describe("useCheckoutProcess - corpo do finishOrder", () => {
@@ -1218,3 +1224,87 @@ describe("useCheckoutProcess - loja do carrinho antes de finalizar (LDMF-317)", 
     );
   });
 });
+
+describe("useCheckoutProcess - resolução de coordenadas de entrega (LDMF-360)", () => {
+  beforeEach(() => {
+    RESTAURANT_QUERY.data = { id: "comp-1", deliveryFee: "0" } as never;
+    addressesQuery = ADDRESSES_EMPTY;
+    seedAddressBook(ADDRESSES_EMPTY);
+  });
+
+  it("ponto na cidade (aceita): atualiza as coordenadas para a rua com source geocode", async () => {
+    const { result } = renderCheckout();
+
+    // CEP já preenchido pela BrasilAPI
+    act(() => {
+      result.current.applyCoords({ lat: -20.7634, lng: -41.5332 }, "cep");
+    });
+
+    expect(result.current.addressCoords).toEqual({
+      coords: { lat: -20.7634, lng: -41.5332 },
+      source: "cep",
+    });
+
+    // Nominatim acha o ponto da rua dentro de Alegre
+    resolveAddressCoordinatesMock.mockResolvedValueOnce({
+      coords: { lat: -20.765, lng: -41.534 },
+      source: "geocode",
+    });
+
+    let coords: unknown;
+    await act(async () => {
+      coords = await result.current.resolveDeliveryCoords();
+    });
+
+    expect(coords).toEqual({ lat: -20.765, lng: -41.534 });
+    expect(result.current.addressCoords).toEqual({
+      coords: { lat: -20.765, lng: -41.534 },
+      source: "geocode",
+    });
+  });
+
+  it("ponto em outra cidade (descarta e usa o CEP): mantém as coordenadas do CEP", async () => {
+    const { result } = renderCheckout();
+
+    act(() => {
+      result.current.applyCoords({ lat: -20.7634, lng: -41.5332 }, "cep");
+    });
+
+    // Ponto em Ponto Belo descartado por estar fora de Alegre -> resolveAddressCoordinates devolve o CEP
+    resolveAddressCoordinatesMock.mockImplementationOnce((_addr, current) => current);
+
+    let coords: unknown;
+    await act(async () => {
+      coords = await result.current.resolveDeliveryCoords();
+    });
+
+    expect(coords).toEqual({ lat: -20.7634, lng: -41.5332 });
+    expect(result.current.addressCoords).toEqual({
+      coords: { lat: -20.7634, lng: -41.5332 },
+      source: "cep",
+    });
+  });
+
+  it("endereço não encontrado (usa o CEP): mantém as coordenadas do CEP", async () => {
+    const { result } = renderCheckout();
+
+    act(() => {
+      result.current.applyCoords({ lat: -20.7634, lng: -41.5332 }, "cep");
+    });
+
+    // Endereço não localizado no Nominatim -> resolveAddressCoordinates devolve o CEP
+    resolveAddressCoordinatesMock.mockImplementationOnce((_addr, current) => current);
+
+    let coords: unknown;
+    await act(async () => {
+      coords = await result.current.resolveDeliveryCoords();
+    });
+
+    expect(coords).toEqual({ lat: -20.7634, lng: -41.5332 });
+    expect(result.current.addressCoords).toEqual({
+      coords: { lat: -20.7634, lng: -41.5332 },
+      source: "cep",
+    });
+  });
+});
+
